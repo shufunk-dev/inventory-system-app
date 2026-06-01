@@ -1,0 +1,51 @@
+{
+  "name": "inventory-system-app",
+  "version": "1.0.10",
+  "description": "Inventory System Native App",
+  "main": "main.js",
+  "scripts": {
+    "build": "electron-builder build --win"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "electron-updater": "^6.8.3"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.inventory.app",
+    "productName": "Inventory System",
+    "publish": {
+      "provider": "github",
+      "owner": "shufunk-dev",
+      "repo": "inventory-system-app"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "asar": false,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true
+    },
+    "files": [
+      "main.js",
+      "icon.ico",
+      "next-server/**/*",
+      {
+        "from": "next-server/node_modules",
+        "to": "next-server/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      },
+      "node_modules/**/*"
+    ]
+  }
+}

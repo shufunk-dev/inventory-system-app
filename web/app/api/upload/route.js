@@ -1,0 +1,123 @@
+import { NextResponse } from 'next/server';
+import JSZip from 'jszip';
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+import axios from 'axios';
+import { getDb } from '@/lib/db';
+import { triggerWorker } from '@/lib/worker';
+import { getUser } from '@/lib/auth';
+
+export async function POST(request) {
+  try {
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file');
+    const categoryId = formData.get('categoryId') || null;
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const uploadsDir = path.resolve(process.env.USER_DATA_PATH || process.cwd(), 'uploads');
+    await fs.mkdir(uploadsDir, { recursive: true });
+    
+    // DEBUG: Save the zip to inspect it
+    await fs.writeFile(path.join(uploadsDir, 'debug_latest.zip'), buffer);
+
+    const zip = new JSZip();
+    const loadedZip = await zip.loadAsync(buffer);
+
+
+    let dataJson = [];
+    if (loadedZip.file('data.json')) {
+      const jsonStr = await loadedZip.file('data.json').async('string');
+      dataJson = JSON.parse(jsonStr);
+    } else {
+      return NextResponse.json({ error: 'data.json not found in ZIP' }, { status: 400 });
+    }
+
+    const db = getDb();
+    const insertItem = db.prepare(`
+      INSERT INTO items (id, barcode, name, imagePath, imagePathBack, itemType, categoryId, createdAt, syncStatus, lastSyncAttempt, userId)
+      VALUES (@id, @barcode, @name, @imagePath, @imagePathBack, @itemType, @categoryId, @createdAt, @syncStatus, NULL, @userId)
+    `);
+
+    let triggerNeeded = false;
+
+    for (const item of dataJson) {
+      let barcode = null;
+      let imagePath = null;
+      let imagePathBack = null;
+      let itemType = item.itemType || 'standard';
+      let name = '';
+      let syncStatus = 'completed';
+      const id = crypto.randomUUID();
+
+      if (item.type === 'barcode') {
+        barcode = item.data;
+        syncStatus = 'pending';
+        triggerNeeded = true;
+      } else {
+        // Handle all types with images (photo, toy, coin, card, etc)
+        
+        // Helper to find and extract a file from the zip
+        const extractZipFile = async (targetName) => {
+          if (!targetName) return null;
+          const cleanName = targetName.split('/').pop().split('\\').pop();
+          // Find case-insensitive match for the base filename anywhere in the zip
+          const files = loadedZip.file(new RegExp(cleanName.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$', 'i'));
+          if (files && files.length > 0) {
+            const fileBuffer = await files[0].async('nodebuffer');
+            const finalFilename = `${id}_${cleanName}`;
+            await fs.writeFile(path.join(uploadsDir, finalFilename), fileBuffer);
+            return `/api/file/${finalFilename}`;
+          }
+          return null;
+        };
+
+        if (item.type === 'coin' || item.type === 'card') {
+          // Front Image (fallback to filename if frontFilename is missing)
+          imagePath = await extractZipFile(item.frontFilename || item.filename);
+          // Back Image
+          imagePathBack = await extractZipFile(item.backFilename);
+        } else {
+          imagePath = await extractZipFile(item.filename);
+        }
+        
+        syncStatus = 'pending';
+        triggerNeeded = true;
+      }
+
+      insertItem.run({
+        id,
+        barcode,
+        name,
+        imagePath,
+        imagePathBack,
+        itemType,
+        categoryId,
+        createdAt: item.timestamp || Date.now(),
+        syncStatus,
+        userId: user.id
+      });
+    }
+
+    if (triggerNeeded) {
+      // Run the worker asynchronously without blocking the response
+      setTimeout(() => triggerWorker(user.id), 100);
+    }
+
+    return NextResponse.json({ success: true, count: dataJson.length });
+  } catch (error) {
+    console.error('Upload Error:', error);
+    return NextResponse.json({ error: 'Failed to process upload: ' + error.message }, { status: 500 });
+  }
+}

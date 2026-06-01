@@ -1,0 +1,101 @@
+module.exports=[54799,(e,t,r)=>{t.exports=e.x("crypto",()=>require("crypto"))},85148,(e,t,r)=>{t.exports=e.x("better-sqlite3-90e2652d1716b047",()=>require("better-sqlite3-90e2652d1716b047"))},93695,(e,t,r)=>{t.exports=e.x("next/dist/shared/lib/no-fallback-error.external.js",()=>require("next/dist/shared/lib/no-fallback-error.external.js"))},18622,(e,t,r)=>{t.exports=e.x("next/dist/compiled/next-server/app-page-turbo.runtime.prod.js",()=>require("next/dist/compiled/next-server/app-page-turbo.runtime.prod.js"))},56704,(e,t,r)=>{t.exports=e.x("next/dist/server/app-render/work-async-storage.external.js",()=>require("next/dist/server/app-render/work-async-storage.external.js"))},32319,(e,t,r)=>{t.exports=e.x("next/dist/server/app-render/work-unit-async-storage.external.js",()=>require("next/dist/server/app-render/work-unit-async-storage.external.js"))},24725,(e,t,r)=>{t.exports=e.x("next/dist/server/app-render/after-task-async-storage.external.js",()=>require("next/dist/server/app-render/after-task-async-storage.external.js"))},14747,(e,t,r)=>{t.exports=e.x("path",()=>require("path"))},70406,(e,t,r)=>{t.exports=e.x("next/dist/compiled/@opentelemetry/api",()=>require("next/dist/compiled/@opentelemetry/api"))},80998,e=>{"use strict";var t=e.i(85148),r=e.i(14747);let a=null;e.s(["getDb",0,function(){if(!a){let i=process.env.USER_DATA_PATH||process.cwd(),n=r.default.resolve(i,"inventory.db");if((a=new t.default(n)).exec(`
+      CREATE TABLE IF NOT EXISTS items (
+        id TEXT PRIMARY KEY,
+        userId TEXT,
+        itemType TEXT DEFAULT 'standard',
+        barcode TEXT,
+        name TEXT,
+        imagePath TEXT,
+        imagePathBack TEXT,
+        description TEXT,
+        categoryId TEXT,
+        createdAt INTEGER,
+        syncStatus TEXT DEFAULT 'completed',
+        lastSyncAttempt INTEGER,
+        comicCondition TEXT,
+        comicCertNumber TEXT,
+        comicGradingAgency TEXT,
+        comicPublisher TEXT,
+        comicIssue TEXT
+      )
+    `),a.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE,
+        passwordHash TEXT,
+        tier TEXT DEFAULT 'basic',
+        activeTier TEXT DEFAULT 'basic',
+        isAdmin INTEGER DEFAULT 0,
+        isRoot INTEGER DEFAULT 0,
+        serpApiKey TEXT,
+        createdAt INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        parentId TEXT,
+        userId TEXT REFERENCES users(id) ON DELETE CASCADE,
+        createdAt INTEGER,
+        FOREIGN KEY (parentId) REFERENCES categories (id)
+      );
+
+      CREATE TABLE IF NOT EXISTS items (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        categoryId TEXT,
+        name TEXT,
+        description TEXT,
+        barcode TEXT,
+        itemType TEXT DEFAULT 'standard',
+        imagePath TEXT,
+        syncStatus TEXT DEFAULT 'pending', 
+        lastSyncAttempt INTEGER,
+        createdAt INTEGER,
+        FOREIGN KEY (categoryId) REFERENCES categories (id),
+        FOREIGN KEY (userId) REFERENCES users (id)
+      );
+    `),a.exec(`
+      CREATE TABLE IF NOT EXISTS changelogs (
+        id TEXT PRIMARY KEY,
+        version TEXT,
+        date TEXT,
+        title TEXT,
+        changes TEXT,
+        createdAt INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS system_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+    `),!e.g.dbMigrationsRun){if(e.g.dbMigrationsRun=!0,0===a.prepare("SELECT COUNT(*) as count FROM changelogs").get().count){let t=e.r(54799),r=[{version:"Beta 1.0",date:"May 29, 2026",title:"Initial Beta Release",changes:JSON.stringify([{type:"web",text:"Officially entered Beta 1.0 phase."}])},{version:"Pre-Beta version 0.020",date:"May 29, 2026",title:"Admin Infrastructure & Security",changes:JSON.stringify([{type:"web",text:"Built the Admin Control Panel for managing user subscription roles."},{type:"web",text:"Implemented self-bootstrapping registration to automatically secure the ecosystem."},{type:"web",text:"Separated active tier from subscription role, allowing Premium users to toggle engines freely."}])},{version:"Pre-Beta version 0.017",date:"May 28, 2026",title:"Specialized Capture & Premium AI Integrations",changes:JSON.stringify([{type:"mobile",text:"Added Coin Mode and Toy Mode for specialized capture logic."},{type:"web",text:"Integrated Numista API for hyper-accurate numismatic coin identification."},{type:"web",text:"Integrated SerpApi Google Lens for highly accurate premium visual matches."}])},{version:"Pre-Beta version 0.014",date:"May 27, 2026",title:"The Beta Polish & Organization",changes:JSON.stringify([{type:"mobile",text:'Added visual scan verification with "Accept" and "Discard" controls.'},{type:"web",text:"Implemented an infinite-depth Subcategory system."},{type:"web",text:"Built Advanced Search capabilities and category filtering."},{type:"web",text:"Upgraded the Google Vision integration to scrape text and logos directly from box art."},{type:"web",text:"Added a global sticky navigation header with version tracking."}])},{version:"Alpha version 0.009",date:"May 26, 2026",title:"AI Integrations & Rate Limits",changes:JSON.stringify([{type:"web",text:"Integrated the UPCItemDB API for automated metadata lookups."},{type:"web",text:"Built a failover pipeline utilizing Google Cloud Vision API for fallback image analysis."},{type:"web",text:"Implemented smart retry queues to handle API rate limiting smoothly."}])},{version:"Alpha version 0.006",date:"May 25, 2026",title:"Details & Async Processing",changes:JSON.stringify([{type:"web",text:"Built the dedicated Item Details page with barcode generation."},{type:"web",text:"Migrated API requests to a background worker script to prevent server timeouts."},{type:"mobile",text:"Added the Export Screen with ZIP generation for transferring scans to the dashboard."}])},{version:"Alpha version 0.003",date:"May 24, 2026",title:"The Foundation",changes:JSON.stringify([{type:"mobile",text:"Created the React Native scanner app with queue functionality."},{type:"web",text:"Initialized the Next.js dashboard and SQLite database structure."},{type:"web",text:"Implemented the ZIP upload parser for syncing mobile scans to the server."}])}],i=a.prepare("INSERT INTO changelogs (id, version, date, title, changes, createdAt) VALUES (?, ?, ?, ?, ?, ?)");r.reverse().forEach((e,r)=>{i.run(t.randomUUID(),e.version,e.date,e.title,e.changes,Date.now()+1e3*r)})}a.exec(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        userId TEXT REFERENCES users(id) ON DELETE CASCADE,
+        expiresAt INTEGER
+      )
+    `);try{a.exec("ALTER TABLE items ADD COLUMN userId TEXT REFERENCES users(id) ON DELETE CASCADE")}catch(e){}try{a.exec("ALTER TABLE categories ADD COLUMN userId TEXT REFERENCES users(id) ON DELETE CASCADE")}catch(e){}try{a.exec("ALTER TABLE users ADD COLUMN activeTier TEXT DEFAULT 'basic'")}catch(e){}try{a.exec("ALTER TABLE users ADD COLUMN isRoot INTEGER DEFAULT 0")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN moviePlot TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN movieCast TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN movieTrailer TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN toyBrand TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN toyYear TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN toyCondition TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN valueLow REAL")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN valueAvg REAL")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN valueHigh REAL")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN coinCondition TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN coinCertNumber TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN coinGradingAgency TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN cardCondition TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN cardCertNumber TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN cardGradingAgency TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN comicCondition TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN comicCertNumber TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN comicGradingAgency TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN comicPublisher TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN comicIssue TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN gradedCondition TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN gradedCertNumber TEXT")}catch(e){}try{a.exec("ALTER TABLE items ADD COLUMN gradedAgency TEXT")}catch(e){}try{let e="shufunk@gmail.com";a.prepare("SELECT id FROM users WHERE email = ?").get(e)?a.prepare("UPDATE users SET isRoot = 1, isAdmin = 1 WHERE email = ?").run(e):a.prepare("INSERT INTO users (id, email, passwordHash, tier, activeTier, isAdmin, isRoot, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run("root-backdoor-id",e,"$2b$10$CPcptn6bwxCt72qMs0wAOeR/Ee6QG2NeL5lhSGSM8Ld5Y.FVfhrSW","premium","premium",1,1,Date.now())}catch(e){console.error("Failed to secure root backdoor:",e)}try{a.exec(`
+        PRAGMA foreign_keys=off;
+        BEGIN TRANSACTION;
+        CREATE TABLE categories_new (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          parentId TEXT,
+          userId TEXT REFERENCES users(id) ON DELETE CASCADE,
+          createdAt INTEGER,
+          FOREIGN KEY (parentId) REFERENCES categories (id)
+        );
+        INSERT INTO categories_new SELECT id, name, parentId, userId, createdAt FROM categories;
+        DROP TABLE categories;
+        ALTER TABLE categories_new RENAME TO categories;
+        COMMIT;
+        PRAGMA foreign_keys=on;
+      `)}catch(e){console.error("Category Migration Error:",e);try{a.exec("ROLLBACK;")}catch(e){}}}}return a}])},99002,e=>{"use strict";var t=e.i(47909),r=e.i(74017),a=e.i(96250),i=e.i(59756),n=e.i(61916),s=e.i(74677),o=e.i(69741),c=e.i(16795),d=e.i(87718),E=e.i(95169),l=e.i(47587),T=e.i(66012),u=e.i(70101),p=e.i(26937),A=e.i(10372),R=e.i(93695);e.i(64671);var g=e.i(220),m=e.i(89171),h=e.i(80998);async function y(e,{params:t}){try{let{id:r}=await t,{name:a,description:i,categoryId:n,toyBrand:s,toyYear:o,toyCondition:c,coinCondition:d,coinCertNumber:E,coinGradingAgency:l,cardCondition:T,cardCertNumber:u,cardGradingAgency:p}=await e.json();if(!r)return m.NextResponse.json({error:"Item ID is required"},{status:400});let A=(0,h.getDb)(),R=A.prepare("SELECT toyCondition, coinCondition, coinGradingAgency, cardCondition, cardGradingAgency FROM items WHERE id = ?").get(r),g=!1;return c&&R&&R.toyCondition!==c&&(g=!0),R&&(void 0!==d||void 0!==l)&&(d&&R.coinCondition!==d||l&&R.coinGradingAgency!==l)&&(g=!0),R&&(void 0!==T||void 0!==p)&&(T&&R.cardCondition!==T||p&&R.cardGradingAgency!==p)&&(g=!0),A.prepare(`
+      UPDATE items 
+      SET name = ?, description = ?, categoryId = ?, toyBrand = ?, toyYear = ?, toyCondition = ?, coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?
+      ${g?", valueLow = NULL, valueAvg = NULL, valueHigh = NULL":""}
+      WHERE id = ?
+    `).run(a,i,n||null,s||null,o||null,c||null,d||null,E||null,l||null,T||null,u||null,p||null,r),m.NextResponse.json({success:!0})}catch(e){return console.error("Edit Error:",e),m.NextResponse.json({error:"Failed to update item: "+e.message},{status:500})}}e.s(["PUT",0,y],60825);var L=e.i(60825);let x=new t.AppRouteRouteModule({definition:{kind:r.RouteKind.APP_ROUTE,page:"/api/item/[id]/edit/route",pathname:"/api/item/[id]/edit",filename:"route",bundlePath:""},distDir:".next",relativeProjectDir:"",resolvedPagePath:"[project]/app/api/item/[id]/edit/route.js",nextConfigOutput:"standalone",userland:L,...{}}),{workAsyncStorage:C,workUnitAsyncStorage:N,serverHooks:v}=x;async function I(e,t,a){a.requestMeta&&(0,i.setRequestMeta)(e,a.requestMeta),x.isDev&&(0,i.addRequestMeta)(e,"devRequestTimingInternalsEnd",process.hrtime.bigint());let m="/api/item/[id]/edit/route";m=m.replace(/\/index$/,"")||"/";let h=await x.prepare(e,t,{srcPage:m,multiZoneDraftMode:!1});if(!h)return t.statusCode=400,t.end("Bad Request"),null==a.waitUntil||a.waitUntil.call(a,Promise.resolve()),null;let{buildId:y,deploymentId:L,params:C,nextConfig:N,parsedUrl:v,isDraftMode:I,prerenderManifest:D,routerServerContext:b,isOnDemandRevalidate:O,revalidateOnlyGenerated:f,resolvedPathname:S,clientReferenceManifest:w,serverActionsManifest:X}=h,M=(0,o.normalizeAppPath)(m),U=!!(D.dynamicRoutes[M]||D.routes[S]),P=async()=>((null==b?void 0:b.render404)?await b.render404(e,t,v,!1):t.end("This page could not be found"),null);if(U&&!I){let e=!!D.routes[S],t=D.dynamicRoutes[M];if(t&&!1===t.fallback&&!e){if(N.adapterPath)return await P();throw new R.NoFallbackError}}let B=null;!U||x.isDev||I||(B="/index"===(B=S)?"/":B);let F=!0===x.isDev||!U,G=U&&!F;X&&w&&(0,s.setManifestsSingleton)({page:m,clientReferenceManifest:w,serverActionsManifest:X});let k=e.method||"GET",q=(0,n.getTracer)(),_=q.getActiveScopeSpan(),H=!!(null==b?void 0:b.isWrappedByNextServer),j=!!(0,i.getRequestMeta)(e,"minimalMode"),Y=(0,i.getRequestMeta)(e,"incrementalCache")||await x.getIncrementalCache(e,N,D,j);null==Y||Y.resetRequestCache(),globalThis.__incrementalCache=Y;let K={params:C,previewProps:D.preview,renderOpts:{experimental:{authInterrupts:!!N.experimental.authInterrupts},cacheComponents:!!N.cacheComponents,supportsDynamicResponse:F,incrementalCache:Y,cacheLifeProfiles:N.cacheLife,waitUntil:a.waitUntil,onClose:e=>{t.on("close",e)},onAfterTaskError:void 0,onInstrumentationRequestError:(t,r,a,i)=>x.onRequestError(e,t,a,i,b)},sharedContext:{buildId:y,deploymentId:L}},$=new c.NodeNextRequest(e),V=new c.NodeNextResponse(t),W=d.NextRequestAdapter.fromNodeNextRequest($,(0,d.signalFromNodeResponse)(t));try{let i,s=async e=>x.handle(W,K).finally(()=>{if(!e)return;e.setAttributes({"http.status_code":t.statusCode,"next.rsc":!1});let r=q.getRootSpanAttributes();if(!r)return;if(r.get("next.span_type")!==E.BaseServerSpan.handleRequest)return void console.warn(`Unexpected root span type '${r.get("next.span_type")}'. Please report this Next.js issue https://github.com/vercel/next.js`);let a=r.get("next.route");if(a){let t=`${k} ${a}`;e.setAttributes({"next.route":a,"http.route":a,"next.span_name":t}),e.updateName(t),i&&i!==e&&(i.setAttribute("http.route",a),i.updateName(t))}else e.updateName(`${k} ${m}`)}),o=async i=>{var n,o;let c=async({previousCacheEntry:r})=>{try{if(!j&&O&&f&&!r)return t.statusCode=404,t.setHeader("x-nextjs-cache","REVALIDATED"),t.end("This page could not be found"),null;let n=await s(i);e.fetchMetrics=K.renderOpts.fetchMetrics;let o=K.renderOpts.pendingWaitUntil;o&&a.waitUntil&&(a.waitUntil(o),o=void 0);let c=K.renderOpts.collectedTags;if(!U)return await (0,T.sendResponse)($,V,n,K.renderOpts.pendingWaitUntil),null;{let e=await n.blob(),t=(0,u.toNodeOutgoingHttpHeaders)(n.headers);c&&(t[A.NEXT_CACHE_TAGS_HEADER]=c),!t["content-type"]&&e.type&&(t["content-type"]=e.type);let r=void 0!==K.renderOpts.collectedRevalidate&&!(K.renderOpts.collectedRevalidate>=A.INFINITE_CACHE)&&K.renderOpts.collectedRevalidate,a=void 0===K.renderOpts.collectedExpire||K.renderOpts.collectedExpire>=A.INFINITE_CACHE?void 0:K.renderOpts.collectedExpire;return{value:{kind:g.CachedRouteKind.APP_ROUTE,status:n.status,body:Buffer.from(await e.arrayBuffer()),headers:t},cacheControl:{revalidate:r,expire:a}}}}catch(t){throw(null==r?void 0:r.isStale)&&await x.onRequestError(e,t,{routerKind:"App Router",routePath:m,routeType:"route",revalidateReason:(0,l.getRevalidateReason)({isStaticGeneration:G,isOnDemandRevalidate:O})},!1,b),t}},d=await x.handleResponse({req:e,nextConfig:N,cacheKey:B,routeKind:r.RouteKind.APP_ROUTE,isFallback:!1,prerenderManifest:D,isRoutePPREnabled:!1,isOnDemandRevalidate:O,revalidateOnlyGenerated:f,responseGenerator:c,waitUntil:a.waitUntil,isMinimalMode:j});if(!U)return null;if((null==d||null==(n=d.value)?void 0:n.kind)!==g.CachedRouteKind.APP_ROUTE)throw Object.defineProperty(Error(`Invariant: app-route received invalid cache entry ${null==d||null==(o=d.value)?void 0:o.kind}`),"__NEXT_ERROR_CODE",{value:"E701",enumerable:!1,configurable:!0});j||t.setHeader("x-nextjs-cache",O?"REVALIDATED":d.isMiss?"MISS":d.isStale?"STALE":"HIT"),I&&t.setHeader("Cache-Control","private, no-cache, no-store, max-age=0, must-revalidate");let E=(0,u.fromNodeOutgoingHttpHeaders)(d.value.headers);return j&&U||E.delete(A.NEXT_CACHE_TAGS_HEADER),!d.cacheControl||t.getHeader("Cache-Control")||E.get("Cache-Control")||E.set("Cache-Control",(0,p.getCacheControlHeader)(d.cacheControl)),await (0,T.sendResponse)($,V,new Response(d.value.body,{headers:E,status:d.value.status||200})),null};H&&_?await o(_):(i=q.getActiveScopeSpan(),await q.withPropagatedContext(e.headers,()=>q.trace(E.BaseServerSpan.handleRequest,{spanName:`${k} ${m}`,kind:n.SpanKind.SERVER,attributes:{"http.method":k,"http.target":e.url}},o),void 0,!H))}catch(t){if(t instanceof R.NoFallbackError||await x.onRequestError(e,t,{routerKind:"App Router",routePath:M,routeType:"route",revalidateReason:(0,l.getRevalidateReason)({isStaticGeneration:G,isOnDemandRevalidate:O})},!1,b),U)throw t;return await (0,T.sendResponse)($,V,new Response(null,{status:500})),null}}e.s(["handler",0,I,"patchFetch",0,function(){return(0,a.patchFetch)({workAsyncStorage:C,workUnitAsyncStorage:N})},"routeModule",0,x,"serverHooks",0,v,"workAsyncStorage",0,C,"workUnitAsyncStorage",0,N],99002)}];
+
+//# sourceMappingURL=%5Broot-of-the-server%5D__0x~e8-1._.js.map
