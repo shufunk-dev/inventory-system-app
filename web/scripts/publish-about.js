@@ -30,7 +30,7 @@ async function publishAboutPage() {
     .join('\n');
 
   const htmlContent = marked.parse(markdownContent);
-  const title = "About the Inventory & POS System";
+  const title = "About";
 
   try {
     // 1. Search for existing page with slug 'about'

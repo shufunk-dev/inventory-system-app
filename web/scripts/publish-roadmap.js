@@ -38,7 +38,7 @@ async function publishRoadmap() {
     .replace(/>\s*\[!CAUTION\]/gi, '> **Caution:**');
 
   const htmlContent = marked.parse(markdownContent);
-  const title = "Future Product Roadmap";
+  const title = "Roadmap";
 
   try {
     // 1. Search for existing page with slug 'roadmap'
