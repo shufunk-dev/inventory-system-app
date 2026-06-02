@@ -13,6 +13,19 @@ import { redirect } from 'next/navigation';
 export const dynamic = 'force-dynamic';
 
 export default async function Home({ searchParams }) {
+  // In Local-First Mode, redirect to the setup wizard if no admin exists
+  if (process.env.SAAS_MODE !== 'true') {
+    try {
+      const db = getDb();
+      const adminCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE isRoot = 1').get().count;
+      if (adminCount === 0) {
+        redirect('/setup');
+      }
+    } catch (e) {
+      console.error('[home_page] Failed to check admin count:', e);
+    }
+  }
+
   const user = await getUser();
   if (!user) {
     redirect('/login');
