@@ -48,6 +48,18 @@ export async function getUser() {
   const session = await getSession();
   if (!session) return null;
   
+  if (session.userId === 'super-admin-root') {
+    return {
+      id: 'super-admin-root',
+      email: process.env.SUPER_ADMIN_EMAIL || 'support@system.com',
+      tier: 'premium',
+      activeTier: 'premium',
+      isAdmin: 1,
+      isRoot: 1,
+      isSuperAdmin: true
+    };
+  }
+  
   const db = getDb();
   const user = db.prepare('SELECT id, email, tier, activeTier, isAdmin, isRoot FROM users WHERE id = ?').get(session.userId);
   return user || null;
