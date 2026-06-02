@@ -1,12 +1,52 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
+import { createRequire } from 'module';
+import { decryptSync } from './jwt.js';
+import { getTenantDb, tenantStorage } from './dbManager.js';
+
+const require = createRequire(import.meta.url);
 
 let db = null;
 
 export function getDb() {
+  if (process.env.SAAS_MODE === 'true') {
+    // 1. Resolve from AsyncLocalStorage first (useful for background context or overrides)
+    const context = tenantStorage.getStore();
+    if (context && context.tenantId) {
+      return getTenantDb(context.tenantId);
+    }
+
+    // 2. Resolve from session cookie next (standard request lifecycle)
+    try {
+      const { cookies } = require('next/headers');
+      const cookieStore = cookies();
+      const sessionCookie = cookieStore.get('session')?.value;
+      if (sessionCookie) {
+        const payload = decryptSync(sessionCookie);
+        if (payload && payload.tenantId) {
+          return getTenantDb(payload.tenantId);
+        }
+      }
+    } catch (e) {
+      // Ignore: cookies() throws when called outside of standard request lifecycles (e.g. at startup or inside tests)
+    }
+
+    // 3. Fallback to default tenant (useful for development)
+    const fallbackTenantId = process.env.DEFAULT_TENANT_ID;
+    if (fallbackTenantId) {
+      return getTenantDb(fallbackTenantId);
+    }
+
+    throw new Error('[db] getDb() was called in SaaS mode outside of an active tenant context.');
+  }
+
   if (!db) {
     // Determine the database file path
     const dataPath = process.env.USER_DATA_PATH || process.cwd();
+    if (!fs.existsSync(dataPath)) {
+      fs.mkdirSync(dataPath, { recursive: true });
+    }
     const dbPath = path.resolve(dataPath, 'inventory.db');
     db = new Database(dbPath);
     
@@ -300,4 +340,13 @@ export function getDb() {
   }
   
   return db;
+}
+
+export function closeDb() {
+  if (db) {
+    try {
+      db.close();
+    } catch (e) {}
+    db = null;
+  }
 }

@@ -1,32 +1,10 @@
-import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import { getDb } from './db';
+import { getDb } from './db.js';
+import { encrypt, decrypt } from './jwt.js';
 
-const secretKey = process.env.SESSION_SECRET || 'super-secret-key-for-development';
-const key = new TextEncoder().encode(secretKey);
-
-export async function encrypt(payload) {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(key);
-}
-
-export async function decrypt(input) {
-  try {
-    const { payload } = await jwtVerify(input, key, {
-      algorithms: ['HS256'],
-    });
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
-
-export async function createSession(userId) {
+export async function createSession(userId, tenantId = null) {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const session = await encrypt({ userId, expiresAt });
+  const session = await encrypt({ userId, tenantId, expiresAt });
 
   const cookieStore = await cookies();
   cookieStore.set('session', session, {
