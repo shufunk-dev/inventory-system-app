@@ -26,3 +26,8 @@ web/electron/next-server/public/barcodes/
 
 # Local developer information
 github info.txt
+
+# Local Study & Costs Documentation
+*architecture_guide*
+*ai_operational_costs*
+*archive_manifest*
