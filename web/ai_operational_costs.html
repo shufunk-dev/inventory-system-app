@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Operational Costs Breakdown</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1f2937;
+      background-color: #ffffff;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    header {
+      border-bottom: 2px solid #f3f4f6;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .logo-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .doc-type {
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #0070f3;
+      background-color: #eff6ff;
+      padding: 4px 12px;
+      border-radius: 12px;
+    }
+    
+    .version {
+      font-size: 0.85rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #111827;
+      margin: 0 0 10px 0;
+      letter-spacing: -0.02em;
+    }
+    
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+      font-size: 0.85rem;
+      color: #4b5563;
+    }
+    
+    .meta-item strong {
+      display: block;
+      color: #111827;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #111827;
+      margin-top: 35px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    
+    p {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #374151;
+    }
+    
+    ul {
+      margin-top: 0;
+      margin-bottom: 20px;
+      padding-left: 20px;
+    }
+    
+    li {
+      margin-bottom: 8px;
+      color: #374151;
+    }
+    
+    .bold-accent {
+      color: #111827;
+      font-weight: 600;
+    }
+    
+    /* Table Styling */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      margin-bottom: 25px;
+      font-size: 0.9rem;
+    }
+    
+    th {
+      background-color: #f9fafb;
+      color: #374151;
+      font-weight: 600;
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f3f4f6;
+      color: #4b5563;
+    }
+    
+    tr:last-child td {
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .highlight-cell {
+      color: #111827;
+      font-weight: 600;
+    }
+    
+    .price-cell {
+      font-family: monospace;
+      font-weight: 600;
+      color: #059669;
+    }
+    
+    /* Box Styling */
+    .note-box {
+      background-color: #f9fafb;
+      border-left: 4px solid #4b5563;
+      padding: 15px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 25px;
+      font-size: 0.9rem;
+    }
+    
+    .note-box-title {
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 5px;
+    }
+    
+    /* Cost Scenarios */
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .scenario-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 15px;
+      background-color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    
+    .scenario-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .scenario-cost {
+      font-family: monospace;
+      color: #059669;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    
+    .scenario-desc {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin: 0;
+    }
+    
+    /* Footer */
+    footer {
+      margin-top: 50px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 15px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-area">
+      <span class="doc-type">Internal Cost Map</span>
+      <span class="version">System Version: v1.5.1 / App: v1.0.10</span>
+    </div>
+    <h1>AI & API Operational Costs Analysis</h1>
+    <div class="meta-grid">
+      <div class="meta-item">
+        <strong>Prepared For</strong>
+        Inventory System Project
+      </div>
+      <div class="meta-item">
+        <strong>Prepared On</strong>
+        June 2, 2026
+      </div>
+      <div class="meta-item">
+        <strong>Status</strong>
+        Approved Production Spec
+      </div>
+    </div>
+  </header>
+
+  <p>This document details the breakdown of operational costs associated with our search, recognition, and valuation pipelines. It delineates local, zero-cost operations from metered third-party cloud API services, establishing the baseline cost structure for each user action.</p>
+
+  <h2>1. Local & Free Processing ($0 Cost)</h2>
+  <p>To optimize overall cost margins, several heavy data-processing tasks run client-side on the user’s mobile hardware or hit unmetered public API registries:</p>
+  <ul>
+    <li><span class="bold-accent">On-Device Barcode Recognition:</span> Decodes UPC-A, UPC-E, EAN-13, EAN-8, QR, Code-128, etc., directly on the mobile CPU/GPU using native libraries via the <code>expo-camera</code> framework.</li>
+    <li><span class="bold-accent">Image Quality Compression:</span> The scanner app automatically compresses full-resolution images down to a quality ratio of 60% (~400KB files) prior to server sync, protecting local bandwidth.</li>
+    <li><span class="bold-accent">Local Database Engine:</span> All asset relationships, user configurations, sync queues, and caching are managed offline in local SQLite databases on both mobile and native desktop apps.</li>
+    <li><span class="bold-accent">Public Registry Lookups:</span> 
+      <ul>
+        <li><strong>Google Books API:</strong> Barcodes matching ISBN books (starting with 978 or 979) query Google Books without charge or key requirements.</li>
+        <li><strong>Open Food Facts API:</strong> Decodes standard food products via an open, crowdsourced database.</li>
+        <li><strong>UPCItemDB Trial Tier:</strong> fallback search engine for standard product codes (free trial mode, capped at 100 requests/day).</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>2. Paid Cloud Services & Billed Actions</h2>
+  <p>Billed calls occur during background sync processing (orchestrated by <code>lib/worker.js</code>) whenever a user scans collectibles or requires premium enrichment:</p>
+  <ul>
+    <li><span class="bold-accent">Basic Photo Identification (Google Cloud Vision API):</span> Triggered for standard image imports. Runs text recognition, web matching, labels, and logo checks.</li>
+    <li><span class="bold-accent">Deep Visual Matching (SerpApi Google Lens):</span> Runs when the user activates "Premium Tier" or scans specific categories. Re-uploads the image and queries Google Lens for visually matching items and exact titles.</li>
+    <li><span class="bold-accent">Market Valuation Pricing (SerpApi Google Shopping):</span> Triggered for collectible appraisal (vintage toys, coins, cards, and comics). Returns pricing ranges by analyzing shopping listings.</li>
+    <li><span class="bold-accent">Slab/Grading Cert Validation (SerpApi Organic Search):</span> Triggered when a graded slab barcode is detected. Queries Google to scrape certificates from PCGS, NGC, PSA, BGS, SGC, or CGC.</li>
+    <li><span class="bold-accent">Entertainment Metadata Enrichment (SerpApi Search & YouTube):</span> Triggered when scanning Movies and TV shows. Resolves IMDb organic search snippets for plot/cast lists and retrieves YouTube links for official trailers.</li>
+  </ul>
+
+  <h2>3. API Models, Pricing, and Cost Breakdown</h2>
+  <div class="note-box">
+    <div class="note-box-title">Important Note on Token-Based Billing</div>
+    No large language models (such as GPT-4 or Gemini Multimodal API) are utilized for these pipelines. All data queries are based on structured computer vision and search engine integrations. There are no input/output token counts or token-based costs.
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Service & Endpoint</th>
+        <th>Integration Method</th>
+        <th>Billing Model</th>
+        <th>Cost per Call</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="highlight-cell">Google Cloud Vision</td>
+        <td><code>v1/images:annotate</code></td>
+        <td>4 Features Billed per Image (Text, Logo, Web, Labels)</td>
+        <td class="price-cell">$0.0085</td>
+      </tr>
+      <tr>
+        <td class="highlight-cell">SerpApi (Google Lens)</td>
+        <td><code>engine=google_lens</code></td>
+        <td>1 Search Credit per Lookup</td>
+        <td class="price-cell">$0.0100</td>
+      </tr>
+      <tr>
+        <td class="highlight-cell">SerpApi (Google Shopping)</td>
+        <td><code>engine=google_shopping</code></td>
+        <td>1 Search Credit per Lookup</td>
+        <td class="price-cell">$0.0100</td>
+      </tr>
+      <tr>
+        <td class="highlight-cell">SerpApi (Search & YouTube)</td>
+        <td><code>engine=google</code> / <code>youtube</code></td>
+        <td>1 Search Credit per Lookup</td>
+        <td class="price-cell">$0.0100</td>
+      </tr>
+      <tr>
+        <td class="highlight-cell">Numista Coin API</td>
+        <td><code>/api/v3/types</code></td>
+        <td>Billed per Subscription (Custom)</td>
+        <td class="price-cell">Variable</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Cost Per User Action Scenarios</h2>
+  <div class="scenario-grid">
+    <div class="scenario-card">
+      <div class="scenario-title">
+        <span>Standard Barcode Scan</span>
+        <span class="scenario-cost">$0.00</span>
+      </div>
+      <p class="scenario-desc">User scans a standard retail item barcode. Resolved locally and matched against Google Books, Open Food Facts, or trial registries.</p>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title">
+        <span>Basic Photo Scan</span>
+        <span class="scenario-cost">$0.0085</span>
+      </div>
+      <p class="scenario-desc">User takes a photo of a standard item in basic mode. Calls Google Cloud Vision to detect basic tags, logos, and text.</p>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title">
+        <span>Premium Image Match</span>
+        <span class="scenario-cost">$0.0185</span>
+      </div>
+      <p class="scenario-desc">User takes a photo in Premium Mode. Google Vision text OCR resolves basic text, and SerpApi Google Lens finds visual matches.</p>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-title">
+        <span>Collectible Valuation</span>
+        <span class="scenario-cost">$0.0385</span>
+      </div>
+      <p class="scenario-desc">Premium scan of a coin, trading card, or vintage toy. Performs Google Vision OCR, SerpApi Google Lens lookup, SerpApi Google Shopping search, and search-based cert validation.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>Confidential - For Internal Discussion Only</span>
+    <span>Generated: 2026-06-02</span>
+  </footer>
+</div>
+
+</body>
+</html>
