@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 .next/
 dist/
 win-unpacked/
@@ -31,17 +31,11 @@ github info.txt
 *architecture_guide*
 *ai_operational_costs*
 *archive_manifest*
-
 *tier_operational_costs*
-
 *personal_vs_commercial*
-
 *commercial_saas_costs*
-
 *personal_license_costs*
-
 *distribution_models*
-
 *video_tutorial_checklist*
-
 *dev_summary_june_2*
+*device_compatibility*
