@@ -23,3 +23,6 @@ web/electron/next-server/public/barcodes/
 **/win-unpacked/
 **/node_modules/
 **/.next/
+
+# Local developer information
+github info.txt
