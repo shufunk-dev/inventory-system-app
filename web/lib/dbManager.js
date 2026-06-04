@@ -152,6 +152,63 @@ export function initializeSchema(db) {
       userId TEXT REFERENCES users(id) ON DELETE CASCADE,
       expiresAt INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS liquor_brands (
+      id TEXT PRIMARY KEY,
+      name TEXT UNIQUE,
+      category TEXT,
+      specificGravity REAL DEFAULT 1.0,
+      userId TEXT REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS liquor_variants (
+      id TEXT PRIMARY KEY,
+      brandId TEXT REFERENCES liquor_brands(id) ON DELETE CASCADE,
+      sizeMl INTEGER,
+      containerType TEXT,
+      emptyWeightGrams REAL,
+      fullWeightGrams REAL,
+      cost REAL
+    );
+
+    CREATE TABLE IF NOT EXISTS pos_items (
+      itemNum INTEGER PRIMARY KEY,
+      name TEXT,
+      price REAL,
+      amount REAL,
+      numSold REAL,
+      userId TEXT REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS recipes (
+      id TEXT PRIMARY KEY,
+      posItemNum REFERENCES pos_items(itemNum) ON DELETE CASCADE,
+      userId TEXT REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS recipe_ingredients (
+      id TEXT PRIMARY KEY,
+      recipeId TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+      brandId TEXT REFERENCES liquor_brands(id) ON DELETE CASCADE,
+      pourSizeOz REAL
+    );
+
+    CREATE TABLE IF NOT EXISTS physical_counts (
+      id TEXT PRIMARY KEY,
+      countDate TEXT,
+      status TEXT DEFAULT 'draft',
+      userId TEXT REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS physical_count_items (
+      id TEXT PRIMARY KEY,
+      countId TEXT REFERENCES physical_counts(id) ON DELETE CASCADE,
+      brandId TEXT REFERENCES liquor_brands(id) ON DELETE CASCADE,
+      variantId TEXT REFERENCES liquor_variants(id) ON DELETE CASCADE,
+      qtyRaw REAL,
+      isWeighted INTEGER DEFAULT 0,
+      qtyCalculatedOz REAL
+    );
   `);
 
   // safe alterations

@@ -7,6 +7,7 @@ const nextConfig = {
     },
     proxyClientMaxBodySize: '50mb',
   },
+  serverExternalPackages: ['tesseract.js', 'pdf-parse', '@napi-rs/canvas', 'better-sqlite3'],
   output: 'standalone',
 };
 

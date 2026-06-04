@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getDb } from './db';
+import { getDb } from './db.js';
 import fs from 'fs/promises';
 import path from 'path';
 import FormData from 'form-data';
@@ -899,7 +899,8 @@ async function fetchUPCItemDB(upc) {
       return {
         name: cleanTitle(item.title) || null,
         imageUrl: (item.images && item.images.length > 0) ? item.images[0] : null,
-        description: item.description || null
+        description: item.description || null,
+        category: item.category || null
       };
     }
   } catch (e) {
@@ -908,6 +909,98 @@ async function fetchUPCItemDB(upc) {
       throw new Error('RATE_LIMIT');
     }
     console.error('UPCItemDB API error:', e.message);
+  }
+  return null;
+}
+
+async function fetchPriceCharting(upc) {
+  const token = process.env.PRICECHARTING_KEY;
+  
+  // Sandbox / Demo Mode fallback if no key is configured
+  if (!token) {
+    console.log(`[Worker] PriceCharting API token not configured. Checking Sandbox fallbacks for UPC: ${upc}`);
+    const sandboxData = {
+      '045496830021': {
+        productName: 'Super Mario World',
+        consoleName: 'Super Nintendo',
+        loosePrice: 20.50,
+        completePrice: 45.00,
+        newPrice: 150.00,
+        gradedPrice: 450.00
+      },
+      '045496961480': {
+        productName: 'Mario Kart 64',
+        consoleName: 'Nintendo 64',
+        loosePrice: 40.00,
+        completePrice: 85.00,
+        newPrice: 250.00,
+        gradedPrice: 750.00
+      },
+      '010086010077': {
+        productName: 'Sonic the Hedgehog',
+        consoleName: 'Sega Genesis',
+        loosePrice: 15.00,
+        completePrice: 35.00,
+        newPrice: 100.00,
+        gradedPrice: 300.00
+      },
+      '045496830403': {
+        productName: 'Super Metroid',
+        consoleName: 'Super Nintendo',
+        loosePrice: 75.00,
+        completePrice: 220.00,
+        newPrice: 650.00,
+        gradedPrice: 1800.00
+      }
+    };
+
+    if (sandboxData[upc]) {
+      const p = sandboxData[upc];
+      console.log(`[Worker] Sandbox Match! Returning demo metadata for ${p.productName}`);
+      return {
+        name: `${p.productName} (${p.consoleName})`,
+        description: `[Simulated via PriceCharting Sandbox Mode]\n\nConsole: ${p.consoleName}\nLoose: $${p.loosePrice}\nCIB: $${p.completePrice}\nNew: $${p.newPrice}\nGraded: $${p.gradedPrice}`,
+        valueLow: p.loosePrice,
+        valueAvg: p.completePrice,
+        valueHigh: p.newPrice,
+        itemType: 'game'
+      };
+    }
+    
+    console.warn('[Worker] PriceCharting API token not configured and no Sandbox match. Skipping lookup.');
+    return null;
+  }
+
+  try {
+    console.log(`[Worker] Querying PriceCharting API for UPC: ${upc}`);
+    const res = await axios.get('https://www.pricecharting.com/api/product', {
+      params: {
+        t: token,
+        upc: upc
+      },
+      timeout: 5000
+    });
+
+    if (res.data && res.data.status === 'success') {
+      const p = res.data;
+      const valueLow = p['loose-price'] || null;
+      const valueAvg = p['complete-price'] || null;
+      const valueHigh = p['new-price'] || null;
+      const consoleName = p['console-name'] || '';
+      const prodName = p['product-name'] || '';
+      const name = consoleName ? `${prodName} (${consoleName})` : prodName;
+
+      return {
+        name: name || null,
+        description: `[Identified via PriceCharting API]\n\nConsole: ${consoleName}\nLoose Price: $${valueLow || 'N/A'}\nCIB Price: $${valueAvg || 'N/A'}\nNew Price: $${valueHigh || 'N/A'}\nGraded Price: $${p['graded-price'] || 'N/A'}`,
+        valueLow,
+        valueAvg,
+        valueHigh,
+        itemType: 'game'
+      };
+    }
+  } catch (e) {
+    console.error('PriceCharting API error:', e.message);
   }
   return null;
 }
@@ -1085,7 +1178,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       if (item.imagePath) {
         details = await fetchGradedAssetFromImage(item.imagePath, isPremium);
       }
-    } else if (barcode) {
+    } else if (barcode && !(barcode.startsWith('2') || barcode.length < 10 || barcode.length > 14)) {
       if (barcode.length >= 10 && (barcode.startsWith('978') || barcode.startsWith('979') || barcode.length === 10)) {
         try {
           details = await fetchGoogleBooks(barcode);
@@ -1096,6 +1189,31 @@ export async function fetchItemDetails(item, db, options = {}) {
       if (!details && !rateLimited) {
         try {
           details = await fetchUPCItemDB(barcode);
+          
+          if (details) {
+            // Waterfall check: is this a video game category?
+            const cat = details.category ? details.category.toLowerCase() : '';
+            const isGame = cat.includes('video game') || 
+                           cat.includes('game console') || 
+                           cat.includes('consoles >') || 
+                           cat.includes('software > games') ||
+                           cat.includes('toys & games > games > video games');
+            
+            if (isGame) {
+              console.log(`[Worker] Detected Video Game category "${details.category}" from UPCItemDB. Triggering PriceCharting Waterfall.`);
+              const pcDetails = await fetchPriceCharting(barcode);
+              if (pcDetails) {
+                details = pcDetails;
+              }
+            }
+          } else {
+            // Secondary fallback: if UPCItemDB returned nothing, query PriceCharting anyway in case it's a game not in UPCItemDB
+            console.log(`[Worker] UPCItemDB returned no results for barcode ${barcode}. Trying PriceCharting fallback.`);
+            const pcDetails = await fetchPriceCharting(barcode);
+            if (pcDetails) {
+              details = pcDetails;
+            }
+          }
         } catch (err) {
           if (err.message === 'RATE_LIMIT') rateLimited = true;
         }
@@ -1104,7 +1222,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         details = await fetchOpenFoodFacts(barcode);
       }
     } else if (item.imagePath) {
-      // Standard photo routing
+      // Standard photo routing (this will catch store-internal barcodes with photos too!)
       if (isPremium) {
         details = await fetchSerpApiGoogleLens(item.imagePath);
       } else {
@@ -1129,6 +1247,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     let name = (details && details.name) ? details.name : (item.name || 'Unknown Item');
     const imagePath = (details && details.imageUrl) ? details.imageUrl : item.imagePath;
     const description = (details && details.description) ? details.description : item.description;
+    let itemType = (details && details.itemType) ? details.itemType : item.itemType;
 
     let moviePlot = item.moviePlot || null;
     let movieCast = item.movieCast || null;
@@ -1137,9 +1256,9 @@ export async function fetchItemDetails(item, db, options = {}) {
     let toyBrand = item.toyBrand || null;
     let toyYear = item.toyYear || null;
     let toyCondition = item.toyCondition || null;
-    let valueLow = item.valueLow || null;
-    let valueAvg = item.valueAvg || null;
-    let valueHigh = item.valueHigh || null;
+    let valueLow = (details && details.valueLow !== undefined && details.valueLow !== null) ? details.valueLow : (item.valueLow || null);
+    let valueAvg = (details && details.valueAvg !== undefined && details.valueAvg !== null) ? details.valueAvg : (item.valueAvg || null);
+    let valueHigh = (details && details.valueHigh !== undefined && details.valueHigh !== null) ? details.valueHigh : (item.valueHigh || null);
 
     let coinCondition = item.coinCondition || null;
     let coinCertNumber = item.coinCertNumber || null;
@@ -1426,6 +1545,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     db.prepare(`
       UPDATE items 
       SET name = ?, imagePath = ?, description = ?, syncStatus = ?, lastSyncAttempt = ?, 
+          itemType = ?,
           moviePlot = ?, movieCast = ?, movieTrailer = ?, 
           toyBrand = ?, toyYear = ?, toyCondition = ?, 
           coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, 
@@ -1440,6 +1560,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       description || '', 
       newStatus, 
       Date.now(),
+      itemType,
       moviePlot,
       movieCast,
       movieTrailer,
@@ -1504,6 +1625,9 @@ async function processNextItem(userId = null) {
       if (keys.serpApiKey) {
         process.env.SERPAPI_KEY = keys.serpApiKey;
       }
+      if (keys.priceChartingKey) {
+        process.env.PRICECHARTING_KEY = keys.priceChartingKey;
+      }
     }
   } catch (e) {
     console.error('Error injecting global API keys:', e);
@@ -1534,7 +1658,7 @@ export function triggerWorker(userId = null) {
 }
 
 // Global auto-resume timer (runs every 1 hour)
-setInterval(() => {
+const autoResumeInterval = setInterval(() => {
   const db = getDb();
   const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
   
@@ -1546,3 +1670,7 @@ setInterval(() => {
     triggerWorker();
   }
 }, 60 * 60 * 1000);
+
+if (autoResumeInterval && typeof autoResumeInterval.unref === 'function') {
+  autoResumeInterval.unref();
+}

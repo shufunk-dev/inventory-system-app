@@ -9,7 +9,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '' });
 
   useEffect(() => {
     fetch('/api/user/me')
@@ -132,6 +132,16 @@ export default function SettingsPage() {
               onChange={(e) => setApiKeys({...apiKeys, serpApiKey: e.target.value})}
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="Enter your SerpApi private key"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">PriceCharting API Token (For Video Games)</label>
+            <input 
+              type="password"
+              value={apiKeys.priceChartingKey || ''}
+              onChange={(e) => setApiKeys({...apiKeys, priceChartingKey: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="Enter your 40-character PriceCharting token"
             />
           </div>
         </div>

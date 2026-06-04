@@ -29,14 +29,18 @@ export async function GET() {
   let settings = {
     apiKeys: {
       googleVisionKey: '',
-      serpApiKey: ''
+      serpApiKey: '',
+      priceChartingKey: ''
     },
     activeTier: 'basic'
   };
 
   rows.forEach(row => {
     try {
-      if (row.key === 'api_keys') settings.apiKeys = JSON.parse(row.value);
+      if (row.key === 'api_keys') {
+        const parsed = JSON.parse(row.value);
+        settings.apiKeys = { ...settings.apiKeys, ...parsed };
+      }
       if (row.key === 'active_tier') settings.activeTier = row.value;
     } catch (e) {}
   });

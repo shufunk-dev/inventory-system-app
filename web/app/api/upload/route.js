@@ -61,28 +61,29 @@ export async function POST(request) {
       let syncStatus = 'completed';
       const id = crypto.randomUUID();
 
+      // Helper to find and extract a file from the zip
+      const extractZipFile = async (targetName) => {
+        if (!targetName) return null;
+        const cleanName = targetName.split('/').pop().split('\\').pop();
+        // Find case-insensitive match for the base filename anywhere in the zip
+        const files = loadedZip.file(new RegExp(cleanName.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&') + '$', 'i'));
+        if (files && files.length > 0) {
+          const fileBuffer = await files[0].async('nodebuffer');
+          const finalFilename = `${id}_${cleanName}`;
+          await fs.writeFile(path.join(uploadsDir, finalFilename), fileBuffer);
+          return `/api/file/${finalFilename}`;
+        }
+        return null;
+      };
+
       if (item.type === 'barcode') {
         barcode = item.data;
         syncStatus = 'pending';
         triggerNeeded = true;
+        if (item.filename) {
+          imagePath = await extractZipFile(item.filename);
+        }
       } else {
-        // Handle all types with images (photo, toy, coin, card, etc)
-        
-        // Helper to find and extract a file from the zip
-        const extractZipFile = async (targetName) => {
-          if (!targetName) return null;
-          const cleanName = targetName.split('/').pop().split('\\').pop();
-          // Find case-insensitive match for the base filename anywhere in the zip
-          const files = loadedZip.file(new RegExp(cleanName.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$', 'i'));
-          if (files && files.length > 0) {
-            const fileBuffer = await files[0].async('nodebuffer');
-            const finalFilename = `${id}_${cleanName}`;
-            await fs.writeFile(path.join(uploadsDir, finalFilename), fileBuffer);
-            return `/api/file/${finalFilename}`;
-          }
-          return null;
-        };
-
         if (item.type === 'coin' || item.type === 'card') {
           // Front Image (fallback to filename if frontFilename is missing)
           imagePath = await extractZipFile(item.frontFilename || item.filename);

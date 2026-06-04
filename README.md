@@ -32,6 +32,12 @@ Lock/unlock features based on product licensing keys:
 - **Card Terminals**: Integrates with Stripe/Square readers using tokenized APIs (ensures zero local credit card storage/PCI compliance).
 - **Zero-Hardware QR Payments**: Generates dynamic checkout QR codes mapped to the store's PayPal or Venmo handles for cashless customer checkouts.
 
+### 6. Physical Inventory Ingestion & Valuation Auditor
+- **Raw Sheet Ingestion (PDF/TXT)**: Drag-and-drop parser that handles physical count sheets. Dynamically switches between vendor divisions (like *Barringer*, *Caffey*, and *Pepsi Co*) and adjusts column configurations for soft drinks automatically.
+- **Merge-on-Date**: Merges counts matching the same upload date to facilitate easy corrections and updates.
+- **Asset Valuation & Depletions**: Calculates dollar depletions and stock totals side-by-side using start and end count sessions.
+- **Chronological Timeline Progression**: Interactive matrix table showing inventory levels over time. Features quick-toggle checkboxes ("Select All", "Clear All", "Last 5", "Last 10") to dynamically filter dates.
+
 ---
 
 ## 5 Ecosystem Deployment Formats

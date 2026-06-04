@@ -46,3 +46,8 @@ github info.txt
 *cloud_hosting_options*
 start_dev_servers.bat
 export-appliance.bat
+
+# Archive and local databases
+Archive/
+*.db
+inventory.db
