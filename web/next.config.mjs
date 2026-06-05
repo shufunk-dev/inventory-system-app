@@ -9,6 +9,13 @@ const nextConfig = {
   },
   serverExternalPackages: ['tesseract.js', 'pdf-parse', '@napi-rs/canvas', 'better-sqlite3'],
   output: 'standalone',
+  outputFileTracingExcludes: {
+    '*': [
+      'electron/**/*',
+      'dist/**/*',
+      'Archive/**/*',
+    ],
+  },
 };
 
 export default nextConfig;

@@ -10,6 +10,11 @@ echo [2/5] Cleaning old Electron build files...
 if exist electron\next-server rmdir /s /q electron\next-server
 mkdir electron\next-server
 
+echo [2.5/5] Cleaning duplicate build files from Next.js standalone...
+if exist .next\standalone\electron rmdir /s /q .next\standalone\electron
+if exist .next\standalone\dist rmdir /s /q .next\standalone\dist
+if exist .next\standalone\Archive rmdir /s /q .next\standalone\Archive
+
 echo [3/5] Copying standalone server files...
 xcopy /E /I /Q /Y .next\standalone electron\next-server
 xcopy /E /I /Q /Y .next\static electron\next-server\.next\static

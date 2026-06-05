@@ -8,6 +8,7 @@ mobile/node_modules/
 web/node_modules/
 web/electron/node_modules/
 web/electron/dist/
+web/electron/next-server/
 web/.next/
 *.sqlite
 *.sqlite-journal
