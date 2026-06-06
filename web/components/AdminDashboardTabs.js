@@ -6,8 +6,9 @@ import AdminUsersSection from './AdminUsersSection';
 import AdminStoreProfilesSection from './AdminStoreProfilesSection';
 import SystemUpdatePanel from './SystemUpdatePanel';
 import AdminSalesReport from './AdminSalesReport';
+import TenantSalesReport from './TenantSalesReport';
 
-export default function AdminDashboardTabs({ users, saasMode }) {
+export default function AdminDashboardTabs({ users, saasMode, currentUser }) {
   const [activeTab, setActiveTab] = useState('management'); // 'management' or 'sales'
 
   return (
@@ -43,11 +44,11 @@ export default function AdminDashboardTabs({ users, saasMode }) {
         {activeTab === 'management' ? (
           <>
             <AdminUsersSection users={users} />
-            {!saasMode && <AdminStoreProfilesSection />}
-            <SystemUpdatePanel />
+            {!saasMode && currentUser?.isRoot === 1 && <AdminStoreProfilesSection />}
+            {currentUser?.isRoot === 1 && <SystemUpdatePanel />}
           </>
         ) : (
-          <AdminSalesReport />
+          currentUser?.isRoot === 1 ? <AdminSalesReport /> : <TenantSalesReport />
         )}
       </div>
     </div>

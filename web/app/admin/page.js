@@ -48,7 +48,7 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <AdminDashboardTabs users={users} saasMode={saasMode} />
+      <AdminDashboardTabs users={users} saasMode={saasMode} currentUser={currentUser} />
     </main>
   );
 }
