@@ -27,6 +27,21 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
   const router = useRouter();
 
   useEffect(() => {
+    if (!isEditing) {
+      setRetailPrice(item.retailPrice || '');
+      setName(item.name || '');
+      setDescription(item.description || '');
+      setCategoryId(item.categoryId || '');
+      setToyBrand(item.toyBrand || '');
+      setToyYear(item.toyYear || '');
+      setToyCondition(item.toyCondition || 'Unknown Condition');
+      const updatedIsOther = !PRESET_CONDITIONS.includes(item.toyCondition) && item.toyCondition !== '' && item.toyCondition !== null;
+      setIsOther(updatedIsOther);
+      setCustomConditionText(updatedIsOther ? item.toyCondition : '');
+    }
+  }, [item, isEditing]);
+
+  useEffect(() => {
     if (isEditing && categories.length === 0) {
       fetch('/api/categories').then(r => r.json()).then(data => setCategories(buildCategoryTree(data))).catch(console.error);
     }

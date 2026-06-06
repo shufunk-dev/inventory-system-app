@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, AlertCircle } from 'lucide-react';
 
 export default function CardDetailsWidget({ item, isGuest = false }) {
@@ -9,6 +9,14 @@ export default function CardDetailsWidget({ item, isGuest = false }) {
   const [cert, setCert] = useState(item.cardCertNumber || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isFetchingMarket, setIsFetchingMarket] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setAgency(item.cardGradingAgency || 'Raw');
+      setCondition(item.cardCondition || 'Unknown Condition');
+      setCert(item.cardCertNumber || '');
+    }
+  }, [item, isEditing]);
 
   const agencyOptions = ['Raw', 'PSA', 'BGS', 'SGC', 'CGC', 'Other'];
   

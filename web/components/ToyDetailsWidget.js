@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Edit2, Check, X, Loader2 } from 'lucide-react';
 
@@ -20,6 +20,16 @@ export default function ToyDetailsWidget({ item, isPrivate, isGuest = false }) {
   const [toyCondition, setToyCondition] = useState(item.toyCondition || '');
 
   const [isRecalculating, setIsRecalculating] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setToyBrand(item.toyBrand || '');
+      setToyYear(item.toyYear || '');
+      setToyCondition(item.toyCondition || '');
+      const updatedIsOther = !PRESET_CONDITIONS.includes(item.toyCondition) && item.toyCondition !== '' && item.toyCondition !== null;
+      setIsOther(updatedIsOther);
+    }
+  }, [item, isEditing]);
 
   const handleSave = async () => {
     setIsSaving(true);

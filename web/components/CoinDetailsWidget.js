@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Edit2, Check, X, Loader2 } from 'lucide-react';
 
@@ -34,6 +34,20 @@ export default function CoinDetailsWidget({ item, isPrivate, isGuest = false }) 
   const initialConditionIsOther = !CONDITIONS.includes(item.coinCondition) && item.coinCondition !== '' && item.coinCondition !== null;
   const [conditionIsOther, setConditionIsOther] = useState(initialConditionIsOther);
   const [coinCondition, setCoinCondition] = useState(item.coinCondition || '');
+
+  useEffect(() => {
+    if (!isEditing) {
+      setCoinCertNumber(item.coinCertNumber || '');
+      setCoinGradingAgency(item.coinGradingAgency || '');
+      setCoinCondition(item.coinCondition || '');
+      
+      const updatedAgencyIsOther = !AGENCIES.includes(item.coinGradingAgency) && item.coinGradingAgency !== '' && item.coinGradingAgency !== null;
+      setAgencyIsOther(updatedAgencyIsOther);
+      
+      const updatedConditionIsOther = !CONDITIONS.includes(item.coinCondition) && item.coinCondition !== '' && item.coinCondition !== null;
+      setConditionIsOther(updatedConditionIsOther);
+    }
+  }, [item, isEditing]);
 
   const handleSave = async () => {
     setIsSaving(true);
