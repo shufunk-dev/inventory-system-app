@@ -55,7 +55,11 @@ export default function CoinDetailsWidget({ item, isPrivate, isGuest = false }) 
         setIsRecalculating(true);
         setIsEditing(false);
         try {
-          await fetch(`/api/item/${item.id}/fetch`, { method: 'POST' });
+          await fetch(`/api/item/${item.id}/fetch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ forceTier: 'market_value_only' })
+          });
         } catch (e) {
           console.error("Recalculation failed", e);
         }
@@ -284,7 +288,11 @@ export default function CoinDetailsWidget({ item, isPrivate, isGuest = false }) 
                 onClick={async () => {
                   setIsRecalculating(true);
                   try {
-                    await fetch(`/api/item/${item.id}/fetch`, { method: 'POST' });
+                    await fetch(`/api/item/${item.id}/fetch`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ forceTier: 'market_value_only' })
+                    });
                   } catch (e) {
                     console.error(e);
                   }

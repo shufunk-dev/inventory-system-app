@@ -1141,8 +1141,14 @@ export async function fetchItemDetails(item, db, options = {}) {
     if (options.forceTier === 'premium') isPremium = true;
     if (options.forceTier === 'basic') isPremium = false;
 
-    // If a button is explicitly clicked, it overrides the automatic routing
-    if (options.forceTier === 'premium' && item.imagePath) {
+    if (options.forceTier === 'market_value_only') {
+      details = {
+        name: item.name,
+        description: item.description,
+        itemType: item.itemType,
+        imageUrl: item.imagePath
+      };
+    } else if (options.forceTier === 'premium' && item.imagePath) {
       details = await fetchSerpApiGoogleLens(item.imagePath);
     } else if (options.forceTier === 'coin' && item.imagePath) {
       details = await fetchNumistaCoin(item.imagePath, item.imagePathBack);
@@ -1260,6 +1266,12 @@ export async function fetchItemDetails(item, db, options = {}) {
     let valueLow = (details && details.valueLow !== undefined && details.valueLow !== null) ? details.valueLow : (item.valueLow || null);
     let valueAvg = (details && details.valueAvg !== undefined && details.valueAvg !== null) ? details.valueAvg : (item.valueAvg || null);
     let valueHigh = (details && details.valueHigh !== undefined && details.valueHigh !== null) ? details.valueHigh : (item.valueHigh || null);
+
+    if (options.forceTier === 'market_value_only') {
+      valueLow = null;
+      valueAvg = null;
+      valueHigh = null;
+    }
 
     let coinCondition = item.coinCondition || null;
     let coinCertNumber = item.coinCertNumber || null;

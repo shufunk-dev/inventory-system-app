@@ -147,7 +147,7 @@ export default function CardDetailsWidget({ item, isGuest = false }) {
                     await fetch(`/api/item/${item.id}/fetch`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ forceTier: 'card' })
+                      body: JSON.stringify({ forceTier: 'market_value_only' })
                     });
                     // Wait a few seconds for the background worker to crunch the math, then reload
                     setTimeout(() => window.location.reload(), 8000);
