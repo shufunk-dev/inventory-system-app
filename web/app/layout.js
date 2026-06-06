@@ -17,7 +17,7 @@ export const metadata = {
 };
 
 import Link from 'next/link';
-import { Home, Settings, LogOut, ShieldAlert, BookOpen, Wine, ClipboardList, Printer } from 'lucide-react';
+import { Home, Settings, LogOut, ShieldAlert, BookOpen, Wine, ClipboardList, Printer, TrendingUp } from 'lucide-react';
 import { getUser } from '@/lib/auth';
 import { getGlobalDb } from '@/lib/db';
 import StoreSelector from '@/components/StoreSelector';
@@ -81,6 +81,11 @@ export default async function RootLayout({ children }) {
                 <Link href="/variance" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
                   <Wine className="w-4 h-4 text-emerald-400" />
                   <span className="hidden sm:inline">Auditor</span>
+                </Link>
+
+                <Link href="/valuation" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <span className="hidden sm:inline">Valuation</span>
                 </Link>
 
                 <Link href="/receipt" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">

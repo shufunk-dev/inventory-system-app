@@ -52,6 +52,15 @@ export default async function Home({ searchParams }) {
   const rawCategories = db.prepare('SELECT * FROM categories WHERE userId = ? ORDER BY name ASC').all(user.id);
   const initialCategories = buildCategoryTree(rawCategories);
 
+  // Calculate total valuation
+  let totalValuation = 0;
+  try {
+    const valRow = db.prepare('SELECT COALESCE(SUM(valueAvg), 0) as total FROM items').get();
+    totalValuation = valRow.total;
+  } catch (e) {
+    console.error('Failed to query total valuation for catalog widget:', e);
+  }
+
   // Build the dynamic SQL query
   let sqlConditions = ['userId = ?'];
   let sqlParams = [user.id];
@@ -103,7 +112,14 @@ export default async function Home({ searchParams }) {
             <h1 className="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
               Inventory Catalog
             </h1>
-            <p className="text-gray-400 text-lg">Manage your scanned items seamlessly.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-gray-400 text-base">
+              <p>Manage your scanned items seamlessly.</p>
+              <span className="hidden sm:inline text-gray-700">|</span>
+              <Link href="/valuation" className="inline-flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20 hover:border-emerald-500/35 transition-all shadow-[0_0_10px_rgba(16,185,129,0.05)] hover:-translate-y-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Est. Value: ${totalValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} →
+              </Link>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <a 
