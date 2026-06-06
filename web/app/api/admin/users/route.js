@@ -32,6 +32,13 @@ export async function POST(request) {
     const passwordHash = await bcrypt.hash(password, 10);
     const id = crypto.randomUUID();
     const finalDisplayName = displayName || email.split('@')[0];
+    if (admin.isRoot !== 1) {
+      const adminStoreIds = admin.storeId ? admin.storeId.split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (!storeId || storeId === 'default' || !adminStoreIds.includes(storeId)) {
+        return NextResponse.json({ error: 'Forbidden: You can only assign users to your own store catalog.' }, { status: 403 });
+      }
+    }
+
     const finalRole = role === 'admin' ? 'admin' : 'staff';
     const finalIsAdmin = finalRole === 'admin' ? 1 : 0;
     const finalStoreId = storeId && storeId !== 'default' ? storeId : null;

@@ -17,6 +17,36 @@ export async function PUT(request, { params }) {
 
     const db = await getGlobalDb();
     
+    // Check permissions for non-root admins
+    if (adminUser.isRoot !== 1) {
+      const targetUser = db.prepare('SELECT storeId, isRoot FROM users WHERE id = ?').get(id);
+      if (!targetUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      if (targetUser.isRoot === 1) {
+        return NextResponse.json({ error: 'Forbidden: You cannot modify a root administrator.' }, { status: 403 });
+      }
+      
+      const adminStoreIds = adminUser.storeId ? adminUser.storeId.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const targetStoreIds = targetUser.storeId ? targetUser.storeId.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const hasOverlap = targetStoreIds.some(sid => adminStoreIds.includes(sid));
+      
+      if (!hasOverlap) {
+        return NextResponse.json({ error: 'Forbidden: You do not have permission to manage this user.' }, { status: 403 });
+      }
+      
+      if (storeId !== undefined) {
+        if (!storeId || storeId === 'default') {
+          return NextResponse.json({ error: 'Forbidden: You can only assign users to your own store catalog.' }, { status: 403 });
+        }
+        const requestedIds = storeId.split(',').map(s => s.trim()).filter(Boolean);
+        const hasInvalidStore = requestedIds.some(sid => !adminStoreIds.includes(sid));
+        if (hasInvalidStore) {
+          return NextResponse.json({ error: 'Forbidden: You can only assign users to your own store catalog.' }, { status: 403 });
+        }
+      }
+    }
+
     // Prevent an admin from demoting themselves or changing their own settings via this API
     if (id === adminUser.id) {
       return NextResponse.json({ error: 'Cannot modify your own settings from the admin panel' }, { status: 400 });

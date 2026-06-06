@@ -11,14 +11,22 @@ async function checkAdmin() {
 }
 
 export async function GET() {
-  if (!(await checkAdmin())) {
+  const currentUser = await getUser();
+  if (!currentUser || !(currentUser.isAdmin || currentUser.isRoot)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const db = await getGlobalDb();
     const stores = db.prepare('SELECT * FROM store_profiles ORDER BY createdAt DESC').all();
-    return NextResponse.json({ stores });
+    
+    if (currentUser.isRoot === 1) {
+      return NextResponse.json({ stores });
+    } else {
+      const adminStoreIds = currentUser.storeId ? currentUser.storeId.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const filteredStores = stores.filter(s => adminStoreIds.includes(s.id));
+      return NextResponse.json({ stores: filteredStores });
+    }
   } catch (error) {
     console.error('List stores error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -26,8 +34,9 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  if (!(await checkAdmin())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const currentUser = await getUser();
+  if (!currentUser || currentUser.isRoot !== 1) {
+    return NextResponse.json({ error: 'Forbidden: Only root administrator can manage stores.' }, { status: 403 });
   }
 
   try {
@@ -59,8 +68,9 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
-  if (!(await checkAdmin())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const currentUser = await getUser();
+  if (!currentUser || currentUser.isRoot !== 1) {
+    return NextResponse.json({ error: 'Forbidden: Only root administrator can manage stores.' }, { status: 403 });
   }
 
   try {

@@ -13,12 +13,20 @@ export default async function AdminPage() {
 
   const db = await getGlobalDb();
   
-  // Fetch all users
+  // Fetch users based on role hierarchy
   let users;
   if (currentUser.isRoot === 1) {
     users = db.prepare('SELECT id, email, tier, isAdmin, isRoot, role, createdAt, storeId FROM users ORDER BY createdAt ASC').all();
   } else {
-    users = db.prepare('SELECT id, email, tier, isAdmin, isRoot, role, createdAt, storeId FROM users WHERE isRoot = 0 ORDER BY createdAt ASC').all();
+    const allUsers = db.prepare('SELECT id, email, tier, isAdmin, isRoot, role, createdAt, storeId FROM users WHERE isRoot = 0 ORDER BY createdAt ASC').all();
+    const adminStoreIds = currentUser.storeId ? currentUser.storeId.split(',').map(s => s.trim()).filter(Boolean) : [];
+    users = allUsers.filter(u => {
+      if (!u.storeId) {
+        return adminStoreIds.length === 0;
+      }
+      const userStoreIds = u.storeId.split(',').map(s => s.trim()).filter(Boolean);
+      return userStoreIds.some(id => adminStoreIds.includes(id));
+    });
   }
 
   const saasMode = process.env.SAAS_MODE === 'true';
