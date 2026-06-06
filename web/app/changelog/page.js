@@ -4,7 +4,7 @@ import { getUser } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 export default async function ChangelogPage() {
-  const db = getDb();
+  const db = await getDb();
   
   // Fetch changelogs from database
   // Order by createdAt DESC to have newest at the top

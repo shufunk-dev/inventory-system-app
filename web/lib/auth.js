@@ -1,4 +1,4 @@
-import { getDb } from './db.js';
+import { getDb, getGlobalDb } from './db.js';
 import { encrypt, decrypt } from './jwt.js';
 import { createRequire } from 'module';
 
@@ -11,7 +11,12 @@ function getCookies() {
   } catch (e) {
     // Return a mock fallback cookie store for testing environments
     return {
-      get: () => null,
+      get: (key) => {
+        if (key === 'session' && global.mockSessionCookie) {
+          return { value: global.mockSessionCookie };
+        }
+        return null;
+      },
       set: () => {},
       delete: () => {}
     };
@@ -25,7 +30,7 @@ export async function createSession(userId, tenantId = null) {
   const cookieStore = await getCookies();
   cookieStore.set('session', session, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production' && process.env.SECURE_COOKIES !== 'false',
     expires: expiresAt,
     sameSite: 'lax',
     path: '/',
@@ -60,7 +65,7 @@ export async function getUser() {
     };
   }
   
-  const db = getDb();
-  const user = db.prepare('SELECT id, email, tier, activeTier, isAdmin, isRoot FROM users WHERE id = ?').get(session.userId);
+  const db = await getGlobalDb();
+  const user = db.prepare('SELECT id, email, tier, activeTier, isAdmin, isRoot, role, displayName, profilePicture, storeId FROM users WHERE id = ?').get(session.userId);
   return user || null;
 }

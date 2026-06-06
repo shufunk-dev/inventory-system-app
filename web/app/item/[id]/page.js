@@ -1,8 +1,9 @@
-import { getDb } from '@/lib/db';
+import { getDb, getGlobalDb } from '@/lib/db';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { ArrowLeft, Package, Calendar, Tag, RefreshCw, Film } from 'lucide-react';
 import { getUser } from '@/lib/auth';
+import { decryptSync } from '@/lib/jwt';
 import BarcodeDisplay from '@/components/BarcodeDisplay';
 import UploadImageForm from '@/components/UploadImageForm';
 import DeleteItemButton from '@/components/DeleteItemButton';
@@ -15,9 +16,10 @@ import CardDetailsWidget from '@/components/CardDetailsWidget';
 import ComicDetailsWidget from '@/components/ComicDetailsWidget';
 import GradedDetailsWidget from '@/components/GradedDetailsWidget';
 import GameDetailsWidget from '@/components/GameDetailsWidget';
+
 export default async function ItemPage({ params }) {
   const { id } = await params;
-  const db = getDb();
+  const db = await getDb();
   
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
 
@@ -35,15 +37,18 @@ export default async function ItemPage({ params }) {
 
   const user = await getUser();
   const isAdmin = user?.isAdmin === 1;
-  const isOwner = user?.id === item.userId;
+  const isOwner = user ? (user.id === item.userId) : false;
+  const canEdit = user && (user.isAdmin || user.role === 'admin' || user.role === 'manager' || user.id === item.userId);
+  const isGuest = !user;
+
   let globalTier = 'basic';
   try {
-    const row = db.prepare("SELECT value FROM system_settings WHERE key = 'active_tier'").get();
+    const globalDb = await getGlobalDb();
+    const row = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'active_tier'").get();
     if (row && row.value) {
       globalTier = row.value;
     } else {
-      // Fallback: check if any admin has a premium tier
-      const adminUser = db.prepare("SELECT tier FROM users WHERE (isAdmin = 1 OR isRoot = 1) AND tier = 'premium' LIMIT 1").get();
+      const adminUser = globalDb.prepare("SELECT tier FROM users WHERE (isAdmin = 1 OR isRoot = 1) AND tier = 'premium' LIMIT 1").get();
       if (adminUser) {
         globalTier = 'premium';
       }
@@ -57,6 +62,50 @@ export default async function ItemPage({ params }) {
   const qrUrl = `http://${host}/item/${item.id}`;
   
   const date = new Date(item.createdAt).toLocaleString();
+
+  // Resolve central store/mall name
+  let centralStoreName = 'Antique Mall';
+  try {
+    const globalDb = await getGlobalDb();
+    const row = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'mall_name'").get();
+    if (row && row.value) {
+      centralStoreName = row.value;
+    }
+  } catch (e) {}
+
+  // Resolve booth name
+  let boothName = 'Central';
+  try {
+    const { cookies } = require('next/headers');
+    const cookieStore = await cookies();
+    let activeStoreId = 'default';
+    
+    const sessionCookie = cookieStore.get('session')?.value;
+    if (sessionCookie) {
+      const payload = decryptSync(sessionCookie);
+      if (payload && payload.userId) {
+        const globalDb = await getGlobalDb();
+        const userRow = globalDb.prepare('SELECT storeId FROM users WHERE id = ?').get(payload.userId);
+        if (userRow && userRow.storeId && userRow.storeId !== 'default') {
+          activeStoreId = userRow.storeId;
+        }
+      }
+    }
+    
+    if (activeStoreId === 'default') {
+      activeStoreId = cookieStore.get('active_store_id')?.value || 'default';
+    }
+
+    if (activeStoreId !== 'default') {
+      const globalDb = await getGlobalDb();
+      const storeProfile = globalDb.prepare('SELECT name FROM store_profiles WHERE id = ?').get(activeStoreId);
+      if (storeProfile) {
+        boothName = storeProfile.name;
+      }
+    }
+  } catch (e) {
+    console.error('Error resolving store/booth details:', e);
+  }
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
@@ -94,17 +143,19 @@ export default async function ItemPage({ params }) {
             {/* Image Section */}
             <div className="w-full md:w-1/2">
               <ImageGallery item={item} />
-              <div className="mt-6 flex justify-center">
-                <UploadImageForm itemId={item.id} />
-              </div>
+              {canEdit && (
+                <div className="mt-6 flex justify-center">
+                  <UploadImageForm itemId={item.id} />
+                </div>
+              )}
             </div>
 
             {/* Details Section */}
             <div className="w-full md:w-1/2 flex flex-col justify-center">
-              <EditItemForm item={item} />
+              <EditItemForm item={item} canEdit={canEdit} isGuest={isGuest} />
               
               <div className="space-y-6">
-                {item.barcode && (
+                {item.barcode && (!isGuest || (item.itemType && item.itemType !== 'standard' && item.itemType !== 'video')) && (
                   <div className="flex items-center gap-4 bg-gray-800/50 p-4 rounded-2xl">
                     <div className="bg-blue-500/20 p-3 rounded-xl text-blue-400">
                       <Tag className="w-6 h-6" />
@@ -116,61 +167,67 @@ export default async function ItemPage({ params }) {
                   </div>
                 )}
 
-                <div className="flex items-center gap-4 bg-gray-800/50 p-4 rounded-2xl">
-                  <div className="bg-purple-500/20 p-3 rounded-xl text-purple-400">
-                    <Calendar className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-400">Added to Catalog</p>
-                    <p className="text-lg text-white">{date}</p>
-                  </div>
-                </div>
+                {!isGuest && (
+                  <>
+                    <div className="flex items-center gap-4 bg-gray-800/50 p-4 rounded-2xl">
+                      <div className="bg-purple-500/20 p-3 rounded-xl text-purple-400">
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-400">Added to Catalog</p>
+                        <p className="text-lg text-white">{date}</p>
+                      </div>
+                    </div>
 
-                <div className="flex items-center gap-4 bg-gray-800/50 p-4 rounded-2xl">
-                  <div className={`p-3 rounded-xl ${
-                    item.syncStatus === 'success' ? 'bg-green-500/20 text-green-400' :
-                    item.syncStatus === 'failed' ? 'bg-red-500/20 text-red-400' :
-                    item.syncStatus === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-gray-500/20 text-gray-400'
-                  }`}>
-                    <RefreshCw className={`w-6 h-6 ${item.syncStatus === 'pending' ? 'animate-spin' : ''}`} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-400">
-                      Last Scanned: {item.lastSyncAttempt ? new Date(item.lastSyncAttempt).toLocaleString() : 'Never'}
-                    </p>
-                    <p className={`text-lg font-bold capitalize ${
-                      item.syncStatus === 'success' ? 'text-green-400' :
-                      item.syncStatus === 'failed' ? 'text-red-400' :
-                      item.syncStatus === 'pending' ? 'text-yellow-400' :
-                      'text-gray-400'
-                    }`}>
-                      {item.syncStatus === 'completed' ? 'Success (Legacy)' : item.syncStatus}
-                    </p>
-                  </div>
-                </div>
+                    <div className="flex items-center gap-4 bg-gray-800/50 p-4 rounded-2xl">
+                      <div className={`p-3 rounded-xl ${
+                        item.syncStatus === 'success' ? 'bg-green-500/20 text-green-400' :
+                        item.syncStatus === 'failed' ? 'bg-red-500/20 text-red-400' :
+                        item.syncStatus === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        <RefreshCw className={`w-6 h-6 ${item.syncStatus === 'pending' ? 'animate-spin' : ''}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-400">
+                          Last Scanned: {item.lastSyncAttempt ? new Date(item.lastSyncAttempt).toLocaleString() : 'Never'}
+                        </p>
+                        <p className={`text-lg font-bold capitalize ${
+                          item.syncStatus === 'success' ? 'text-green-400' :
+                          item.syncStatus === 'failed' ? 'text-red-400' :
+                          item.syncStatus === 'pending' ? 'text-yellow-400' :
+                          'text-gray-400'
+                        }`}>
+                          {item.syncStatus === 'completed' ? 'Success (Legacy)' : item.syncStatus}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Action Buttons */}
-              <div className="mt-8 flex flex-col gap-2">
-                <FetchMetadataButton itemId={item.id} isAdmin={isAdmin} userTier={userTier} />
-                <DeleteItemButton itemId={item.id} />
-              </div>
+              {canEdit && (
+                <div className="mt-8 flex flex-col gap-2">
+                  <FetchMetadataButton itemId={item.id} isAdmin={isAdmin} userTier={userTier} />
+                  <DeleteItemButton itemId={item.id} />
+                </div>
+              )}
             </div>
           </div>
 
           <hr className="border-gray-800 mb-12" />
 
           {item.itemType === 'card' && (
-            <CardDetailsWidget item={item} />
+            <CardDetailsWidget item={item} isGuest={isGuest} />
           )}
 
           {item.itemType === 'graded' && (
-            <GradedDetailsWidget item={item} />
+            <GradedDetailsWidget item={item} isGuest={isGuest} />
           )}
 
           {item.itemType === 'game' && (
-            <GameDetailsWidget item={item} />
+            <GameDetailsWidget item={item} isGuest={isGuest} />
           )}
 
           {/* Movie Details Section */}
@@ -192,7 +249,7 @@ export default async function ItemPage({ params }) {
                     </div>
                   )}
                   
-                  {item.movieCast && (
+                  {!isGuest && item.movieCast && (
                     <div className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50">
                       <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Cast</h3>
                       <div className="flex flex-wrap gap-2">
@@ -221,7 +278,6 @@ export default async function ItemPage({ params }) {
                         let embedUrl = item.movieTrailer;
                         if (embedUrl.includes('watch?v=')) {
                           embedUrl = embedUrl.replace('watch?v=', 'embed/');
-                          // Strip extra query params
                           embedUrl = embedUrl.split('&')[0];
                         }
                         return (
@@ -239,7 +295,7 @@ export default async function ItemPage({ params }) {
                 )}
               </div>
 
-              {(item.gradedAgency || item.gradedCondition) && (
+              {!isGuest && (item.gradedAgency || item.gradedCondition) && (
                 <div className="mt-8 bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50">
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Video Grading Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -259,26 +315,28 @@ export default async function ItemPage({ params }) {
                 </div>
               )}
 
-              <div className="mt-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-6 md:p-8 relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Estimated Market Value</h3>
-                    {item.valueAvg ? (
-                      <div className="flex items-baseline gap-4">
-                        <span className="text-4xl font-black text-rose-400">${item.valueAvg}</span>
-                        <span className="text-sm text-gray-500 font-medium tracking-wide">
-                          LOW: ${item.valueLow} &nbsp;&bull;&nbsp; HIGH: ${item.valueHigh}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-xl font-medium text-gray-500 italic">
-                        {item.syncStatus === 'pending' ? 'Calculating value...' : 'Value not available'}
-                      </div>
-                    )}
+              {!isGuest && (
+                <div className="mt-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-6 md:p-8 relative">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Estimated Market Value</h3>
+                      {item.valueAvg ? (
+                        <div className="flex items-baseline gap-4">
+                          <span className="text-4xl font-black text-rose-400">${item.valueAvg}</span>
+                          <span className="text-sm text-gray-500 font-medium tracking-wide">
+                            LOW: ${item.valueLow} &nbsp;&bull;&nbsp; HIGH: ${item.valueHigh}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-xl font-medium text-gray-500 italic">
+                          {item.syncStatus === 'pending' ? 'Calculating value...' : 'Value not available'}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <hr className="border-gray-800 my-12" />
             </div>
@@ -294,7 +352,7 @@ export default async function ItemPage({ params }) {
                 <h2 className="text-2xl font-bold text-white">Toy Details</h2>
               </div>
               
-              <ToyDetailsWidget item={item} isPrivate={isOwner || isAdmin} />
+              <ToyDetailsWidget item={item} isPrivate={isOwner || isAdmin} isGuest={isGuest} />
               
               <hr className="border-gray-800 my-12" />
             </div>
@@ -310,7 +368,7 @@ export default async function ItemPage({ params }) {
                 <h2 className="text-2xl font-bold text-white">Coin Details</h2>
               </div>
               
-              <CoinDetailsWidget item={item} isPrivate={isOwner || isAdmin} />
+              <CoinDetailsWidget item={item} isPrivate={isOwner || isAdmin} isGuest={isGuest} />
               
               <hr className="border-gray-800 my-12" />
             </div>
@@ -326,14 +384,23 @@ export default async function ItemPage({ params }) {
                 <h2 className="text-2xl font-bold text-white">Comic Book Details</h2>
               </div>
               
-              <ComicDetailsWidget item={item} isPrivate={isOwner || isAdmin} />
+              <ComicDetailsWidget item={item} isPrivate={isOwner || isAdmin} isGuest={isGuest} />
               
               <hr className="border-gray-800 my-12" />
             </div>
           )}
 
           {/* Barcodes Section */}
-          <BarcodeDisplay internalId={item.id} qrUrl={qrUrl} />
+          {!isGuest && (
+            <BarcodeDisplay 
+              internalId={item.id} 
+              qrUrl={qrUrl} 
+              centralStoreName={centralStoreName}
+              boothName={boothName}
+              itemName={item.name}
+              retailPrice={item.retailPrice}
+            />
+          )}
           
         </div>
       </div>

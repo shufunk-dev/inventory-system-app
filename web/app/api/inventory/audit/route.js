@@ -11,7 +11,7 @@ export async function GET(request) {
     let startCountId = searchParams.get('startCountId');
     let endCountId = searchParams.get('endCountId');
 
-    const db = getDb();
+    const db = await getDb();
 
     // Query active POS sales range
     let posStartDate = null;

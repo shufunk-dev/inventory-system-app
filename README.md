@@ -38,6 +38,11 @@ Lock/unlock features based on product licensing keys:
 - **Asset Valuation & Depletions**: Calculates dollar depletions and stock totals side-by-side using start and end count sessions.
 - **Chronological Timeline Progression**: Interactive matrix table showing inventory levels over time. Features quick-toggle checkboxes ("Select All", "Clear All", "Last 5", "Last 10") to dynamically filter dates.
 
+### 7. Multi-Booth Aggregator & Sales Payouts (Antique Malls)
+- **Vendor Booth Partitioning**: Gates user logins dynamically. Store owners assign users to one or multiple booths, auto-routing vendor sessions to isolated database partitions (`store_[id].sqlite`) while locking down unassigned stores.
+- **Cross-Store Sales Attribution**: The checkout register scans barcodes (matching UUID or UPC). The system searches booth catalogs, attributes sales to the correct vendor, and generates payout drawers with custom commission deductions.
+- **Print Hub & Thermal Receipts**: Renders monospaced checkout prints optimized for **80mm Thermal Rolls** and **Standard Letter Invoices**, displaying inline booth numbers and metadata per line item.
+
 ---
 
 ## 5 Ecosystem Deployment Formats

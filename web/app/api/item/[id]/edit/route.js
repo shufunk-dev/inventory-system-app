@@ -4,13 +4,13 @@ import { getDb } from '@/lib/db';
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const { name, description, categoryId, toyBrand, toyYear, toyCondition, coinCondition, coinCertNumber, coinGradingAgency, cardCondition, cardCertNumber, cardGradingAgency } = await request.json();
+    const { name, description, categoryId, toyBrand, toyYear, toyCondition, coinCondition, coinCertNumber, coinGradingAgency, cardCondition, cardCertNumber, cardGradingAgency, retailPrice } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     
     // Check if condition is changing to reset valuation
     const currentItem = db.prepare('SELECT toyCondition, coinCondition, coinGradingAgency, cardCondition, cardGradingAgency FROM items WHERE id = ?').get(id);
@@ -33,10 +33,10 @@ export async function PUT(request, { params }) {
 
     db.prepare(`
       UPDATE items 
-      SET name = ?, description = ?, categoryId = ?, toyBrand = ?, toyYear = ?, toyCondition = ?, coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?
+      SET name = ?, description = ?, categoryId = ?, toyBrand = ?, toyYear = ?, toyCondition = ?, coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?, retailPrice = ?
       ${resetValuation ? ', valueLow = NULL, valueAvg = NULL, valueHigh = NULL' : ''}
       WHERE id = ?
-    `).run(name, description, categoryId || null, toyBrand || null, toyYear || null, toyCondition || null, coinCondition || null, coinCertNumber || null, coinGradingAgency || null, cardCondition || null, cardCertNumber || null, cardGradingAgency || null, id);
+    `).run(name, description, categoryId || null, toyBrand || null, toyYear || null, toyCondition || null, coinCondition || null, coinCertNumber || null, coinGradingAgency || null, cardCondition || null, cardCertNumber || null, cardGradingAgency || null, retailPrice !== undefined && retailPrice !== '' && retailPrice !== null ? parseFloat(retailPrice) : null, id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -39,7 +39,7 @@ export async function POST(request) {
     // Save file
     await fs.writeFile(path.join(uploadsDir, filename), buffer);
 
-    const db = getDb();
+    const db = await getDb();
     
     // Create new item in pending state
     db.prepare(`

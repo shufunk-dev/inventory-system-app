@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getGlobalDb } from '@/lib/db';
 import { getUser } from '@/lib/auth';
 
 export async function PUT(request, { params }) {
@@ -13,26 +13,55 @@ export async function PUT(request, { params }) {
 
     const { id } = await params;
     const body = await request.json();
-    const { tier } = body;
+    const { tier, storeId, role } = body;
 
-    if (!['basic', 'premium'].includes(tier)) {
-      return NextResponse.json({ error: 'Invalid tier specified' }, { status: 400 });
-    }
-
-    const db = getDb();
+    const db = await getGlobalDb();
     
-    // Prevent an admin from demoting themselves or changing their own tier via this API
+    // Prevent an admin from demoting themselves or changing their own settings via this API
     if (id === adminUser.id) {
-      return NextResponse.json({ error: 'Cannot modify your own tier from the admin panel' }, { status: 400 });
+      return NextResponse.json({ error: 'Cannot modify your own settings from the admin panel' }, { status: 400 });
     }
 
-    const info = db.prepare('UPDATE users SET tier = ?, activeTier = ? WHERE id = ?').run(tier, tier, id);
+    const updates = [];
+    const values = [];
+
+    if (tier !== undefined) {
+      if (!['basic', 'premium'].includes(tier)) {
+        return NextResponse.json({ error: 'Invalid tier specified' }, { status: 400 });
+      }
+      updates.push('tier = ?');
+      updates.push('activeTier = ?');
+      values.push(tier);
+      values.push(tier);
+    }
+
+    if (storeId !== undefined) {
+      updates.push('storeId = ?');
+      values.push(storeId === 'default' || !storeId ? null : storeId);
+    }
+
+    if (role !== undefined) {
+      if (!['admin', 'staff'].includes(role)) {
+        return NextResponse.json({ error: 'Invalid role specified' }, { status: 400 });
+      }
+      updates.push('role = ?');
+      updates.push('isAdmin = ?');
+      values.push(role);
+      values.push(role === 'admin' ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json({ error: 'No update parameters provided' }, { status: 400 });
+    }
+
+    values.push(id);
+    const info = db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
 
     if (info.changes === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, tier });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Admin user update error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

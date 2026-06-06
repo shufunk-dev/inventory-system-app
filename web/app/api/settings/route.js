@@ -1,47 +1,52 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import { cookies } from 'next/headers';
+import { getGlobalDb } from '../../../lib/db.js';
+import { getUser } from '../../../lib/auth.js';
 
-function checkAdmin() {
-  const cookieStore = cookies();
-  const sessionToken = cookieStore.get('inventory_session');
-  
-  if (!sessionToken) return false;
-  
-  const db = getDb();
-  const session = db.prepare('SELECT userId, expiresAt FROM sessions WHERE id = ?').get(sessionToken.value);
-  
-  if (!session || session.expiresAt < Date.now()) return false;
-  
-  const user = db.prepare('SELECT isAdmin, isRoot FROM users WHERE id = ?').get(session.userId);
+async function checkAdmin() {
+  const user = await getUser();
   return user && (user.isAdmin || user.isRoot);
 }
 
 export async function GET() {
-  if (!checkAdmin()) {
+  if (!(await checkAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const db = getDb();
-  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?)');
-  const rows = stmt.all('api_keys', 'active_tier');
+  const db = await getGlobalDb();
+  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?, ?, ?)');
+  const rows = stmt.all('api_keys', 'active_tier', 'smtp_config', 'mall_name');
   
   let settings = {
+    mallName: 'Antique Mall',
     apiKeys: {
       googleVisionKey: '',
       serpApiKey: '',
       priceChartingKey: ''
     },
-    activeTier: 'basic'
+    activeTier: 'basic',
+    smtpConfig: {
+      host: '',
+      port: '587',
+      secure: false,
+      user: '',
+      pass: '',
+      from: ''
+    }
   };
 
   rows.forEach(row => {
     try {
+      if (row.key === 'mall_name') settings.mallName = row.value;
       if (row.key === 'api_keys') {
         const parsed = JSON.parse(row.value);
         settings.apiKeys = { ...settings.apiKeys, ...parsed };
       }
       if (row.key === 'active_tier') settings.activeTier = row.value;
+      if (row.key === 'smtp_config') {
+        const parsed = JSON.parse(row.value);
+        if (parsed.pass) parsed.pass = '••••••••';
+        settings.smtpConfig = { ...settings.smtpConfig, ...parsed };
+      }
     } catch (e) {}
   });
 
@@ -49,23 +54,43 @@ export async function GET() {
 }
 
 export async function PUT(request) {
-  if (!checkAdmin()) {
+  if (!(await checkAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const data = await request.json();
-    const db = getDb();
+    const db = await getGlobalDb();
     
     // We update multiple settings in a transaction
     const updateStmt = db.prepare('INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
     
     const runUpdate = db.transaction(() => {
+      if (data.mallName) {
+        updateStmt.run('mall_name', data.mallName.trim());
+      }
       if (data.apiKeys) {
         updateStmt.run('api_keys', JSON.stringify(data.apiKeys));
       }
       if (data.activeTier) {
         updateStmt.run('active_tier', data.activeTier);
+      }
+      if (data.smtpConfig) {
+        let configToSave = { ...data.smtpConfig };
+        if (configToSave.pass === '••••••••') {
+          try {
+            const existingRow = db.prepare("SELECT value FROM system_settings WHERE key = 'smtp_config'").get();
+            if (existingRow && existingRow.value) {
+              const existingParsed = JSON.parse(existingRow.value);
+              configToSave.pass = existingParsed.pass || '';
+            } else {
+              configToSave.pass = '';
+            }
+          } catch(e) {
+            configToSave.pass = '';
+          }
+        }
+        updateStmt.run('smtp_config', JSON.stringify(configToSave));
       }
     });
 

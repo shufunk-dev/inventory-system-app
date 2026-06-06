@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getDb } from './db.js';
+import { getDb, getGlobalDb } from './db.js';
 import fs from 'fs/promises';
 import path from 'path';
 import FormData from 'form-data';
@@ -1129,7 +1129,8 @@ export async function fetchItemDetails(item, db, options = {}) {
     // Determine the active tier preference from the global settings
     let isPremium = false;
     try {
-      const tierRow = db.prepare("SELECT value FROM system_settings WHERE key = 'active_tier'").get();
+      const globalDb = getGlobalDb();
+      const tierRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'active_tier'").get();
       if (tierRow && tierRow.value === 'premium') {
         isPremium = true;
       }
@@ -1596,7 +1597,7 @@ export async function fetchItemDetails(item, db, options = {}) {
 }
 
 async function processNextItem(userId = null) {
-  const db = getDb();
+  const db = await getDb();
   
   // Try to find pending items specifically for the provided user, otherwise get any pending item
   let item;
@@ -1615,7 +1616,8 @@ async function processNextItem(userId = null) {
 
   // --- GLOBAL API CONFIGURATION INJECTION ---
   try {
-    const keysRow = db.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
+    const globalDb = getGlobalDb();
+    const keysRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
     if (keysRow) {
       const keys = JSON.parse(keysRow.value);
       if (keys.googleVisionKey) {
@@ -1658,8 +1660,8 @@ export function triggerWorker(userId = null) {
 }
 
 // Global auto-resume timer (runs every 1 hour)
-const autoResumeInterval = setInterval(() => {
-  const db = getDb();
+const autoResumeInterval = setInterval(async () => {
+  const db = await getDb();
   const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
   
   // Find items that were rate limited more than 24 hours ago

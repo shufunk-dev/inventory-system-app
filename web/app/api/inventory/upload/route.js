@@ -339,7 +339,7 @@ export async function POST(request) {
     }
 
     // Save to DB
-    const db = getDb();
+    const db = await getDb();
     
     // Check if a session already exists for this date and user
     let countRow = db.prepare('SELECT id FROM physical_counts WHERE countDate = ? AND userId = ?').get(countDate, user.id);

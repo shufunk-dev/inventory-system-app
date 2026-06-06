@@ -44,7 +44,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'data.json not found in ZIP' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const insertItem = db.prepare(`
       INSERT INTO items (id, barcode, name, imagePath, imagePathBack, itemType, categoryId, createdAt, syncStatus, lastSyncAttempt, userId)
       VALUES (@id, @barcode, @name, @imagePath, @imagePathBack, @itemType, @categoryId, @createdAt, @syncStatus, NULL, @userId)

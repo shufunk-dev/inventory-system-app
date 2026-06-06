@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUser } from '@/lib/auth';
-import { getDb } from '@/lib/db';
+import { getGlobalDb } from '@/lib/db';
 
 export async function GET() {
   const user = await getUser();
@@ -18,7 +18,7 @@ export async function PUT(request) {
 
   try {
     const { activeTier } = await request.json();
-    const db = getDb();
+    const db = await getGlobalDb();
     
     // Validation: Only allow setting activeTier to premium if their subscription role is premium
     if (activeTier === 'premium' && user.tier !== 'premium') {

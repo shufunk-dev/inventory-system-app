@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Edit2, Save, X } from 'lucide-react';
 import { buildCategoryTree } from '@/lib/categories';
 
-export default function EditItemForm({ item, initialCategories = [] }) {
+export default function EditItemForm({ item, initialCategories = [], canEdit = false, isGuest = false }) {
+  const [retailPrice, setRetailPrice] = useState(item.retailPrice || '');
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(item.name || '');
   const [description, setDescription] = useState(item.description || '');
@@ -37,7 +38,7 @@ export default function EditItemForm({ item, initialCategories = [] }) {
       const res = await fetch(`/api/item/${item.id}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition })
+        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition, retailPrice })
       });
 
       if (res.ok) {
@@ -57,20 +58,37 @@ export default function EditItemForm({ item, initialCategories = [] }) {
   if (!isEditing) {
     return (
       <div className="relative group">
-        <button 
-          id="main-edit-button"
-          onClick={() => setIsEditing(true)}
-          className="absolute -top-4 -right-4 p-2 bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-opacity shadow-lg"
-          title="Edit Details"
-        >
-          <Edit2 className="w-4 h-4" />
-        </button>
+        {canEdit && (
+          <button 
+            id="main-edit-button"
+            onClick={() => setIsEditing(true)}
+            className="absolute -top-4 -right-4 p-2 bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-opacity shadow-lg"
+            title="Edit Details"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+        )}
         
-        <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-4 leading-tight pr-8">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-2 leading-tight pr-8">
           {item.name || 'Unnamed Item'}
         </h1>
+
+        {retailPrice !== '' && retailPrice !== null && (
+          <div className="inline-block bg-green-500/20 text-green-400 border border-green-500/30 font-bold px-3 py-1 rounded-full text-xs mb-4">
+            Retail Price: ${retailPrice}
+          </div>
+        )}
         
-        {item.description && (
+        {!isGuest && item.description && (
+          <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 mb-6">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Description / Details</h3>
+            <p className="text-gray-300 leading-relaxed text-sm">
+              {item.description}
+            </p>
+          </div>
+        )}
+
+        {isGuest && item.description && item.itemType !== 'standard' && item.itemType !== 'video' && (
           <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 mb-6">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Description / Details</h3>
             <p className="text-gray-300 leading-relaxed text-sm">
@@ -117,6 +135,18 @@ export default function EditItemForm({ item, initialCategories = [] }) {
             <option key={c.id} value={c.id}>{c.displayName}</option>
           ))}
         </select>
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Retail Price ($)</label>
+        <input 
+          type="number"
+          step="0.01"
+          value={retailPrice}
+          onChange={e => setRetailPrice(e.target.value)}
+          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+          placeholder="e.g. 19.99"
+        />
       </div>
 
       {item.itemType === 'toy' && (

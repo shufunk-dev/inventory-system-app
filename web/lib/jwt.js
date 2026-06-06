@@ -12,6 +12,14 @@ export async function encrypt(payload) {
     .sign(key);
 }
 
+export async function encryptTemp(payload) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(key);
+}
+
 export async function decrypt(input) {
   try {
     const { payload } = await jwtVerify(input, key, {

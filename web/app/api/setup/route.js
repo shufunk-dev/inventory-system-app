@@ -1,4 +1,4 @@
-import { getDb } from '../../../lib/db.js';
+import { getGlobalDb } from '../../../lib/db.js';
 import { getRegistryDb, registerTenantUser, getTenantDb, tenantStorage } from '../../../lib/dbManager.js';
 import { validateLicenseKey } from '../../../lib/license.js';
 import { createSession } from '../../../lib/auth.js';
@@ -87,7 +87,7 @@ export async function POST(request) {
     // ----------------------------------------------------
     // CASE B: Local-First / Desktop / Offline Mode
     // ----------------------------------------------------
-    const db = getDb();
+    const db = await getGlobalDb();
     
     // In local mode, setup is only allowed if there are no existing admin users
     const userCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE isRoot = 1').get().count;

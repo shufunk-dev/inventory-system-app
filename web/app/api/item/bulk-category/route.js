@@ -9,7 +9,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'No items selected' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     
     // categoryId can be empty string/null for "Uncategorized"
     const catId = categoryId || null;

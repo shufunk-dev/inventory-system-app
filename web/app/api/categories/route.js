@@ -8,7 +8,7 @@ export async function GET() {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const db = getDb();
+    const db = await getDb();
     const categories = db.prepare('SELECT * FROM categories WHERE userId = ? ORDER BY name ASC').all(user.id);
     return NextResponse.json(categories);
   } catch (error) {
@@ -26,7 +26,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     
     // Check if category already exists for THIS user
     const existing = db.prepare('SELECT * FROM categories WHERE lower(name) = lower(?) AND userId = ?').get(name.trim(), user.id);

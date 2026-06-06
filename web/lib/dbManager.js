@@ -104,7 +104,18 @@ export function initializeSchema(db) {
       isAdmin INTEGER DEFAULT 0,
       isRoot INTEGER DEFAULT 0,
       serpApiKey TEXT,
-      createdAt INTEGER
+      createdAt INTEGER,
+      displayName TEXT,
+      profilePicture TEXT,
+      role TEXT DEFAULT 'staff',
+      status TEXT DEFAULT 'active',
+      twoFactorEnabled INTEGER DEFAULT 0,
+      twoFactorSecret TEXT,
+      recoveryCodes TEXT,
+      verificationToken TEXT,
+      verificationExpiresAt INTEGER,
+      resetPasswordToken TEXT,
+      resetPasswordExpiresAt INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS categories (

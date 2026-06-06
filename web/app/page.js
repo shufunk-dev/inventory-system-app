@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getDb } from '@/lib/db';
+import { getDb, getGlobalDb } from '@/lib/db';
 import UploadForm from '@/components/UploadForm';
 import SingleUploadForm from '@/components/SingleUploadForm';
 import CatalogGrid from '@/components/CatalogGrid';
@@ -14,15 +14,19 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home({ searchParams }) {
   // In Local-First Mode, redirect to the setup wizard if no admin exists
+  let shouldRedirect = false;
   if (process.env.SAAS_MODE !== 'true') {
     try {
-      const db = getDb();
+      const db = await getGlobalDb();
       const adminCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE isRoot = 1').get().count;
       if (adminCount === 0) {
-        redirect('/setup');
+        shouldRedirect = true;
       }
     } catch (e) {
       console.error('[home_page] Failed to check admin count:', e);
+    }
+    if (shouldRedirect) {
+      redirect('/setup');
     }
   }
 
@@ -42,7 +46,7 @@ export default async function Home({ searchParams }) {
   const advanced = params.advanced === 'true';
   const categoryId = params.category || '';
 
-  const db = getDb();
+  const db = await getDb();
 
   // Fetch categories for the filter UI
   const rawCategories = db.prepare('SELECT * FROM categories WHERE userId = ? ORDER BY name ASC').all(user.id);

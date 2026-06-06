@@ -16,6 +16,13 @@ const nextConfig = {
       'Archive/**/*',
     ],
   },
+  allowedDevOrigins: [
+    '192.168.1.107',
+    '192.168.1.*',
+    '192.168.0.*',
+    '10.0.0.*',
+    'localhost:3000'
+  ],
 };
 
 export default nextConfig;

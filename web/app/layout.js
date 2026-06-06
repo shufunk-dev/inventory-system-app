@@ -17,11 +17,49 @@ export const metadata = {
 };
 
 import Link from 'next/link';
-import { Home, Settings, LogOut, ShieldAlert, BookOpen, Wine, ClipboardList } from 'lucide-react';
+import { Home, Settings, LogOut, ShieldAlert, BookOpen, Wine, ClipboardList, Printer } from 'lucide-react';
 import { getUser } from '@/lib/auth';
+import { getGlobalDb } from '@/lib/db';
+import StoreSelector from '@/components/StoreSelector';
 
 export default async function RootLayout({ children }) {
   const user = await getUser();
+
+  let stores = [];
+  let activeStoreId = 'default';
+  let filteredStores = [];
+  let isStoreLocked = false;
+  let singleStoreName = '';
+  let showDefault = true;
+
+  if (user && process.env.SAAS_MODE !== 'true') {
+    try {
+      const db = await getGlobalDb();
+      stores = db.prepare('SELECT id, name FROM store_profiles ORDER BY name ASC').all();
+      
+      const { cookies } = require('next/headers');
+      const cookieStore = await cookies();
+      activeStoreId = cookieStore.get('active_store_id')?.value || 'default';
+
+      const isAdminOrRoot = user.isAdmin === 1 || user.isRoot === 1;
+      if (user.storeId && user.storeId !== 'default' && !isAdminOrRoot) {
+        const allowedIds = user.storeId.split(',').map(s => s.trim()).filter(Boolean);
+        if (allowedIds.length === 1) {
+          isStoreLocked = true;
+          singleStoreName = stores.find(s => s.id === allowedIds[0])?.name || 'Assigned Store';
+        } else if (allowedIds.length > 1) {
+          filteredStores = stores.filter(s => allowedIds.includes(s.id));
+          showDefault = false;
+        } else {
+          filteredStores = stores;
+        }
+      } else {
+        filteredStores = stores;
+      }
+    } catch (e) {
+      console.error('Failed to load store profiles in layout:', e);
+    }
+  }
 
   return (
     <html
@@ -46,6 +84,11 @@ export default async function RootLayout({ children }) {
                   <span className="hidden sm:inline">Auditor</span>
                 </Link>
 
+                <Link href="/receipt" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
+                  <Printer className="w-4 h-4 text-sky-400" />
+                  <span className="hidden sm:inline">Receipts</span>
+                </Link>
+
                 <Link href="/changelog" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
                   <BookOpen className="w-4 h-4" />
                   <span className="hidden sm:inline">Changelog</span>
@@ -55,26 +98,63 @@ export default async function RootLayout({ children }) {
                   Beta 1.5.1
                 </div>
 
-                {user && (
-                  <div className="flex items-center gap-3 border-l border-gray-800 pl-4">
-                    {user.isAdmin === 1 && (
-                      <Link href="/admin" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors">
-                        <ShieldAlert className="w-4 h-4" />
-                        <span className="hidden sm:inline">Admin</span>
+                {user && (() => {
+                  const getRoleColor = (u) => {
+                    if (u.isRoot || u.isAdmin || u.role === 'admin') return 'bg-purple-600/30 border-purple-500/50 text-purple-400';
+                    if (u.role === 'manager') return 'bg-blue-600/30 border-blue-500/50 text-blue-400';
+                    if (u.role === 'guest') return 'bg-gray-600/30 border-gray-500/50 text-gray-400';
+                    return 'bg-emerald-600/30 border-emerald-500/50 text-emerald-400';
+                  };
+
+                  const getInitials = (u) => {
+                    const name = u.displayName || u.email || '';
+                    return name.slice(0, 2).toUpperCase();
+                  };
+
+                  return (
+                    <div className="flex items-center gap-3 border-l border-gray-800 pl-4">
+                      {process.env.SAAS_MODE !== 'true' && (
+                        isStoreLocked ? (
+                          <div className="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-blue-500/5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                            {singleStoreName}
+                          </div>
+                        ) : (
+                          <StoreSelector stores={filteredStores} activeStoreId={activeStoreId} showDefault={showDefault} />
+                        )
+                      )}
+                      <div className="flex items-center gap-2 pr-2">
+                        <div className={`w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center font-bold text-[10px] tracking-wider ${getRoleColor(user)}`}>
+                          {user.profilePicture ? (
+                            <img src={`/uploads/profiles/${user.profilePicture}`} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            getInitials(user)
+                          )}
+                        </div>
+                        <span className="hidden md:inline text-xs font-semibold text-gray-300">
+                          {user.displayName || user.email.split('@')[0]}
+                        </span>
+                      </div>
+
+                      {user.isAdmin === 1 && (
+                        <Link href="/admin" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                          <ShieldAlert className="w-4 h-4" />
+                          <span className="hidden sm:inline">Admin</span>
+                        </Link>
+                      )}
+                      <Link href="/settings" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+                        <Settings className="w-4 h-4" />
+                        <span className="hidden sm:inline">Settings</span>
                       </Link>
-                    )}
-                    <Link href="/settings" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
-                      <Settings className="w-4 h-4" />
-                      <span className="hidden sm:inline">Settings</span>
-                    </Link>
-                    <form action="/api/auth/logout" method="POST">
-                      <button type="submit" className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors">
-                        <LogOut className="w-4 h-4" />
-                        <span className="hidden sm:inline">Logout</span>
-                      </button>
-                    </form>
-                  </div>
-                )}
+                      <form action="/api/auth/logout" method="POST">
+                        <button type="submit" className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors">
+                          <LogOut className="w-4 h-4" />
+                          <span className="hidden sm:inline">Logout</span>
+                        </button>
+                      </form>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

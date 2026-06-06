@@ -1,7 +1,7 @@
 'use client';
 import { BookOpen } from 'lucide-react';
 
-export default function ComicDetailsWidget({ item, isPrivate }) {
+export default function ComicDetailsWidget({ item, isPrivate, isGuest = false }) {
   return (
     <>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -45,27 +45,29 @@ export default function ComicDetailsWidget({ item, isPrivate }) {
       </div>
     </div>
     
-    <div className="mt-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-6 md:p-8 relative">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
-      
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-        <div>
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Estimated Market Value</h3>
-          {item.valueAvg ? (
-            <div className="flex items-baseline gap-4">
-              <span className="text-4xl font-black text-green-400">${item.valueAvg}</span>
-              <span className="text-sm text-gray-500 font-medium tracking-wide">
-                LOW: ${item.valueLow} &nbsp;&bull;&nbsp; HIGH: ${item.valueHigh}
-              </span>
-            </div>
-          ) : (
-            <div className="text-xl font-medium text-gray-500 italic">
-              {item.syncStatus === 'pending' ? 'Calculating value...' : 'Value not available'}
-            </div>
-          )}
+    {!isGuest && (
+      <div className="mt-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-6 md:p-8 relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
+          <div>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Estimated Market Value</h3>
+            {item.valueAvg ? (
+              <div className="flex items-baseline gap-4">
+                <span className="text-4xl font-black text-green-400">${item.valueAvg}</span>
+                <span className="text-sm text-gray-500 font-medium tracking-wide">
+                  LOW: ${item.valueLow} &nbsp;&bull;&nbsp; HIGH: ${item.valueHigh}
+                </span>
+              </div>
+            ) : (
+              <div className="text-xl font-medium text-gray-500 italic">
+                {item.syncStatus === 'pending' ? 'Calculating value...' : 'Value not available'}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    )}
     </>
   );
 }

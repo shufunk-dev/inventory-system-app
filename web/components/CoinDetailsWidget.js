@@ -18,7 +18,7 @@ const CONDITIONS = [
   "Proof (PR)"
 ];
 
-export default function CoinDetailsWidget({ item, isPrivate }) {
+export default function CoinDetailsWidget({ item, isPrivate, isGuest = false }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -74,9 +74,9 @@ export default function CoinDetailsWidget({ item, isPrivate }) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative group">
+    <div className={`grid grid-cols-1 ${(!isPrivate || isGuest) ? '' : 'md:grid-cols-2'} gap-8 relative group`}>
       {/* Edit Overlay Button */}
-      {!isEditing && (
+      {!isEditing && !isGuest && (
         <button 
           onClick={() => setIsEditing(true)}
           className="absolute -top-12 right-0 p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-full transition-all border border-gray-700 shadow-lg z-10 flex items-center gap-2 px-4"

@@ -26,7 +26,7 @@ export async function POST(request, { params }) {
     await fs.writeFile(path.join(uploadsDir, finalFilename), buffer);
     const imagePath = `/api/file/${finalFilename}`;
 
-    const db = getDb();
+    const db = await getDb();
     db.prepare('UPDATE items SET imagePath = ? WHERE id = ?').run(imagePath, id);
 
     return NextResponse.json({ success: true, imagePath });

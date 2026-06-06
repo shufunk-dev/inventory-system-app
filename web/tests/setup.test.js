@@ -60,7 +60,7 @@ test.describe('Onboarding Setup Wizard API (/api/setup)', () => {
     assert.strictEqual(data.mode, 'store');
 
     // Verify local DB entries
-    const db = getDb();
+    const db = await getDb();
     const admin = db.prepare('SELECT email, tier, activeTier, isAdmin, isRoot FROM users WHERE email = ?').get('owner@localstore.com');
     assert.ok(admin, 'Admin user should be registered');
     assert.strictEqual(admin.isAdmin, 1);

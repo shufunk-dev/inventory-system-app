@@ -34,9 +34,9 @@ test.describe('Database Multi-Tenancy Architecture (Option 3)', () => {
     cleanupTestData();
   });
 
-  test('Local-First Mode: Default fallback to inventory.db', () => {
+  test('Local-First Mode: Default fallback to inventory.db', async () => {
     process.env.SAAS_MODE = 'false';
-    const db = getDb();
+    const db = await getDb();
     
     // Ensure standard queries execute successfully
     db.prepare('CREATE TABLE IF NOT EXISTS test_local (val TEXT)').run();
@@ -50,40 +50,61 @@ test.describe('Database Multi-Tenancy Architecture (Option 3)', () => {
     assert.ok(fs.existsSync(localDbFile), 'Local inventory.db file should exist');
   });
 
-  test('SaaS Mode: Resolving database from AsyncLocalStorage', () => {
+  test('SaaS Mode: Resolving database from AsyncLocalStorage', async () => {
     process.env.SAAS_MODE = 'true';
     
     // Invoking getDb() outside a valid tenant scope must throw an error
-    assert.throws(() => {
-      getDb();
+    await assert.rejects(async () => {
+      await getDb();
     }, /outside of an active tenant context/);
 
     // Run queries within Tenant A context
-    tenantStorage.run({ tenantId: 'tenant_a' }, () => {
-      const dbA = getDb();
-      dbA.prepare('CREATE TABLE IF NOT EXISTS test_tenant (val TEXT)').run();
-      dbA.prepare('INSERT INTO test_tenant (val) VALUES (?)').run('data_for_a');
-      
-      const row = dbA.prepare('SELECT val FROM test_tenant').get();
-      assert.strictEqual(row.val, 'data_for_a');
+    await new Promise((resolve, reject) => {
+      tenantStorage.run({ tenantId: 'tenant_a' }, async () => {
+        try {
+          const dbA = await getDb();
+          dbA.prepare('CREATE TABLE IF NOT EXISTS test_tenant (val TEXT)').run();
+          dbA.prepare('INSERT INTO test_tenant (val) VALUES (?)').run('data_for_a');
+          
+          const row = dbA.prepare('SELECT val FROM test_tenant').get();
+          assert.strictEqual(row.val, 'data_for_a');
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
 
     // Run queries within Tenant B context
-    tenantStorage.run({ tenantId: 'tenant_b' }, () => {
-      const dbB = getDb();
-      dbB.prepare('CREATE TABLE IF NOT EXISTS test_tenant (val TEXT)').run();
-      dbB.prepare('INSERT INTO test_tenant (val) VALUES (?)').run('data_for_b');
-      
-      const row = dbB.prepare('SELECT val FROM test_tenant').get();
-      assert.strictEqual(row.val, 'data_for_b');
+    await new Promise((resolve, reject) => {
+      tenantStorage.run({ tenantId: 'tenant_b' }, async () => {
+        try {
+          const dbB = await getDb();
+          dbB.prepare('CREATE TABLE IF NOT EXISTS test_tenant (val TEXT)').run();
+          dbB.prepare('INSERT INTO test_tenant (val) VALUES (?)').run('data_for_b');
+          
+          const row = dbB.prepare('SELECT val FROM test_tenant').get();
+          assert.strictEqual(row.val, 'data_for_b');
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
 
     // Proving Isolation: Querying Tenant A's database should NOT retrieve Tenant B's data
-    tenantStorage.run({ tenantId: 'tenant_a' }, () => {
-      const dbA = getDb();
-      const rows = dbA.prepare('SELECT val FROM test_tenant').all();
-      assert.strictEqual(rows.length, 1);
-      assert.strictEqual(rows[0].val, 'data_for_a');
+    await new Promise((resolve, reject) => {
+      tenantStorage.run({ tenantId: 'tenant_a' }, async () => {
+        try {
+          const dbA = await getDb();
+          const rows = dbA.prepare('SELECT val FROM test_tenant').all();
+          assert.strictEqual(rows.length, 1);
+          assert.strictEqual(rows[0].val, 'data_for_a');
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
 
     // Ensure physical files exist at the resolved location
@@ -114,22 +135,40 @@ test.describe('Database Multi-Tenancy Architecture (Option 3)', () => {
     process.env.SAAS_MODE = 'true';
 
     // Seed structural tables for both tenants
-    tenantStorage.run({ tenantId: 'tenant_x' }, () => {
-      const db = getDb();
-      db.prepare('CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, msg TEXT)').run();
+    await new Promise((resolve, reject) => {
+      tenantStorage.run({ tenantId: 'tenant_x' }, async () => {
+        try {
+          const db = await getDb();
+          db.prepare('CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, msg TEXT)').run();
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
-    tenantStorage.run({ tenantId: 'tenant_y' }, () => {
-      const db = getDb();
-      db.prepare('CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, msg TEXT)').run();
+    await new Promise((resolve, reject) => {
+      tenantStorage.run({ tenantId: 'tenant_y' }, async () => {
+        try {
+          const db = await getDb();
+          db.prepare('CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, msg TEXT)').run();
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
 
     // Concurrent execution helper
     const insertOp = (tenantId, id, message) => {
-      return new Promise((resolve) => {
-        tenantStorage.run({ tenantId }, () => {
-          const db = getDb();
-          db.prepare('INSERT INTO test_table (id, msg) VALUES (?, ?)').run(id, message);
-          resolve();
+      return new Promise((resolve, reject) => {
+        tenantStorage.run({ tenantId }, async () => {
+          try {
+            const db = await getDb();
+            db.prepare('INSERT INTO test_table (id, msg) VALUES (?, ?)').run(id, message);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
         });
       });
     };
@@ -141,14 +180,30 @@ test.describe('Database Multi-Tenancy Architecture (Option 3)', () => {
     ]);
 
     // Verify each database retrieved its respective unique record
-    tenantStorage.run({ tenantId: 'tenant_x' }, () => {
-      const row = getDb().prepare('SELECT msg FROM test_table WHERE id = 1').get();
-      assert.strictEqual(row.msg, 'hello from x');
+    await new Promise((resolve, reject) => {
+      tenantStorage.run({ tenantId: 'tenant_x' }, async () => {
+        try {
+          const db = await getDb();
+          const row = db.prepare('SELECT msg FROM test_table WHERE id = 1').get();
+          assert.strictEqual(row.msg, 'hello from x');
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
 
-    tenantStorage.run({ tenantId: 'tenant_y' }, () => {
-      const row = getDb().prepare('SELECT msg FROM test_table WHERE id = 1').get();
-      assert.strictEqual(row.msg, 'hello from y');
+    await new Promise((resolve, reject) => {
+      tenantStorage.run({ tenantId: 'tenant_y' }, async () => {
+        try {
+          const db = await getDb();
+          const row = db.prepare('SELECT msg FROM test_table WHERE id = 1').get();
+          assert.strictEqual(row.msg, 'hello from y');
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
   });
 

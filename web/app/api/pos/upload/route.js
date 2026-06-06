@@ -29,7 +29,7 @@ export async function POST(request) {
         if (data && data.text && data.text.trim().length > 100) {
           const tempLines = data.text.split('\n');
           let matchCount = 0;
-          const testRegex = /^(\d+)\s+(\d+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/;
+          const testRegex = /^(\d+)\s+(\S+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/;
           for (const line of tempLines) {
             if (line.match(testRegex)) matchCount++;
             if (matchCount >= 2) break;
@@ -77,7 +77,7 @@ export async function POST(request) {
 
         const tempLines = ocrTextStandard.split('\n');
         let matchCount = 0;
-        const testRegex = /^(\d+)\s+(\d+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/;
+        const testRegex = /^(\d+)\s+(\S+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/;
         for (const line of tempLines) {
           if (line.match(testRegex)) matchCount++;
           if (matchCount >= 2) break;
@@ -133,12 +133,12 @@ export async function POST(request) {
 
       const clean = trimmed.replace(/~/g, '').replace(/_/g, '').trim();
       // Columns: Rank ItemNum ItemName NumSold Price SoldAmount Cost Profit FoodCost% %Sales
-      const match = clean.match(/^(\d+)\s+(\d+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+([\d,]+\.\d+)\s+([\d,]+\.\d+)\s+([\d,]+\.\d+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)(?:\s+.*)?$/);
+      const match = clean.match(/^(\d+)\s+(\S+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+([\d,]+\.\d+)\s+([\d,]+\.\d+)\s+([\d,]+\.\d+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)(?:\s+.*)?$/);
 
       if (match) {
         items.push({
           rank: parseInt(match[1]),
-          itemNum: parseInt(match[2]),
+          itemNum: match[2].trim(),
           name: match[3].trim(),
           numSold: parseFloat(match[4]),
           price: parseFloat(match[5]),
@@ -156,7 +156,7 @@ export async function POST(request) {
     }
 
     // Save POS items in database
-    const db = getDb();
+    const db = await getDb();
 
     // Save sales period if parsed
     if (startDate && endDate) {

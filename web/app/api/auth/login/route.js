@@ -1,8 +1,10 @@
-import { getDb } from '../../../../lib/db.js';
+import { getGlobalDb } from '../../../../lib/db.js';
 import bcrypt from 'bcryptjs';
 import { createSession } from '../../../../lib/auth.js';
 import { resolveTenantIdByEmail, tenantStorage } from '../../../../lib/dbManager.js';
+import { encryptTemp } from '../../../../lib/jwt.js';
 import { createRequire } from 'module';
+import crypto from 'crypto';
 
 const require = createRequire(import.meta.url);
 
@@ -11,7 +13,6 @@ try {
   const nextServer = require('next/server');
   NextResponse = nextServer.NextResponse;
 } catch (e) {
-  // Fallback mock for testing in raw Node.js environment
   NextResponse = {
     json: (body, init) => {
       return {
@@ -32,14 +33,13 @@ export async function POST(request) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Check for global Super Admin credentials (Option A)
+    // 1. Check for global Super Admin credentials
     const superEmail = process.env.SUPER_ADMIN_EMAIL;
     const superHash = process.env.SUPER_ADMIN_HASH;
 
     if (superEmail && normalizedEmail === superEmail.toLowerCase().trim()) {
       const isMatch = await bcrypt.compare(password, superHash);
       if (isMatch) {
-        // Create support session mapped to 'super-admin'
         await createSession('super-admin-root', 'super-admin');
         return NextResponse.json({ success: true, isSuperAdmin: true });
       }
@@ -54,15 +54,14 @@ export async function POST(request) {
       }
     }
 
-    // Helper to query user in the resolved database context
-    const queryUser = () => {
-      const db = getDb();
-      return db.prepare('SELECT id, passwordHash FROM users WHERE email = ?').get(normalizedEmail);
+    const queryUser = async () => {
+      const db = await getGlobalDb();
+      return db.prepare('SELECT id, passwordHash, status, twoFactorEnabled, forcePasswordReset FROM users WHERE email = ?').get(normalizedEmail);
     };
 
     const user = tenantId 
-      ? tenantStorage.run({ tenantId }, () => queryUser())
-      : queryUser();
+      ? await tenantStorage.run({ tenantId }, () => queryUser())
+      : await queryUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials.' }, { status: 401 });
@@ -73,7 +72,43 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid credentials.' }, { status: 401 });
     }
 
-    // Log the user into their session (passing tenantId in SaaS mode)
+    if (user.status === 'pending') {
+      return NextResponse.json({ error: 'Please verify your email address to active your account.' }, { status: 403 });
+    }
+
+    if (user.forcePasswordReset === 1) {
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+      
+      const db = await getGlobalDb();
+      const updateFn = () => {
+        db.prepare('UPDATE users SET resetPasswordToken = ?, resetPasswordExpiresAt = ? WHERE id = ?').run(
+          resetToken, resetExpiresAt, user.id
+        );
+      };
+      
+      if (tenantId) {
+        tenantStorage.run({ tenantId }, () => updateFn());
+      } else {
+        updateFn();
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        forcePasswordReset: true, 
+        resetToken 
+      });
+    }
+
+    if (user.twoFactorEnabled === 1) {
+      const tempToken = await encryptTemp({ userId: user.id, tenantId });
+      return NextResponse.json({ 
+        success: true, 
+        twoFactorRequired: true, 
+        tempToken 
+      });
+    }
+
     await createSession(user.id, tenantId);
 
     return NextResponse.json({ success: true });

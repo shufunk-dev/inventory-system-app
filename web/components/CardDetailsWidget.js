@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Save, AlertCircle } from 'lucide-react';
 
-export default function CardDetailsWidget({ item }) {
+export default function CardDetailsWidget({ item, isGuest = false }) {
   const [isEditing, setIsEditing] = useState(false);
   const [agency, setAgency] = useState(item.cardGradingAgency || 'Raw');
   const [condition, setCondition] = useState(item.cardCondition || 'Unknown Condition');
@@ -50,11 +50,12 @@ export default function CardDetailsWidget({ item }) {
         <h3 className="font-semibold flex items-center gap-2">
           🃏 Trading Card Details
         </h3>
-        {!isEditing ? (
+        {!isEditing && !isGuest && (
           <button onClick={() => setIsEditing(true)} className="text-sm text-blue-400 hover:text-blue-300">
             Edit Details
           </button>
-        ) : (
+        )}
+        {isEditing && (
           <button 
             onClick={handleSave} 
             disabled={isSaving}
@@ -74,7 +75,7 @@ export default function CardDetailsWidget({ item }) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={isGuest ? "grid grid-cols-1 gap-6" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Grading Agency</label>
@@ -122,41 +123,43 @@ export default function CardDetailsWidget({ item }) {
             </div>
           </div>
 
-          <div className="bg-black/50 rounded-lg p-5 border border-gray-800 flex flex-col justify-center">
-            <div className="text-sm text-gray-400 mb-2">Estimated Market Value</div>
-            {item.valueAvg ? (
-              <>
-                <div className="text-3xl font-bold text-green-400 mb-2">${item.valueAvg}</div>
-                <div className="text-xs text-gray-500 flex justify-between">
-                  <span>Low: ${item.valueLow}</span>
-                  <span>High: ${item.valueHigh}</span>
+          {!isGuest && (
+            <div className="bg-black/50 rounded-lg p-5 border border-gray-800 flex flex-col justify-center">
+              <div className="text-sm text-gray-400 mb-2">Estimated Market Value</div>
+              {item.valueAvg ? (
+                <>
+                  <div className="text-3xl font-bold text-green-400 mb-2">${item.valueAvg}</div>
+                  <div className="text-xs text-gray-500 flex justify-between">
+                    <span>Low: ${item.valueLow}</span>
+                    <span>High: ${item.valueHigh}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-gray-500 italic">
+                  {item.syncStatus === 'pending' ? 'Calculating value...' : 'Value not available'}
                 </div>
-              </>
-            ) : (
-              <div className="text-sm text-gray-500 italic">
-                {item.syncStatus === 'pending' ? 'Calculating value...' : 'Value not available'}
-              </div>
-            )}
-            
-            {(item.name && item.cardCondition) && !isEditing && !item.valueAvg && (
-              <button 
-                onClick={async () => {
-                  setIsFetchingMarket(true);
-                  await fetch(`/api/item/${item.id}/fetch`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ forceTier: 'card' })
-                  });
-                  // Wait a few seconds for the background worker to crunch the math, then reload
-                  setTimeout(() => window.location.reload(), 8000);
-                }}
-                disabled={isFetchingMarket}
-                className="mt-4 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2.5 rounded border border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isFetchingMarket ? 'Calculating... (Wait 8s)' : 'Fetch Live Market Value'}
-              </button>
-            )}
-          </div>
+              )}
+              
+              {(item.name && item.cardCondition) && !isEditing && !item.valueAvg && (
+                <button 
+                  onClick={async () => {
+                    setIsFetchingMarket(true);
+                    await fetch(`/api/item/${item.id}/fetch`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ forceTier: 'card' })
+                    });
+                    // Wait a few seconds for the background worker to crunch the math, then reload
+                    setTimeout(() => window.location.reload(), 8000);
+                  }}
+                  disabled={isFetchingMarket}
+                  className="mt-4 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2.5 rounded border border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isFetchingMarket ? 'Calculating... (Wait 8s)' : 'Fetch Live Market Value'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

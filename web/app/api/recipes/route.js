@@ -8,7 +8,7 @@ export async function GET(request) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const db = getDb();
+    const db = await getDb();
     
     // Get all recipes, POS item details, and ingredients
     const recipes = db.prepare(`
@@ -78,7 +78,7 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const db = getDb();
+    const db = await getDb();
 
     if (body.action === 'add_brand') {
       const { brandName, brandCategory, specificGravity } = body;
@@ -160,7 +160,7 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Missing recipeId' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const result = db.prepare('DELETE FROM recipes WHERE id = ? AND userId = ?').run(recipeId, user.id);
 
     if (result.changes === 0) {

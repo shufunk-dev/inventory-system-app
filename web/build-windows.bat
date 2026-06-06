@@ -20,6 +20,8 @@ xcopy /E /I /Q /Y .next\standalone electron\next-server
 xcopy /E /I /Q /Y .next\static electron\next-server\.next\static
 xcopy /E /I /Q /Y public electron\next-server\public
 if exist .env.local copy /Y .env.local electron\next-server\.env.local
+echo [3.5/5] Patching Next.js runtime dependencies...
+xcopy /E /I /Q /Y node_modules\next electron\next-server\node_modules\next
 
 echo [4/5] Installing Electron dependencies...
 cd electron

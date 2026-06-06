@@ -17,7 +17,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const item = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
     
     if (!item) {
