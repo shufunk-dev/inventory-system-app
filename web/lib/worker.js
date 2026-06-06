@@ -1131,7 +1131,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     // Determine the active tier preference from the global settings
     let isPremium = false;
     try {
-      const globalDb = getGlobalDb();
+      const globalDb = await getGlobalDb();
       const tierRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'active_tier'").get();
       if (tierRow && tierRow.value === 'premium') {
         isPremium = true;
@@ -1630,7 +1630,7 @@ async function processNextItem(userId = null) {
 
   // --- GLOBAL API CONFIGURATION INJECTION ---
   try {
-    const globalDb = getGlobalDb();
+    const globalDb = await getGlobalDb();
     const keysRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
     if (keysRow) {
       const keys = JSON.parse(keysRow.value);
