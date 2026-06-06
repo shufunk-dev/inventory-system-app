@@ -389,7 +389,8 @@ async function fetchVideoMarketValue(name) {
 
 async function fetchCoinMarketValue(name, condition) {
   try {
-    const q = encodeURIComponent(`${name} ${condition} value price estimate`);
+    const cleanCond = (condition && condition !== 'Ungraded' && condition !== 'Unknown Condition') ? condition : '';
+    const q = encodeURIComponent(`${name} ${cleanCond} value price estimate`.replace(/\s+/g, ' ').trim());
     const apiKey = process.env.SERPAPI_KEY;
     if (!apiKey) return null;
 
@@ -503,7 +504,8 @@ async function fetchComicMarketValue(name, condition) {
 
 async function fetchCardMarketValue(name, condition) {
   try {
-    const q = encodeURIComponent(`${name} ${condition} value price estimate PSA BGS SGC`);
+    const cleanCond = (condition && condition !== 'Raw (Ungraded)' && condition !== 'Unknown Condition') ? condition : '';
+    const q = encodeURIComponent(`${name} ${cleanCond} value price estimate PSA BGS SGC`.replace(/\s+/g, ' ').trim());
     const apiKey = process.env.SERPAPI_KEY;
     if (!apiKey) return null;
 
@@ -1449,7 +1451,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
 
       // 3. Fetch Market Value
-      if (toyCondition && toyCondition !== 'Unknown Condition' && !valueAvg) {
+      if (toyCondition && (toyCondition !== 'Unknown Condition' || options.forceTier === 'market_value_only') && !valueAvg) {
         const marketData = await fetchToyMarketValue(name, toyCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1476,7 +1478,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (coinCondition && coinCondition !== 'Unknown Condition' && coinCondition !== 'Ungraded' && !valueAvg) {
+      if (coinCondition && (coinCondition !== 'Unknown Condition' && coinCondition !== 'Ungraded' || options.forceTier === 'market_value_only') && !valueAvg) {
         const marketData = await fetchCoinMarketValue(name, coinCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1503,7 +1505,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (cardCondition && cardCondition !== 'Unknown Condition' && cardCondition !== 'Raw (Ungraded)' && !valueAvg) {
+      if (cardCondition && (cardCondition !== 'Unknown Condition' && cardCondition !== 'Raw (Ungraded)' || options.forceTier === 'market_value_only') && !valueAvg) {
         const marketData = await fetchCardMarketValue(name, cardCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
