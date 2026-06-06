@@ -41,8 +41,7 @@ export default async function RootLayout({ children }) {
       const cookieStore = await cookies();
       activeStoreId = cookieStore.get('active_store_id')?.value || 'default';
 
-      const isAdminOrRoot = user.isAdmin === 1 || user.isRoot === 1;
-      if (user.storeId && user.storeId !== 'default' && !isAdminOrRoot) {
+      if (user.storeId && user.storeId !== 'default' && user.isRoot !== 1) {
         const allowedIds = user.storeId.split(',').map(s => s.trim()).filter(Boolean);
         if (allowedIds.length === 1) {
           isStoreLocked = true;

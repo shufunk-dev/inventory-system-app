@@ -336,9 +336,8 @@ export async function getDb() {
         const userRow = masterDb.prepare('SELECT storeId, isAdmin, isRoot FROM users WHERE id = ?').get(payload.userId);
         if (userRow) {
           const userStoreId = userRow.storeId;
-          const isAdminOrRoot = userRow.isAdmin === 1 || userRow.isRoot === 1;
 
-          if (userStoreId && userStoreId !== 'default' && !isAdminOrRoot) {
+          if (userStoreId && userStoreId !== 'default' && userRow.isRoot !== 1) {
             const allowedStores = userStoreId.split(',').map(s => s.trim()).filter(Boolean);
             if (allowedStores.length > 0) {
               const activeStoreId = cookieStore.get('active_store_id')?.value;
