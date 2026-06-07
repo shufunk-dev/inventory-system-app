@@ -263,6 +263,68 @@ export function initializeSchema(db) {
     if (changelogCount === 0) {
       const seedData = [
         {
+          version: 'Beta 1.8.0', date: 'June 6, 2026', title: 'Offline Trial Keys, Transactional Wiping Self-Destruct, & SaaS Cloud Demo Resets',
+          changes: JSON.stringify([
+            { type: 'web', text: 'Implemented 7-day (TRIA) and 5-minute (TR5M) offline trial activation keys mapped to Retail Store Mode.' },
+            { type: 'web', text: 'Developed a robust wipeDatabaseData fallback that transactionally purges all SQLite tables first, bypassing Windows EBUSY file resource locks during self-destruction.' },
+            { type: 'web', text: 'Created SaaS Cloud Demo mode (DEMO_MODE=true) which allows SMTP bypass, immediate user activation, and automated daily midnight database resets (preserving oldest tenant assets).' },
+            { type: 'web', text: 'Added a comprehensive integration testing suite verifying validation, onboarding, self-destruct, and demo resets.' },
+            { type: 'web', text: 'Created a dedicated trial info page published directly to the WordPress network dashboard.' }
+          ])
+        },
+        {
+          version: 'Beta 1.7.0', date: 'June 6, 2026', title: 'Multi-Booth User Gating, Sales Payout Draw, & Monospaced Receipts Hub',
+          changes: JSON.stringify([
+            { type: 'web', text: 'Extended user records with multi-store allowed mappings and locked header switcher badges for restricted booths.' },
+            { type: 'web', text: 'Created dynamic sales report matching barcodes to booth catalogs on both UUID and manufacturer UPC keys.' },
+            { type: 'web', text: 'Built full payouts reporting drawer summarizing gross sales and net vendor profits.' },
+            { type: 'web', text: 'Developed a receipt printing hub rendering Thermal Roll (80mm) and Letter Invoice templates with inline booth details.' },
+            { type: 'web', text: 'Updated SQLite schemas to TEXT and mocked cookie sessions inside the test runner to ensure 100% test coverage.' },
+            { type: 'web', text: 'Added automated local filesystem unlinking to clean up front/back photo files upon catalog deletions.' }
+          ])
+        },
+        {
+          version: 'Beta 1.6.0', date: 'June 3, 2026', title: 'POS Ingestion, Recipe Mapping, BLE Weight Math, & Variance Auditor Dashboard',
+          changes: JSON.stringify([
+            { type: 'web', text: 'Added database schemas for liquor inventory tracking (brands, variants, recipes, physical count logs, POS sales).' },
+            { type: 'web', text: 'Implemented scanned landscape PMIX report parsing with automated 90-degree image rotation, optimized PSM 6 OCR layout extraction, and regex-based item ingestion.' },
+            { type: 'web', text: 'Created a mathematical constraint solver (Quantity * Cost = Total) to dynamically resolve and correct OCR text anomalies in scanned inventories.' },
+            { type: 'web', text: 'Built specific gravity volume math conversion libraries to translate bottle weight inputs into fluid ounces.' },
+            { type: 'web', text: 'Developed a premium glassmorphic auditor dashboard showing depletions, theoretical sales, variance, and financial cost metrics.' },
+            { type: 'web', text: 'Created an interactive recipe editor, custom liquor brand onboarder, and BLE weight scale simulator.' },
+            { type: 'web', text: 'Added full integration tests verifying specific gravity math, database mapping transactions, and variance calculation formulas.' }
+          ])
+        },
+        {
+          version: 'Beta 1.5.2', date: 'June 2, 2026', title: 'SaaS Database Multi-Tenancy & Security Hardening',
+          changes: JSON.stringify([
+            { type: 'web', text: 'Implemented Option 3 (Hybrid SQLite Database Manager) for dynamic, isolated database routing per tenant with in-memory connection caching and auto-cleanup.' },
+            { type: 'web', text: 'Built the First-Boot Setup Onboarding Wizard (/setup) to configure administrator details and validate Type A (Collector) and Type B (Store) product license keys offline using SHA-256 HMAC checksums.' },
+            { type: 'web', text: 'Created server-side redirect gates on the home dashboard and login pages to mandate setup completion.' },
+            { type: 'web', text: 'Removed vulnerable backdoor admin accounts from source code and implemented environment-based Super Admin authentication (Option A) with virtual session resolution.' },
+            { type: 'web', text: 'Added a full integration testing suite verifying concurrency, security locks, and Registry resolution.' }
+          ])
+        },
+        {
+          version: 'Beta 1.3', date: 'May 30, 2026', title: 'Comic Book Integration & AI Refinements',
+          changes: JSON.stringify([
+            { type: 'mobile', text: 'Added Comic Book Mode for capturing loose and slabbed comics.' },
+            { type: 'web', text: 'Built the Comic Book Metadata Engine utilizing dual OCR and Lens identification.' },
+            { type: 'web', text: 'Integrated automated Market Value scraping from Google Shopping for ungraded/raw comic books.' },
+            { type: 'web', text: 'Added a clean unified "AI Pipeline Engine" dropdown to simplify the web dashboard.' },
+            { type: 'web', text: 'Overhauled the Basic AI Engine to intelligently synthesize Logo identification with sequential vertical OCR text for robust product name extraction.' }
+          ])
+        },
+        {
+          version: 'Beta 1.2', date: 'May 30, 2026', title: 'Multi-Asset AI Ecosystem',
+          changes: JSON.stringify([
+            { type: 'web', text: 'Implemented Toy Mode condition tracking and dynamic market value calculations.' },
+            { type: 'mobile', text: 'Built Coin Sheldon grading scale and PCGS/NGC slab barcode scraping.' },
+            { type: 'web', text: 'Integrated IMDb Knowledge Graph for scraping Video and Movie metadata.' },
+            { type: 'web', text: 'Developed the WordPress Autonomous Mirror for instantly publishing local inventory to the public web.' }
+          ])
+        },
+        {
           version: 'Beta 1.0', date: 'May 29, 2026', title: 'Initial Beta Release',
           changes: JSON.stringify([{ type: 'web', text: 'Officially entered Beta 1.0 phase.' }])
         },
