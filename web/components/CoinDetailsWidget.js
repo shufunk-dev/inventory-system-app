@@ -270,7 +270,7 @@ export default function CoinDetailsWidget({ item, isPrivate, isGuest = false }) 
                 <span className="text-gray-400 text-sm ml-2 font-medium">est.</span>
               </div>
 
-              <div className="flex justify-between items-end border-t border-gray-700/50 pt-4 mt-2">
+              <div className="flex justify-between items-end border-t border-gray-700/50 pt-4 mt-2 mb-4">
                 <div>
                   <p className="text-xs text-gray-500 font-bold mb-1">LOW</p>
                   <p className="text-sm text-gray-300 font-mono">${(item.valueLow || 0).toFixed(2)}</p>
@@ -280,6 +280,26 @@ export default function CoinDetailsWidget({ item, isPrivate, isGuest = false }) 
                   <p className="text-sm text-gray-300 font-mono">${(item.valueHigh || 0).toFixed(2)}</p>
                 </div>
               </div>
+
+              <button 
+                onClick={async () => {
+                  setIsRecalculating(true);
+                  try {
+                    await fetch(`/api/item/${item.id}/fetch`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ forceTier: 'market_value_only' })
+                    });
+                  } catch (e) {
+                    console.error(e);
+                  }
+                  setIsRecalculating(false);
+                  router.refresh();
+                }}
+                className="w-full bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 py-2 rounded-xl text-sm font-bold transition-colors"
+              >
+                Recalculate Market Value
+              </button>
             </div>
           ) : (
             <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 p-6 rounded-2xl border border-gray-700/50 relative overflow-hidden group">

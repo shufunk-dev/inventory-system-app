@@ -148,7 +148,7 @@ export default function CardDetailsWidget({ item, isGuest = false }) {
                 </div>
               )}
               
-              {(item.name && item.cardCondition) && !isEditing && !item.valueAvg && (
+              {(item.name && item.cardCondition) && !isEditing && (
                 <button 
                   onClick={async () => {
                     setIsFetchingMarket(true);
@@ -163,7 +163,7 @@ export default function CardDetailsWidget({ item, isGuest = false }) {
                   disabled={isFetchingMarket}
                   className="mt-4 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2.5 rounded border border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isFetchingMarket ? 'Calculating... (Wait 8s)' : 'Fetch Live Market Value'}
+                  {isFetchingMarket ? 'Calculating... (Wait 8s)' : item.valueAvg ? 'Recalculate Market Value' : 'Fetch Live Market Value'}
                 </button>
               )}
             </div>
