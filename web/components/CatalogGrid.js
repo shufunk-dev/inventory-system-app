@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2, Printer } from 'lucide-react';
 import { buildCategoryTree } from '@/lib/categories';
 
 export default function CatalogGrid({ items }) {
@@ -124,6 +124,12 @@ export default function CatalogGrid({ items }) {
     }
   };
 
+  const handleBulkPrint = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds).join(',');
+    window.open(`/item/print?ids=${ids}`, '_blank');
+  };
+
   return (
     <div>
       {/* Selection Action Bar */}
@@ -133,6 +139,13 @@ export default function CatalogGrid({ items }) {
             {selectedIds.size} item(s) selected
           </span>
           <div className="flex gap-3">
+            <button 
+              onClick={handleBulkPrint}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors"
+            >
+              <Printer className="w-4 h-4" />
+              Print Barcodes
+            </button>
             <button 
               onClick={() => setIsMoveModalOpen(true)}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl transition-colors"

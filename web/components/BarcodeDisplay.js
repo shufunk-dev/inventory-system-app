@@ -73,6 +73,10 @@ export default function BarcodeDisplay({
               display: flex;
               justify-content: center;
             }
+            .barcode-container svg {
+              max-width: 100%;
+              height: auto !important;
+            }
             .price {
               font-size: 14px;
               font-weight: bold;
@@ -139,7 +143,7 @@ export default function BarcodeDisplay({
         </p>
 
         {/* The Barcode Image */}
-        <div className="my-1.5" id="barcode-tag-render">
+        <div className="my-1.5 w-full flex justify-center [&>svg]:max-w-full [&>svg]:h-auto" id="barcode-tag-render">
           <Barcode 
             value={internalId} 
             format="CODE128" 
