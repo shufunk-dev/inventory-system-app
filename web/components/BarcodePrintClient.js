@@ -330,6 +330,11 @@ export default function BarcodePrintClient({
           <Printer className="w-5 h-5" />
           Print Labels
         </button>
+
+        <div className="bg-gray-850 border border-gray-700/50 p-3.5 rounded-xl text-[11px] text-gray-400 mt-2 flex flex-col gap-1">
+          <span className="font-bold text-gray-300">💡 Saving for later?</span>
+          <span>In the print dialog, change the Destination to <strong>"Save as PDF"</strong> to download a master copy of these label sheets.</span>
+        </div>
       </aside>
 
       {/* 2. Right Side: Sheet Preview (Styled to look like sheets) */}
