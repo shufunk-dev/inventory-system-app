@@ -14,6 +14,7 @@ For detailed manuals, live roadmaps, and sprint logs, visit the official page at
 Lock/unlock features based on product licensing keys:
 - **Collector Mode**: A clean, simplified UI for tracking condition, cataloging assets, shelf locations, and calculating collection net worth (video games, coins, toys, books, etc.).
 - **Retail Store Mode**: Unlocks the complete POS checkout register, sales transaction logs, tax structures, employee shifts, and supplier profiles.
+- **7-Day Retail Trial**: Test the complete Retail Store Mode features offline using the public trial key: `TRIA-7777-7042-18B0`. This trial key activates all premium features for 7 days, after which the local environment resets back to factory settings to prepare for clean activation.
 
 ### 2. Smart Barcode & Visual Scanning
 - **Standard UPC/EAN Lookups**: Auto-populates item details using Google Books, UPCItemDB, and OpenFoodFacts.
