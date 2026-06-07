@@ -1,9 +1,27 @@
-import { NextResponse } from 'next/server';
-import { getUser } from '@/lib/auth';
-import { getGlobalDb, getStoreDb } from '@/lib/db';
+import { getUser } from '../../../../lib/auth.js';
+import { getGlobalDb, getStoreDb } from '../../../../lib/db.js';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+
+let NextResponse;
+try {
+  const nextServer = require('next/server');
+  NextResponse = nextServer.NextResponse;
+} catch (e) {
+  // Mock NextResponse for standalone Node.js testing runner
+  NextResponse = {
+    json: (body, init) => {
+      return {
+        status: init?.status || 200,
+        json: async () => body
+      };
+    }
+  };
+}
 
 async function checkAdmin() {
   const user = await getUser();
@@ -53,14 +71,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'A store with this name already exists.' }, { status: 400 });
     }
 
+    // Automatically assign the next sequential booth number (e.g. 002)
+    const maxRow = db.prepare("SELECT MAX(CAST(boothNumber AS INTEGER)) as maxNum FROM store_profiles WHERE boothNumber IS NOT NULL").get();
+    const nextNum = ((maxRow && maxRow.maxNum) ? maxRow.maxNum : 0) + 1;
+    const formattedNum = String(nextNum).padStart(3, '0');
+
     const id = crypto.randomUUID();
-    db.prepare('INSERT INTO store_profiles (id, name, createdAt) VALUES (?, ?, ?)')
-      .run(id, name.trim(), Date.now());
+    db.prepare('INSERT INTO store_profiles (id, name, boothNumber, createdAt) VALUES (?, ?, ?, ?)')
+      .run(id, name.trim(), formattedNum, Date.now());
 
     // Initialize the sqlite database file and schema
     getStoreDb(id);
 
-    return NextResponse.json({ success: true, store: { id, name: name.trim() } });
+    return NextResponse.json({ success: true, store: { id, name: name.trim(), boothNumber: formattedNum } });
   } catch (error) {
     console.error('Create store error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

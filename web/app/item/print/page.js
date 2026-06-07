@@ -33,6 +33,7 @@ export default async function ItemPrintPage({ searchParams }) {
 
   // Resolve active booth/store name
   let boothName = 'Central';
+  let boothNumber = null;
   try {
     const cookieStore = await cookies();
     let activeStoreId = 'default';
@@ -55,9 +56,10 @@ export default async function ItemPrintPage({ searchParams }) {
 
     if (activeStoreId !== 'default') {
       const globalDb = await getGlobalDb();
-      const storeProfile = globalDb.prepare('SELECT name FROM store_profiles WHERE id = ?').get(activeStoreId);
+      const storeProfile = globalDb.prepare('SELECT name, boothNumber FROM store_profiles WHERE id = ?').get(activeStoreId);
       if (storeProfile) {
         boothName = storeProfile.name;
+        boothNumber = storeProfile.boothNumber;
       }
     }
   } catch (e) {
@@ -69,6 +71,7 @@ export default async function ItemPrintPage({ searchParams }) {
       initialItems={items} 
       centralStoreName={centralStoreName} 
       defaultBoothName={boothName} 
+      defaultBoothNumber={boothNumber}
     />
   );
 }

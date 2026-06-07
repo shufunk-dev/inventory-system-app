@@ -489,4 +489,97 @@ test.describe('Local-First Multi-Store Aggregator', () => {
     // Clean up globalDb pos_items
     globalDb.prepare('DELETE FROM pos_items').run();
   });
+
+  test('Booth Number auto-assignment migration and sequential generation on POST', async () => {
+    try {
+      process.env.SAAS_MODE = 'false';
+
+      const globalDb = await getGlobalDb();
+
+      // 1. Clear store profiles
+      globalDb.prepare('DELETE FROM store_profiles').run();
+
+      // 2. Insert some store profiles with boothNumber = null
+      const timeBase = Date.now();
+      globalDb.prepare('INSERT INTO store_profiles (id, name, createdAt, boothNumber) VALUES (?, ?, ?, ?)')
+        .run('store-a', 'Mother Booth', timeBase - 10000, null);
+      globalDb.prepare('INSERT INTO store_profiles (id, name, createdAt, boothNumber) VALUES (?, ?, ?, ?)')
+        .run('store-b', 'Second Booth', timeBase - 5000, null);
+      globalDb.prepare('INSERT INTO store_profiles (id, name, createdAt, boothNumber) VALUES (?, ?, ?, ?)')
+        .run('store-c', 'Third Booth', timeBase, '005'); // Pre-existing number
+
+      // 3. Trigger close and reopen database to trigger the initializeMasterSchema migration
+      closeDb();
+      const reopenedDb = await getGlobalDb();
+
+      // Verify migration assigned numbers:
+      // Third Booth was '005', so maxNum was 5.
+      // Unassigned booths should start incrementing from 5 -> 6, 7.
+      const boothA = reopenedDb.prepare('SELECT boothNumber FROM store_profiles WHERE id = ?').get('store-a');
+      const boothB = reopenedDb.prepare('SELECT boothNumber FROM store_profiles WHERE id = ?').get('store-b');
+      const boothC = reopenedDb.prepare('SELECT boothNumber FROM store_profiles WHERE id = ?').get('store-c');
+
+      assert.strictEqual(boothC.boothNumber, '005');
+      assert.strictEqual(boothA.boothNumber, '006'); // Mother Booth is older, so it got numbered first
+      assert.strictEqual(boothB.boothNumber, '007');
+
+      // 4. Test the POST route auto-numbering
+      // Mock user root session
+      const rootId = 'root-admin';
+      reopenedDb.prepare(`
+        INSERT OR IGNORE INTO users (id, email, passwordHash, tier, activeTier, isAdmin, isRoot, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(rootId, 'root@test.com', 'pwd', 'premium', 'premium', 1, 1, Date.now());
+
+      const { createRequire } = await import('module');
+      const require = createRequire(import.meta.url);
+      const { encrypt } = await import('../lib/jwt.js');
+      const rootSession = await encrypt({ userId: rootId, expiresAt: new Date(Date.now() + 100000) });
+      global.mockSessionCookie = rootSession;
+
+      try {
+        const nextHeadersPath = require.resolve('next/headers');
+        require.cache[nextHeadersPath] = {
+          id: nextHeadersPath,
+          filename: nextHeadersPath,
+          loaded: true,
+          exports: {
+            cookies: async () => ({
+              get: (key) => {
+                if (key === 'session') return { value: rootSession };
+                return null;
+              }
+            })
+          }
+        };
+      } catch(e) {}
+
+      const { POST: createStore } = await import('../app/api/admin/stores/route.js');
+      
+      // Call POST API
+      const requestMock = {
+        json: async () => ({ name: 'New Fourth Booth' })
+      };
+      
+      const response = await createStore(requestMock);
+      assert.strictEqual(response.status, 200);
+      const resJson = await response.json();
+      
+      assert.strictEqual(resJson.success, true);
+      // Since highest was 7, next should be 8 -> '008'
+      assert.strictEqual(resJson.store.boothNumber, '008');
+
+      const boothD = reopenedDb.prepare('SELECT boothNumber FROM store_profiles WHERE name = ?').get('New Fourth Booth');
+      assert.strictEqual(boothD.boothNumber, '008');
+
+      // Clean up
+      try {
+        delete require.cache[require.resolve('next/headers')];
+      } catch (e) {}
+      global.mockSessionCookie = null;
+    } catch (err) {
+      console.error('TEST ERROR STACK:', err);
+      throw err;
+    }
+  });
 });

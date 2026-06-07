@@ -324,6 +324,16 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.8.1', date: 'June 7, 2026', title: 'Dynamic Booth Numbering & Print Layout Toggle',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Added automatic database migrations for sequential booth numbering, zero-padding existing store profiles starting from 001.' },
+      { type: 'web', text: 'Implemented sequential booth numbering logic on new store creations.' },
+      { type: 'web', text: 'Added a settings toggle ("Show Booth Number instead of Name") in the barcode printing client.' },
+      { type: 'web', text: 'Updated single price tag widget to render booth numbers dynamically and avoid layout clutter.' },
+      { type: 'web', text: 'Included automated testing coverage for database migrations and POST calculations.' }
+    ])
+  },
+  {
     version: 'Beta 1.8.0', date: 'June 6, 2026', title: 'Offline Trial Keys, Transactional Wiping Self-Destruct, & SaaS Cloud Demo Resets',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented 7-day (TRIA) and 5-minute (TR5M) offline trial activation keys mapped to Retail Store Mode.' },

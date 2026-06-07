@@ -75,6 +75,7 @@ export default async function ItemPage({ params }) {
 
   // Resolve booth name
   let boothName = 'Central';
+  let boothNumber = null;
   try {
     const { cookies } = require('next/headers');
     const cookieStore = await cookies();
@@ -98,9 +99,10 @@ export default async function ItemPage({ params }) {
 
     if (activeStoreId !== 'default') {
       const globalDb = await getGlobalDb();
-      const storeProfile = globalDb.prepare('SELECT name FROM store_profiles WHERE id = ?').get(activeStoreId);
+      const storeProfile = globalDb.prepare('SELECT name, boothNumber FROM store_profiles WHERE id = ?').get(activeStoreId);
       if (storeProfile) {
         boothName = storeProfile.name;
+        boothNumber = storeProfile.boothNumber;
       }
     }
   } catch (e) {
@@ -397,6 +399,7 @@ export default async function ItemPage({ params }) {
               qrUrl={qrUrl} 
               centralStoreName={centralStoreName}
               boothName={boothName}
+              boothNumber={boothNumber}
               itemName={item.name}
               retailPrice={item.retailPrice}
             />

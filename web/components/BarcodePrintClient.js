@@ -7,7 +7,8 @@ import { Printer, RotateCcw, Plus, Minus, Settings, ToggleLeft, ToggleRight, Che
 export default function BarcodePrintClient({ 
   initialItems, 
   centralStoreName, 
-  defaultBoothName 
+  defaultBoothName,
+  defaultBoothNumber
 }) {
   const [template, setTemplate] = useState('avery_5160');
   const [offset, setOffset] = useState(0);
@@ -19,7 +20,27 @@ export default function BarcodePrintClient({
   const [showStoreName, setShowStoreName] = useState(true);
   const [showItemName, setShowItemName] = useState(true);
   const [showPrice, setShowPrice] = useState(true);
-  const [boothLabel, setBoothLabel] = useState(defaultBoothName || '');
+  const [showBoothNumber, setShowBoothNumber] = useState(true);
+
+  const getBoothDisplay = () => {
+    if (showBoothNumber && defaultBoothNumber) {
+      const lower = defaultBoothNumber.toLowerCase().trim();
+      if (lower.startsWith('booth')) {
+        return defaultBoothNumber.charAt(0).toUpperCase() + defaultBoothNumber.slice(1);
+      }
+      return `Booth ${defaultBoothNumber}`;
+    }
+    if (defaultBoothName && defaultBoothName !== 'Central' && defaultBoothName !== 'default') {
+      const lower = defaultBoothName.toLowerCase().trim();
+      if (lower.startsWith('booth')) {
+        return defaultBoothName;
+      }
+      return `Booth: ${defaultBoothName}`;
+    }
+    return '';
+  };
+
+  const boothDisplay = getBoothDisplay();
 
   // Avery Templates Specifications
   const templates = {
@@ -275,17 +296,18 @@ export default function BarcodePrintClient({
           </div>
         </div>
 
-        {/* Booth Customization */}
-        <div className="flex flex-col gap-2 bg-gray-850 p-4 rounded-xl border border-gray-750">
-          <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Booth Number / Label</label>
-          <input 
-            type="text"
-            value={boothLabel}
-            onChange={(e) => setBoothLabel(e.target.value)}
-            placeholder="e.g. Booth 42"
-            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
-          />
-        </div>
+        {/* Booth Customization Toggle */}
+        {defaultBoothNumber && (
+          <div className="flex items-center justify-between bg-gray-850 px-4 py-2.5 rounded-xl border border-gray-750">
+            <span className="text-sm font-medium text-gray-200">Show Booth Number instead of Name</span>
+            <button 
+              onClick={() => setShowBoothNumber(!showBoothNumber)}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              {showBoothNumber ? <ToggleRight className="w-7 h-7 text-emerald-500" /> : <ToggleLeft className="w-7 h-7 text-gray-600" />}
+            </button>
+          </div>
+        )}
 
         <hr className="border-gray-850" />
 
@@ -440,9 +462,9 @@ export default function BarcodePrintClient({
                           {showStoreName && (
                             <div className="w-full flex items-center justify-between text-gray-800 leading-none" style={{ fontSize: template === 'avery_5167' ? '6px' : '9px', fontWeight: 800 }}>
                               <span className="truncate flex-1 text-left">{centralStoreName}</span>
-                              {boothLabel && boothLabel !== 'Central' && boothLabel !== 'default' && (
+                              {boothDisplay && (
                                 <span className="pl-1 truncate font-normal text-gray-500">
-                                  {boothLabel.toLowerCase().startsWith('booth') ? boothLabel : `Booth: ${boothLabel}`}
+                                  {boothDisplay}
                                 </span>
                               )}
                             </div>
@@ -505,9 +527,9 @@ export default function BarcodePrintClient({
                     {showStoreName && (
                       <div className="w-full flex items-center justify-between text-gray-800 leading-none text-[8.5px] font-extrabold">
                         <span className="truncate flex-1 text-left">{centralStoreName}</span>
-                        {boothLabel && boothLabel !== 'Central' && boothLabel !== 'default' && (
+                        {boothDisplay && (
                           <span className="pl-1 truncate font-normal text-gray-500">
-                            {boothLabel.toLowerCase().startsWith('booth') ? boothLabel : `Booth: ${boothLabel}`}
+                            {boothDisplay}
                           </span>
                         )}
                       </div>

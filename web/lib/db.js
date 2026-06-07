@@ -234,6 +234,7 @@ function initializeMasterSchema(dbConn) {
     CREATE TABLE IF NOT EXISTS store_profiles (
       id TEXT PRIMARY KEY,
       name TEXT UNIQUE,
+      boothNumber TEXT,
       createdAt INTEGER
     );
   `);
@@ -256,6 +257,25 @@ function initializeMasterSchema(dbConn) {
   try { dbConn.exec("ALTER TABLE users ADD COLUMN resetPasswordToken TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE users ADD COLUMN resetPasswordExpiresAt INTEGER"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE users ADD COLUMN storeId TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE store_profiles ADD COLUMN boothNumber TEXT"); } catch(e) {}
+
+  // Run booth number auto-assignment migration for unnumbered store profiles
+  try {
+    const unassigned = dbConn.prepare("SELECT id, createdAt FROM store_profiles WHERE boothNumber IS NULL ORDER BY createdAt ASC").all();
+    if (unassigned.length > 0) {
+      const maxRow = dbConn.prepare("SELECT MAX(CAST(boothNumber AS INTEGER)) as maxNum FROM store_profiles WHERE boothNumber IS NOT NULL").get();
+      let startNum = (maxRow && maxRow.maxNum) ? maxRow.maxNum : 0;
+      
+      for (const store of unassigned) {
+        startNum++;
+        const formatted = String(startNum).padStart(3, '0');
+        dbConn.prepare("UPDATE store_profiles SET boothNumber = ? WHERE id = ?").run(formatted, store.id);
+        console.log(`[Migration] Auto-assigned booth number ${formatted} to store ${store.id}`);
+      }
+    }
+  } catch (e) {
+    console.error('Error running booth number migration:', e);
+  }
 }
 
 // Master DB (contains users, sessions, settings, store_profiles)

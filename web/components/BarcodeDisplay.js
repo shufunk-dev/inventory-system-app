@@ -9,10 +9,25 @@ export default function BarcodeDisplay({
   qrUrl,
   centralStoreName = 'Antique Mall',
   boothName = 'Central',
+  boothNumber = null,
   itemName = '',
   retailPrice = null
 }) {
   const shortName = itemName.length > 20 ? itemName.slice(0, 20) + '...' : itemName;
+
+  const getBoothDisplay = () => {
+    if (boothNumber) {
+      const lower = boothNumber.toLowerCase().trim();
+      if (lower.startsWith('booth')) {
+        return boothNumber.charAt(0).toUpperCase() + boothNumber.slice(1);
+      }
+      return `Booth ${boothNumber}`;
+    }
+    if (boothName && boothName !== 'Central' && boothName !== 'default') {
+      return `Booth: ${boothName}`;
+    }
+    return '';
+  };
 
   const printLabelOnly = () => {
     const printWindow = window.open('', '_blank', 'width=600,height=600');
@@ -20,6 +35,8 @@ export default function BarcodeDisplay({
     const priceHtml = retailPrice !== null && retailPrice !== undefined 
       ? `<div class="price">PRICE: $${parseFloat(retailPrice).toFixed(2)}</div>` 
       : '';
+
+    const boothDisplay = getBoothDisplay();
 
     printWindow.document.write(`
       <html>
@@ -76,7 +93,7 @@ export default function BarcodeDisplay({
             .barcode-container svg {
               max-width: 100%;
               height: auto !important;
-            }
+              }
             .price {
               font-size: 14px;
               font-weight: bold;
@@ -96,10 +113,10 @@ export default function BarcodeDisplay({
         </head>
         <body>
           <div class="label">
-            ${boothName && boothName !== 'Central' && boothName !== 'default' ? `
+            ${boothDisplay ? `
               <div class="store">
                 ${centralStoreName}
-                <div class="booth">Booth: ${boothName}</div>
+                <div class="booth">${boothDisplay}</div>
               </div>
             ` : ''}
             <div class="name">${shortName}</div>
@@ -121,18 +138,20 @@ export default function BarcodeDisplay({
     printWindow.document.close();
   };
 
+  const boothDisplay = getBoothDisplay();
+
   return (
     <div className="flex flex-wrap gap-6 items-center justify-start mt-6 no-print">
       {/* Barcode Label Container (styled like a real sticky price tag) */}
       <div className="flex flex-col items-center bg-white p-4 rounded-lg shadow-md border border-gray-300 w-[240px] text-gray-900 select-none">
         {/* Mall / Store Name & Booth (Only if not default/Central) */}
-        {boothName && boothName !== 'Central' && boothName !== 'default' && (
+        {boothDisplay && (
           <div className="text-center w-full border-b border-dashed border-gray-300 pb-1.5 mb-2">
             <p className="text-[10px] font-extrabold uppercase tracking-tight text-gray-800 line-clamp-1">
               {centralStoreName}
             </p>
             <p className="text-[9px] font-medium text-gray-500 line-clamp-1">
-              Booth: {boothName}
+              {boothDisplay}
             </p>
           </div>
         )}
