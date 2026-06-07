@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { decryptSync } from './jwt.js';
-import { getTenantDb, tenantStorage, getRegistryDb, closeAllConnections } from './dbManager.js';
+import { getTenantDb, tenantStorage, getRegistryDb, closeAllConnections, syncChangelogs } from './dbManager.js';
 
 const require = createRequire(import.meta.url);
 
@@ -188,6 +188,9 @@ function initializeStoreSchema(dbConn) {
   } catch (e) {
     try { dbConn.exec('ROLLBACK;'); } catch (rb) {}
   }
+
+  // Sync changelogs to database
+  syncChangelogs(dbConn);
 }
 
 // Master DB schema initializer (extracted for re-usability during factory reset)
