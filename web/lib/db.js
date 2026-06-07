@@ -3,12 +3,15 @@ import path from 'path';
 import fs from 'fs';
 import { createRequire } from 'module';
 import { decryptSync } from './jwt.js';
-import { getTenantDb, tenantStorage } from './dbManager.js';
+import { getTenantDb, tenantStorage, getRegistryDb, closeAllConnections } from './dbManager.js';
 
 const require = createRequire(import.meta.url);
 
 let masterDb = null;
 const storeDbs = new Map();
+let lastTrialCheck = 0;
+let lastDemoCheck = 0;
+let isResetScheduled = false;
 
 // Helper to initialize tables that belong to a store database
 function initializeStoreSchema(dbConn) {
@@ -187,81 +190,458 @@ function initializeStoreSchema(dbConn) {
   }
 }
 
+// Master DB schema initializer (extracted for re-usability during factory reset)
+function initializeMasterSchema(dbConn) {
+  dbConn.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE,
+      passwordHash TEXT,
+      tier TEXT DEFAULT 'basic',
+      activeTier TEXT DEFAULT 'basic',
+      isAdmin INTEGER DEFAULT 0,
+      isRoot INTEGER DEFAULT 0,
+      serpApiKey TEXT,
+      createdAt INTEGER,
+      displayName TEXT,
+      profilePicture TEXT,
+      role TEXT DEFAULT 'staff',
+      status TEXT DEFAULT 'active',
+      twoFactorEnabled INTEGER DEFAULT 0,
+      twoFactorSecret TEXT,
+      recoveryCodes TEXT,
+      verificationToken TEXT,
+      verificationExpiresAt INTEGER,
+      resetPasswordToken TEXT,
+      resetPasswordExpiresAt INTEGER,
+      storeId TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      userId TEXT REFERENCES users(id) ON DELETE CASCADE,
+      expiresAt INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS store_profiles (
+      id TEXT PRIMARY KEY,
+      name TEXT UNIQUE,
+      createdAt INTEGER
+    );
+  `);
+
+  initializeStoreSchema(dbConn);
+
+  // Run alterations safely for master database
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN activeTier TEXT DEFAULT 'basic'"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN isRoot INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN forcePasswordReset INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN displayName TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN profilePicture TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'staff'"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN twoFactorEnabled INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN twoFactorSecret TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN recoveryCodes TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN verificationToken TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN verificationExpiresAt INTEGER"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN resetPasswordToken TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN resetPasswordExpiresAt INTEGER"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE users ADD COLUMN storeId TEXT"); } catch(e) {}
+}
+
 // Master DB (contains users, sessions, settings, store_profiles)
 export function getMasterDb() {
+  const dataPath = process.env.USER_DATA_PATH || process.cwd();
+  const dbPath = path.resolve(dataPath, 'inventory.db');
+
   if (!masterDb) {
-    const dataPath = process.env.USER_DATA_PATH || process.cwd();
     if (!fs.existsSync(dataPath)) {
       fs.mkdirSync(dataPath, { recursive: true });
     }
-    const dbPath = path.resolve(dataPath, 'inventory.db');
     masterDb = new Database(dbPath);
-
-    // Initialize master tables
-    masterDb.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        email TEXT UNIQUE,
-        passwordHash TEXT,
-        tier TEXT DEFAULT 'basic',
-        activeTier TEXT DEFAULT 'basic',
-        isAdmin INTEGER DEFAULT 0,
-        isRoot INTEGER DEFAULT 0,
-        serpApiKey TEXT,
-        createdAt INTEGER,
-        displayName TEXT,
-        profilePicture TEXT,
-        role TEXT DEFAULT 'staff',
-        status TEXT DEFAULT 'active',
-        twoFactorEnabled INTEGER DEFAULT 0,
-        twoFactorSecret TEXT,
-        recoveryCodes TEXT,
-        verificationToken TEXT,
-        verificationExpiresAt INTEGER,
-        resetPasswordToken TEXT,
-        resetPasswordExpiresAt INTEGER,
-        storeId TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        userId TEXT REFERENCES users(id) ON DELETE CASCADE,
-        expiresAt INTEGER
-      );
-
-      CREATE TABLE IF NOT EXISTS system_settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS store_profiles (
-        id TEXT PRIMARY KEY,
-        name TEXT UNIQUE,
-        createdAt INTEGER
-      );
-    `);
-
-    // For backward compatibility, also initialize the store schema on the master DB
-    initializeStoreSchema(masterDb);
-
-    // Run alterations safely for master database
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN activeTier TEXT DEFAULT 'basic'"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN isRoot INTEGER DEFAULT 0"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN forcePasswordReset INTEGER DEFAULT 0"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN displayName TEXT"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN profilePicture TEXT"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'staff'"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN twoFactorEnabled INTEGER DEFAULT 0"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN twoFactorSecret TEXT"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN recoveryCodes TEXT"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN verificationToken TEXT"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN verificationExpiresAt INTEGER"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN resetPasswordToken TEXT"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN resetPasswordExpiresAt INTEGER"); } catch(e) {}
-    try { masterDb.exec("ALTER TABLE users ADD COLUMN storeId TEXT"); } catch(e) {}
+    initializeMasterSchema(masterDb);
+    scheduleMidnightReset();
   }
+
+  const now = Date.now();
+
+  // 1. Throttled Trial Expiration Check (Self-Destruct) - Runs once every minute (or always in tests)
+  if (process.env.NODE_ENV === 'test' || now - lastTrialCheck > 60 * 1000) {
+    lastTrialCheck = now;
+    
+    let isExpired = false;
+    try {
+      const rowKey = masterDb.prepare("SELECT value FROM system_settings WHERE key = 'license_key'").get();
+      const rowTime = masterDb.prepare("SELECT value FROM system_settings WHERE key = 'license_activated_at'").get();
+      if (rowKey && rowKey.value) {
+        const keyVal = rowKey.value;
+        if (keyVal.startsWith('TRIA-') || keyVal.startsWith('TR5M-')) {
+          if (rowTime && rowTime.value) {
+            const activatedAt = parseInt(rowTime.value, 10);
+            const duration = keyVal.startsWith('TR5M-')
+              ? 5 * 60 * 1000 // 5 minutes
+              : 7 * 24 * 60 * 60 * 1000; // 7 days
+              
+            if (now > activatedAt + duration) {
+              isExpired = true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Ignored
+    }
+
+    if (isExpired) {
+      resetToFactorySettings(masterDb);
+      masterDb = null;
+      
+      masterDb = new Database(dbPath);
+      initializeMasterSchema(masterDb);
+    }
+  }
+
+  // 2. Throttled Demo Mode Reset Check - Runs once every minute (or always in tests)
+  if (process.env.DEMO_MODE === 'true') {
+    if (process.env.NODE_ENV === 'test' || now - lastDemoCheck > 60 * 1000) {
+      lastDemoCheck = now;
+      try {
+        checkAndResetIfNeeded();
+      } catch (e) {
+        console.error('[demo] Throttled reset check failed:', e);
+      }
+    }
+  }
+
   return masterDb;
+}
+
+// Helper to wipe all data from a database connection (used during factory reset/self-destruct)
+function wipeDatabaseData(dbConn) {
+  try {
+    dbConn.exec('PRAGMA foreign_keys = OFF');
+    const tables = dbConn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
+    
+    dbConn.exec('BEGIN TRANSACTION');
+    for (const table of tables) {
+      dbConn.prepare(`DELETE FROM "${table.name}"`).run();
+    }
+    dbConn.exec('COMMIT');
+  } catch (e) {
+    console.error('[trial] Error during database wipe:', e);
+    try { dbConn.exec('ROLLBACK'); } catch (_) {}
+  } finally {
+    try { dbConn.exec('PRAGMA foreign_keys = ON'); } catch (_) {}
+    try { dbConn.exec('VACUUM'); } catch (_) {}
+  }
+}
+
+// Resets the local system entirely back to "factory settings" (Setup Wizard)
+export function resetToFactorySettings(activeMasterDb = null) {
+  console.log('[trial] Trial key has expired. Performing self-destruct / factory reset...');
+  
+  // 1. Wipe the master database connection first to guarantee immediate data removal
+  const dbToWipe = activeMasterDb || masterDb;
+  if (dbToWipe) {
+    try {
+      wipeDatabaseData(dbToWipe);
+      console.log('[trial] Successfully wiped master DB tables.');
+    } catch (e) {
+      console.error('[trial] Failed to wipe master DB tables:', e);
+    }
+  }
+
+  // 2. Close all database connections
+  closeDb();
+  if (process.env.SAAS_MODE === 'true') {
+    try {
+      closeAllConnections();
+    } catch (e) {
+      console.error('[trial] Failed to close SaaS connections:', e);
+    }
+  }
+  
+  const dataPath = process.env.USER_DATA_PATH || process.cwd();
+  
+  // 3. Try to delete the master database file (cleanup attempt)
+  const masterDbPath = path.resolve(dataPath, 'inventory.db');
+  if (fs.existsSync(masterDbPath)) {
+    try {
+      fs.unlinkSync(masterDbPath);
+      console.log(`[trial] Deleted master DB: ${masterDbPath}`);
+    } catch (e) {
+      console.warn(`[trial] Could not delete master DB file (resource busy), but all data tables were wiped.`);
+    }
+  }
+  
+  // 4. Close and delete any custom store SQLite databases
+  try {
+    const files = fs.readdirSync(dataPath);
+    for (const file of files) {
+      if (file.startsWith('store_') && file.endsWith('.sqlite')) {
+        const storeDbPath = path.resolve(dataPath, file);
+        try {
+          fs.unlinkSync(storeDbPath);
+          console.log(`[trial] Deleted store DB: ${storeDbPath}`);
+        } catch (e) {
+          // Fallback: open and wipe it
+          try {
+            const tempDb = new Database(storeDbPath);
+            wipeDatabaseData(tempDb);
+            tempDb.close();
+            console.log(`[trial] Wiped store DB data: ${storeDbPath} (could not delete file)`);
+          } catch (wipeErr) {
+            console.error(`[trial] Failed to wipe store DB ${storeDbPath}:`, wipeErr);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[trial] Failed to list/delete store databases:', e);
+  }
+
+  // 5. Delete tenants subdirectory if in SaaS mode
+  if (process.env.SAAS_MODE === 'true') {
+    const tenantsDir = path.resolve(dataPath, 'tenants');
+    if (fs.existsSync(tenantsDir)) {
+      try {
+        fs.rmSync(tenantsDir, { recursive: true, force: true });
+        console.log(`[trial] Deleted tenants directory: ${tenantsDir}`);
+      } catch (e) {
+        console.error('[trial] Failed to delete tenants directory:', e);
+      }
+    }
+  }
+}
+
+// Resets cloud demo databases and files, keeping only the initial root admin account/tenant intact
+export function performMidnightReset() {
+  console.log('[demo] Performing scheduled daily midnight reset...');
+  const dataPath = process.env.USER_DATA_PATH || process.cwd();
+  
+  if (process.env.SAAS_MODE !== 'true') {
+    // Local-first mode demo reset: wipes tables but keeps the very first user intact
+    try {
+      const db = getMasterDb();
+      const firstUser = db.prepare('SELECT id FROM users ORDER BY createdAt ASC LIMIT 1').get();
+      if (firstUser) {
+        db.prepare('DELETE FROM users WHERE id != ?').run(firstUser.id);
+        db.prepare('DELETE FROM sessions').run();
+        db.prepare('DELETE FROM items').run();
+        db.prepare('DELETE FROM categories').run();
+        db.prepare('DELETE FROM pos_items').run();
+        db.prepare('DELETE FROM recipes').run();
+        db.prepare('DELETE FROM recipe_ingredients').run();
+        db.prepare('DELETE FROM physical_counts').run();
+        db.prepare('DELETE FROM physical_count_items').run();
+        db.prepare('DELETE FROM store_profiles').run();
+        
+        // Also wipe all uploaded items files
+        const uploadsDir = path.resolve(dataPath, 'uploads');
+        if (fs.existsSync(uploadsDir)) {
+          const files = fs.readdirSync(uploadsDir);
+          for (const file of files) {
+            if (file === 'debug_latest.zip') continue;
+            const filePath = path.resolve(uploadsDir, file);
+            try {
+              if (fs.statSync(filePath).isFile()) {
+                fs.unlinkSync(filePath);
+              }
+            } catch (e) {}
+          }
+        }
+        console.log('[demo] Local mode demo data wiped successfully, keeping first user.');
+      }
+    } catch (e) {
+      console.error('[demo] Failed to reset local database:', e);
+    }
+    return;
+  }
+
+  // SaaS Cloud-Hosted Mode Reset
+  try {
+    const rdb = getRegistryDb();
+    if (!rdb) return;
+    
+    // Find initial tenant
+    const initialTenant = rdb.prepare('SELECT tenant_id, email FROM tenant_registry ORDER BY createdAt ASC LIMIT 1').get();
+    const initialTenantId = initialTenant?.tenant_id;
+    const initialTenantEmail = initialTenant?.email;
+    
+    console.log(`[demo] Initial tenant to preserve: ${initialTenantId} (${initialTenantEmail})`);
+    
+    // Gather all image filenames that are referenced by the preserved initial tenant
+    const preservedFiles = new Set();
+    if (initialTenantId) {
+      try {
+        const tenantDb = getTenantDb(initialTenantId);
+        const items = tenantDb.prepare('SELECT imagePath, imagePathBack FROM items').all();
+        items.forEach(item => {
+          if (item.imagePath) {
+            if (item.imagePath.includes('/api/file/')) {
+              preservedFiles.add(item.imagePath.split('/').pop());
+            } else if (item.imagePath.includes('/uploads/')) {
+              preservedFiles.add(item.imagePath.split('/').pop());
+            }
+          }
+          if (item.imagePathBack) {
+            if (item.imagePathBack.includes('/api/file/')) {
+              preservedFiles.add(item.imagePathBack.split('/').pop());
+            } else if (item.imagePathBack.includes('/uploads/')) {
+              preservedFiles.add(item.imagePathBack.split('/').pop());
+            }
+          }
+        });
+        
+        // Also find any profile picture for the preserved tenant's users
+        const users = tenantDb.prepare('SELECT profilePicture FROM users WHERE profilePicture IS NOT NULL').all();
+        users.forEach(u => {
+          preservedFiles.add(u.profilePicture);
+        });
+      } catch (e) {
+        console.error('[demo] Failed to scan initial tenant DB for preserved files:', e);
+      }
+    }
+
+    // 1. Close all active cached database connections
+    closeAllConnections();
+    
+    // 2. Iterate and delete all tenant database files except the initial one
+    const tenantsDir = path.resolve(dataPath, 'tenants');
+    if (fs.existsSync(tenantsDir)) {
+      const files = fs.readdirSync(tenantsDir);
+      for (const file of files) {
+        if (file.startsWith('tenant_') && file.endsWith('.sqlite')) {
+          const expectedInitialFile = `tenant_${initialTenantId}.sqlite`;
+          if (initialTenantId && file === expectedInitialFile) {
+            continue; // Preserve initial tenant
+          }
+          
+          const filePath = path.resolve(tenantsDir, file);
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`[demo] Deleted tenant DB: ${filePath}`);
+          } catch (e) {
+            console.error(`[demo] Failed to delete tenant file ${filePath}:`, e);
+          }
+        }
+      }
+    }
+    
+    // 3. Clear non-initial entries from the registry table
+    const rdbNew = getRegistryDb(); // reopen
+    if (initialTenantId) {
+      rdbNew.prepare('DELETE FROM tenant_registry WHERE tenant_id != ?').run(initialTenantId);
+    } else {
+      rdbNew.prepare('DELETE FROM tenant_registry').run();
+    }
+    
+    // 4. Clean up the uploads directory, preserving only files referenced by the initial tenant
+    const uploadsDir = path.resolve(dataPath, 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      try {
+        const files = fs.readdirSync(uploadsDir);
+        for (const file of files) {
+          if (preservedFiles.has(file) || file === 'debug_latest.zip') {
+            continue; // Keep initial tenant's files and debug ZIP
+          }
+          const filePath = path.resolve(uploadsDir, file);
+          try {
+            const stat = fs.statSync(filePath);
+            if (stat.isFile()) {
+              fs.unlinkSync(filePath);
+              console.log(`[demo] Deleted unreferenced upload file: ${filePath}`);
+            }
+          } catch (e) {
+            console.error(`[demo] Failed to delete uploaded file ${filePath}:`, e);
+          }
+        }
+      } catch (e) {
+        console.error('[demo] Failed to clean up uploads directory:', e);
+      }
+    }
+
+    console.log('[demo] SaaS midnight reset completed successfully.');
+  } catch (e) {
+    console.error('[demo] Error during midnight reset:', e);
+  }
+}
+
+// Verification checks and logic to reset daily testing database contexts
+export function checkAndResetIfNeeded() {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`; // YYYY-MM-DD local time
+  
+  let lastResetDate = null;
+  if (process.env.SAAS_MODE === 'true') {
+    try {
+      const rdb = getRegistryDb();
+      if (rdb) {
+        rdb.exec(`CREATE TABLE IF NOT EXISTS registry_settings (key TEXT PRIMARY KEY, value TEXT)`);
+        const row = rdb.prepare("SELECT value FROM registry_settings WHERE key = 'last_reset_date'").get();
+        lastResetDate = row ? row.value : null;
+      }
+    } catch (e) {
+      console.error('[demo] Failed to read last_reset_date from registry:', e);
+    }
+  } else {
+    try {
+      const db = getMasterDb();
+      const row = db.prepare("SELECT value FROM system_settings WHERE key = 'last_reset_date'").get();
+      lastResetDate = row ? row.value : null;
+    } catch (e) {
+      // Table might not exist yet during startup setup
+    }
+  }
+
+  // If lastResetDate is not today, we perform the reset!
+  if (lastResetDate !== todayStr) {
+    // Write new reset date first to prevent infinite loop triggers
+    if (process.env.SAAS_MODE === 'true') {
+      try {
+        const rdb = getRegistryDb();
+        if (rdb) {
+          rdb.prepare("INSERT OR REPLACE INTO registry_settings (key, value) VALUES ('last_reset_date', ?)")
+            .run(todayStr);
+        }
+      } catch (e) {}
+    } else {
+      try {
+        const db = getMasterDb();
+        db.prepare("INSERT OR REPLACE INTO system_settings (key, value) VALUES ('last_reset_date', ?)")
+          .run(todayStr);
+      } catch (e) {}
+    }
+
+    performMidnightReset();
+  }
+}
+
+// Scheduled check interval initialization
+export function scheduleMidnightReset() {
+  if (process.env.DEMO_MODE !== 'true') return;
+  if (isResetScheduled) return;
+  isResetScheduled = true;
+  console.log('[demo] Daily midnight reset scheduler initialized.');
+  
+  // Check every 10 minutes
+  const interval = setInterval(() => {
+    try {
+      checkAndResetIfNeeded();
+    } catch (e) {
+      console.error('[demo] Scheduled reset check failed:', e);
+    }
+  }, 10 * 60 * 1000);
+
+  if (interval.unref) {
+    interval.unref();
+  }
 }
 
 export function getStoreDb(storeId) {

@@ -42,7 +42,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Upgrade keys must be applied from within the settings dashboard.' }, { status: 400 });
     }
 
-    const systemMode = license.type; // 'collector' or 'store'
+    const systemMode = (license.type === 'trial' || license.type === 'trial_5m') ? 'store' : license.type; // 'collector' or 'store'
     const passwordHash = await bcrypt.hash(password, 10);
     const userId = crypto.randomUUID();
 
@@ -77,6 +77,10 @@ export async function POST(request) {
         .run('system_mode', systemMode);
       tenantDb.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)')
         .run('license_key', licenseKey);
+      if (license.type === 'trial' || license.type === 'trial_5m') {
+        tenantDb.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)')
+          .run('license_activated_at', Date.now().toString());
+      }
 
       // Create browser login session
       await createSession(userId, tenantId);
@@ -106,6 +110,10 @@ export async function POST(request) {
       .run('system_mode', systemMode);
     db.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)')
       .run('license_key', licenseKey);
+    if (license.type === 'trial' || license.type === 'trial_5m') {
+      db.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)')
+        .run('license_activated_at', Date.now().toString());
+    }
 
     // Create session cookie
     await createSession(userId);

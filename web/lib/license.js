@@ -6,7 +6,9 @@ const LICENSE_SALT = process.env.LICENSE_SALT || 'shufunk-inventory-system-secre
 const PREFIX_MAP = {
   'COLL': 'collector', // Type A
   'STOR': 'store',     // Type B
-  'UPGR': 'upgrade'    // Type C
+  'UPGR': 'upgrade',   // Type C
+  'TRIA': 'trial',     // 7-Day Trial
+  'TR5M': 'trial_5m'   // 5-Minute Trial for Testing
 };
 
 /**

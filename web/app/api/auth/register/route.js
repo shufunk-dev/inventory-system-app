@@ -23,8 +23,10 @@ export async function POST(request) {
     const totalUserCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
     const isFirstUser = totalUserCount === 0;
 
+    const isDemoMode = process.env.DEMO_MODE === 'true';
+
     // Gate registration if this is not the first user
-    if (!isFirstUser) {
+    if (!isFirstUser && !isDemoMode) {
       if (process.env.SAAS_MODE === 'true') {
         const smtpConfig = await getSmtpConfig();
         if (!smtpConfig.enabled) {
@@ -63,6 +65,21 @@ export async function POST(request) {
       await createSession(id);
       return NextResponse.json({ success: true, isFirstUser: true });
     } else {
+      // If we are in Demo Mode, subsequent users are created directly as 'active' (no verification needed)
+      if (isDemoMode) {
+        db.prepare(`
+          INSERT INTO users (
+            id, email, passwordHash, tier, activeTier, isAdmin, isRoot, role, status, displayName, createdAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, email, passwordHash, 'basic', 'basic', 0, 0, 'staff', 'active', displayName, Date.now());
+
+        return NextResponse.json({
+          success: true,
+          pendingVerification: false,
+          message: 'Account created successfully (Demo Mode - instantly active).'
+        });
+      }
+
       // Subsequent users must verify email (status pending)
       const verificationToken = crypto.randomBytes(32).toString('hex');
       const verificationExpiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
@@ -120,6 +137,10 @@ export async function GET() {
     const totalUserCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
     const isFirstUser = totalUserCount === 0;
     
+    if (process.env.DEMO_MODE === 'true') {
+      return NextResponse.json({ enabled: true });
+    }
+
     if (process.env.SAAS_MODE === 'true') {
       const smtpConfig = await getSmtpConfig();
       return NextResponse.json({ enabled: isFirstUser || smtpConfig.enabled });

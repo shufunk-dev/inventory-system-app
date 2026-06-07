@@ -1,6 +1,6 @@
 {
   "name": "inventory-system-app",
-  "version": "1.0.10",
+  "version": "1.5.2",
   "description": "Inventory System Native App",
   "main": "main.js",
   "scripts": {

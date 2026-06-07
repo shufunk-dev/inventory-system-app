@@ -19,9 +19,15 @@ export default function SetupWizard() {
     
     if (parts.length === 4) {
       const [prefix, salt, hash1, hash2] = parts;
-      if (['COLL', 'STOR', 'UPGR'].includes(prefix) && salt.length === 4 && hash1.length === 4 && hash2.length === 4) {
+      if (['COLL', 'STOR', 'UPGR', 'TRIA', 'TR5M'].includes(prefix) && salt.length === 4 && hash1.length === 4 && hash2.length === 4) {
         // Mock validation on client just for UI badges; actual verification is cryptographic on the API
-        const typeMap = { 'COLL': 'collector', 'STOR': 'store', 'UPGR': 'upgrade' };
+        const typeMap = { 
+          'COLL': 'collector', 
+          'STOR': 'store', 
+          'UPGR': 'upgrade',
+          'TRIA': 'store',
+          'TR5M': 'store'
+        };
         setKeyInfo({ isValid: true, type: typeMap[prefix] });
         return;
       }
