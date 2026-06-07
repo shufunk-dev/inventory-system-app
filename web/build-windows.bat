@@ -32,7 +32,7 @@ powershell -Command "if (Test-Path 'next-server\node_modules\better-sqlite3') { 
 powershell -Command "$goodNode = 'node_modules\better-sqlite3\build\Release\better_sqlite3.node'; Get-ChildItem -Path 'next-server' -Filter 'better-sqlite3*' -Recurse -Directory | ForEach-Object { $targetDir = Join-Path $_.FullName 'build\Release'; New-Item -ItemType Directory -Force -Path $targetDir | Out-Null; Copy-Item -Path $goodNode -Destination (Join-Path $targetDir 'better_sqlite3.node') -Force }"
 
 echo [5/5] Packaging Windows Executable with electron-builder...
-call npm run build
+call npm run build -- %*
 
 echo =======================================
 echo  Build Complete! 
