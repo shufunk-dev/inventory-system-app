@@ -1143,99 +1143,109 @@ export async function fetchItemDetails(item, db, options = {}) {
     if (options.forceTier === 'premium') isPremium = true;
     if (options.forceTier === 'basic') isPremium = false;
 
-    if (options.forceTier === 'market_value_only') {
-      details = {
-        name: item.name,
-        description: item.description,
-        itemType: item.itemType,
-        imageUrl: item.imagePath
-      };
-    } else if (options.forceTier === 'premium' && item.imagePath) {
-      details = await fetchSerpApiGoogleLens(item.imagePath);
-    } else if (options.forceTier === 'coin' && item.imagePath) {
-      details = await fetchNumistaCoin(item.imagePath, item.imagePathBack);
-    } else if (options.forceTier === 'toy' && item.imagePath) {
-      details = await fetchSerpApiGoogleLens(item.imagePath);
-    } else if (options.forceTier === 'video' && item.imagePath) {
-      details = await fetchSerpApiGoogleLens(item.imagePath);
-    } else if (options.forceTier === 'game' && item.imagePath) {
-      details = await fetchSerpApiGoogleLens(item.imagePath);
-    } else if (item.itemType === 'toy' && item.imagePath) {
-      // Toy automatic routing
-      if (isPremium) {
+    if (options.forceTier) {
+      if (options.forceTier === 'market_value_only') {
+        details = {
+          name: item.name,
+          description: item.description,
+          itemType: item.itemType,
+          imageUrl: item.imagePath
+        };
+      } else if (options.forceTier === 'premium' && item.imagePath) {
         details = await fetchSerpApiGoogleLens(item.imagePath);
-      } else {
+      } else if (options.forceTier === 'basic' && item.imagePath) {
         details = await fetchGoogleVision(item.imagePath);
-      }
-    } else if (item.itemType === 'coin' || options.forceTier === 'coin') {
-      if (item.imagePath) {
-        details = await fetchNumistaCoin(item.imagePath, item.imagePathBack);
-      } else if (barcode) {
-        details = await fetchGradingAgencyBarcode(barcode);
-      }
-    } else if (item.itemType === 'comic' || options.forceTier === 'comic') {
-      if (item.imagePath) {
+      } else if (options.forceTier === 'coin') {
+        if (item.imagePath) {
+          details = await fetchNumistaCoin(item.imagePath, item.imagePathBack);
+        } else if (barcode) {
+          details = await fetchGradingAgencyBarcode(barcode);
+        }
+      } else if (options.forceTier === 'toy' && item.imagePath) {
+        details = await fetchSerpApiGoogleLens(item.imagePath);
+      } else if (options.forceTier === 'video' && item.imagePath) {
+        details = await fetchSerpApiGoogleLens(item.imagePath);
+      } else if (options.forceTier === 'game') {
+        if (item.imagePath) {
+          details = await fetchSerpApiGoogleLens(item.imagePath);
+        } else if (barcode) {
+          details = await fetchPriceCharting(barcode);
+        }
+      } else if (options.forceTier === 'comic' && item.imagePath) {
         details = await fetchComicMetadataFromImage(item.imagePath);
-      }
-    } else if (item.itemType === 'card' || options.forceTier === 'card') {
-      if (item.imagePath) {
-        details = await fetchCardMetadataFromImage(item.imagePath, isPremium);
-      } else if (barcode) {
-        details = await fetchCardGradingAgencyBarcode(barcode);
-      }
-    } else if (item.itemType === 'graded' || options.forceTier === 'graded') {
-      if (item.imagePath) {
-        details = await fetchGradedAssetFromImage(item.imagePath, isPremium);
-      }
-    } else if (barcode && !(barcode.startsWith('2') || barcode.length < 10 || barcode.length > 14)) {
-      if (barcode.length >= 10 && (barcode.startsWith('978') || barcode.startsWith('979') || barcode.length === 10)) {
-        try {
-          details = await fetchGoogleBooks(barcode);
-        } catch (err) {
-          if (err.message === 'RATE_LIMIT') rateLimited = true;
+      } else if (options.forceTier === 'card') {
+        if (item.imagePath) {
+          details = await fetchCardMetadataFromImage(item.imagePath, true);
+        } else if (barcode) {
+          details = await fetchCardGradingAgencyBarcode(barcode);
+        }
+      } else if (options.forceTier === 'graded') {
+        if (item.imagePath) {
+          details = await fetchGradedAssetFromImage(item.imagePath, true);
         }
       }
-      if (!details && !rateLimited) {
-        try {
-          details = await fetchUPCItemDB(barcode);
-          
-          if (details) {
-            // Waterfall check: is this a video game category?
-            const cat = details.category ? details.category.toLowerCase() : '';
-            const isGame = cat.includes('video game') || 
+    } else {
+      // Automatic background processing upon import/sync
+      // "If overall set to basic then use nothing but basic automatically upon import.
+      //  if overall set to premium then use nothing but premium."
+      if (item.imagePath) {
+        if (isPremium) {
+          console.log(`[Worker] Automatic import (Premium): Running Google Lens search on ${item.imagePath}`);
+          details = await fetchSerpApiGoogleLens(item.imagePath);
+        } else {
+          console.log(`[Worker] Automatic import (Basic): Running Google Vision search on ${item.imagePath}`);
+          details = await fetchGoogleVision(item.imagePath);
+        }
+      } else if (barcode) {
+        // If there's no photo but a barcode, run standard barcode lookup
+        if (item.itemType === 'coin') {
+          details = await fetchGradingAgencyBarcode(barcode);
+        } else if (item.itemType === 'card') {
+          details = await fetchCardGradingAgencyBarcode(barcode);
+        } else if (!(barcode.startsWith('2') || barcode.length < 10 || barcode.length > 14)) {
+          if (barcode.length >= 10 && (barcode.startsWith('978') || barcode.startsWith('979') || barcode.length === 10)) {
+            try {
+              details = await fetchGoogleBooks(barcode);
+            } catch (err) {
+              if (err.message === 'RATE_LIMIT') rateLimited = true;
+            }
+          }
+          if (!details && !rateLimited) {
+            try {
+              details = await fetchUPCItemDB(barcode);
+              
+              if (details) {
+                // Waterfall check: is this a video game category?
+                const cat = details.category ? details.category.toLowerCase() : '';
+                const isGame = cat.includes('video game') || 
                            cat.includes('game console') || 
                            cat.includes('consoles >') || 
                            cat.includes('software > games') ||
                            cat.includes('toys & games > games > video games');
-            
-            if (isGame) {
-              console.log(`[Worker] Detected Video Game category "${details.category}" from UPCItemDB. Triggering PriceCharting Waterfall.`);
-              const pcDetails = await fetchPriceCharting(barcode);
-              if (pcDetails) {
-                details = pcDetails;
+                
+                if (isGame) {
+                  console.log(`[Worker] Detected Video Game category "${details.category}" from UPCItemDB. Triggering PriceCharting Waterfall.`);
+                  const pcDetails = await fetchPriceCharting(barcode);
+                  if (pcDetails) {
+                    details = pcDetails;
+                  }
+                }
+              } else {
+                // Secondary fallback: if UPCItemDB returned nothing, query PriceCharting anyway in case it's a game not in UPCItemDB
+                console.log(`[Worker] UPCItemDB returned no results for barcode ${barcode}. Trying PriceCharting fallback.`);
+                const pcDetails = await fetchPriceCharting(barcode);
+                if (pcDetails) {
+                  details = pcDetails;
+                }
               }
-            }
-          } else {
-            // Secondary fallback: if UPCItemDB returned nothing, query PriceCharting anyway in case it's a game not in UPCItemDB
-            console.log(`[Worker] UPCItemDB returned no results for barcode ${barcode}. Trying PriceCharting fallback.`);
-            const pcDetails = await fetchPriceCharting(barcode);
-            if (pcDetails) {
-              details = pcDetails;
+            } catch (err) {
+              if (err.message === 'RATE_LIMIT') rateLimited = true;
             }
           }
-        } catch (err) {
-          if (err.message === 'RATE_LIMIT') rateLimited = true;
+          if (!details && !rateLimited) {
+            details = await fetchOpenFoodFacts(barcode);
+          }
         }
-      }
-      if (!details && !rateLimited) {
-        details = await fetchOpenFoodFacts(barcode);
-      }
-    } else if (item.imagePath) {
-      // Standard photo routing (this will catch store-internal barcodes with photos too!)
-      if (isPremium) {
-        details = await fetchSerpApiGoogleLens(item.imagePath);
-      } else {
-        details = await fetchGoogleVision(item.imagePath);
       }
     }
 
