@@ -19,6 +19,7 @@ export default function BarcodePrintClient({
   const [showStoreName, setShowStoreName] = useState(true);
   const [showItemName, setShowItemName] = useState(true);
   const [showPrice, setShowPrice] = useState(true);
+  const [boothLabel, setBoothLabel] = useState(defaultBoothName || '');
 
   // Avery Templates Specifications
   const templates = {
@@ -274,6 +275,18 @@ export default function BarcodePrintClient({
           </div>
         </div>
 
+        {/* Booth Customization */}
+        <div className="flex flex-col gap-2 bg-gray-850 p-4 rounded-xl border border-gray-750">
+          <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Booth Number / Label</label>
+          <input 
+            type="text"
+            value={boothLabel}
+            onChange={(e) => setBoothLabel(e.target.value)}
+            placeholder="e.g. Booth 42"
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
+          />
+        </div>
+
         <hr className="border-gray-850" />
 
         {/* Selected Items Copy Counts */}
@@ -423,10 +436,15 @@ export default function BarcodePrintClient({
                       ) : (
                         // Active label
                         <>
-                          {/* Store Name */}
+                          {/* Store / Booth Name */}
                           {showStoreName && (
-                            <div className="w-full uppercase text-gray-800 leading-none truncate" style={{ fontSize: template === 'avery_5167' ? '6px' : '9px', fontWeight: 800 }}>
-                              {centralStoreName}
+                            <div className="w-full flex items-center justify-between text-gray-800 leading-none" style={{ fontSize: template === 'avery_5167' ? '6px' : '9px', fontWeight: 800 }}>
+                              <span className="truncate flex-1 text-left">{centralStoreName}</span>
+                              {boothLabel && boothLabel !== 'Central' && boothLabel !== 'default' && (
+                                <span className="pl-1 truncate font-normal text-gray-500">
+                                  {boothLabel.toLowerCase().startsWith('booth') ? boothLabel : `Booth: ${boothLabel}`}
+                                </span>
+                              )}
                             </div>
                           )}
 
@@ -483,10 +501,15 @@ export default function BarcodePrintClient({
                       padding: '0.05in 0.1in',
                     }}
                   >
-                    {/* Store Name */}
+                    {/* Store / Booth Name */}
                     {showStoreName && (
-                      <div className="w-full uppercase text-gray-800 leading-none truncate text-[8.5px] font-extrabold">
-                        {centralStoreName}
+                      <div className="w-full flex items-center justify-between text-gray-800 leading-none text-[8.5px] font-extrabold">
+                        <span className="truncate flex-1 text-left">{centralStoreName}</span>
+                        {boothLabel && boothLabel !== 'Central' && boothLabel !== 'default' && (
+                          <span className="pl-1 truncate font-normal text-gray-500">
+                            {boothLabel.toLowerCase().startsWith('booth') ? boothLabel : `Booth: ${boothLabel}`}
+                          </span>
+                        )}
                       </div>
                     )}
 
