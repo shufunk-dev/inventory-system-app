@@ -2,6 +2,7 @@
   "name": "web",
   "version": "1.8.1",
   "private": true,
+  "author": "Shufelt Designs llc",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

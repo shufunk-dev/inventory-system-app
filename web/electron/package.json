@@ -2,6 +2,7 @@
   "name": "inventory-system-app",
   "version": "1.8.1",
   "description": "Inventory System Native App",
+  "author": "Shufelt Designs llc",
   "main": "main.js",
   "scripts": {
     "build": "electron-builder build --win"

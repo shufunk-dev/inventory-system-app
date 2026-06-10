@@ -166,6 +166,15 @@ export default async function RootLayout({ children }) {
         <div className="flex-1">
           {children}
         </div>
+        <footer className="border-t border-gray-800 bg-[#0a0a0a] py-6 text-center text-xs text-gray-500 no-print">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span>© 2026 Shufelt Designs. All rights reserved.</span>
+            <div className="flex gap-4">
+              <a href="https://its.shufunk.net/terms/" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition-colors">Terms of Service</a>
+              <a href="https://its.shufunk.net/privacy/" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition-colors">Privacy Policy</a>
+            </div>
+          </div>
+        </footer>
       </body>
     </html>
   );
