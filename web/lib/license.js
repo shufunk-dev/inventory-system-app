@@ -1,4 +1,7 @@
 import crypto from 'crypto';
+import { getMachineId } from './machine.js';
+import axios from 'axios';
+import os from 'os';
 
 const LICENSE_SALT = process.env.LICENSE_SALT || 'shufunk-inventory-system-secret-salt-2026';
 
@@ -50,15 +53,18 @@ export function validateLicenseKey(key) {
 /**
  * Generates a valid offline license key for a given type.
  * Type must be: 'collector' | 'store' | 'upgrade'
+ * Optional identifier (e.g., invoice ID) can be provided as salt.
  */
-export function generateLicenseKey(type) {
+export function generateLicenseKey(type, identifier = null) {
   const prefix = Object.keys(PREFIX_MAP).find(key => PREFIX_MAP[key] === type);
   if (!prefix) {
     throw new Error(`Invalid license type: ${type}`);
   }
 
-  // Generate a random 4-digit serial/salt segment
-  const salt = Math.floor(1000 + Math.random() * 9000).toString();
+  // Use clean alphanumeric identifier or fallback to random 4-digit serial
+  const salt = identifier
+    ? identifier.toUpperCase().trim().replace(/[^A-Z0-9]/g, '')
+    : Math.floor(1000 + Math.random() * 9000).toString();
   
   const dataToHash = `${prefix}-${salt}-${LICENSE_SALT}`;
   const fullHash = crypto.createHash('sha256').update(dataToHash).digest('hex').toUpperCase();
@@ -67,4 +73,46 @@ export function generateLicenseKey(type) {
   const hash2 = fullHash.substring(4, 8);
 
   return `${prefix}-${salt}-${hash1}-${hash2}`;
+}
+
+/**
+ * Sends a license activation request to the central server.
+ */
+export async function activateLicenseOnServer(key, serverUrl = 'https://licensing.shufeltdesigns.com') {
+  try {
+    const machineId = getMachineId();
+    const hostname = os.hostname();
+    const username = os.userInfo().username;
+    
+    const response = await axios.post(`${serverUrl}/api/license/activate`, {
+      licenseKey: key,
+      machineId,
+      hostname,
+      username
+    });
+    return response.data;
+  } catch (err) {
+    if (err.response && err.response.data) {
+      return { success: false, error: err.response.data.error || 'Server rejected activation.' };
+    }
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Sends a device deactivation request to the central server.
+ */
+export async function deactivateDeviceOnServer(key, machineIdToRemove, serverUrl = 'https://licensing.shufeltdesigns.com') {
+  try {
+    const response = await axios.post(`${serverUrl}/api/license/deactivate-device`, {
+      licenseKey: key,
+      machineIdToRemove
+    });
+    return response.data;
+  } catch (err) {
+    if (err.response && err.response.data) {
+      return { success: false, error: err.response.data.error || 'Server rejected deactivation.' };
+    }
+    return { success: false, error: err.message };
+  }
 }

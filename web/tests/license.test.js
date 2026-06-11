@@ -26,6 +26,16 @@ test.describe('License Key System (Offline Cryptographic Verification)', () => {
     assert.strictEqual(checkUpgrade.type, 'upgrade');
   });
 
+  test('Generated keys with custom identifiers are valid and contain identifier', () => {
+    const customKey = generateLicenseKey('store', 'INV-12345');
+    
+    assert.ok(customKey.startsWith('STOR-INV12345-'), 'Key should contain clean uppercase identifier');
+    
+    const result = validateLicenseKey(customKey);
+    assert.strictEqual(result.isValid, true);
+    assert.strictEqual(result.type, 'store');
+  });
+
   test('Tampering with a valid key results in invalid state', () => {
     const validKey = generateLicenseKey('store');
     

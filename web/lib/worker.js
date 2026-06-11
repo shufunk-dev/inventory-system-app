@@ -270,8 +270,9 @@ async function fetchToyMarketValue(name, condition) {
   if (!serpApiKey || !name) return null;
 
   try {
-    const query = encodeURIComponent(`${name} ${condition === 'Loose' ? 'loose' : 'new in box'}`);
-    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 15000 });
+    const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
+    const query = encodeURIComponent(`${name} ${cleanCond}`.trim().replace(/\s+/g, ' '));
+    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 15005 });
     
     if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
       let prices = res.data.shopping_results
@@ -296,6 +297,45 @@ async function fetchToyMarketValue(name, condition) {
     }
   } catch (e) {
     console.error('SerpApi Toy Market Fetch error:', e.message);
+  }
+  return null;
+}
+
+async function fetchGenericMarketValue(name) {
+  const serpApiKey = process.env.SERPAPI_KEY;
+  if (!serpApiKey || !name) return null;
+
+  try {
+    const query = encodeURIComponent(name);
+    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 10000 });
+    
+    if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
+      let prices = res.data.shopping_results
+        .filter(r => r.extracted_price)
+        .map(r => r.extracted_price)
+        .sort((a, b) => a - b);
+        
+      if (prices.length >= 5) {
+        // Strip top 10% and bottom 10% to remove outliers
+        const stripCount = Math.max(1, Math.floor(prices.length * 0.1));
+        prices = prices.slice(stripCount, prices.length - stripCount);
+      }
+
+      if (prices.length > 0) {
+        const valueLow = prices[0];
+        const valueHigh = prices[prices.length - 1];
+        const sum = prices.reduce((a, b) => a + b, 0);
+        const valueAvg = +(sum / prices.length).toFixed(2);
+        
+        return {
+          valueLow: parseFloat(valueLow.toFixed(2)),
+          valueAvg: parseFloat(valueAvg.toFixed(2)),
+          valueHigh: parseFloat(valueHigh.toFixed(2))
+        };
+      }
+    }
+  } catch (e) {
+    console.error('SerpApi Generic Market Fetch error:', e.message);
   }
   return null;
 }
@@ -475,8 +515,9 @@ async function fetchGradingAgencyBarcode(barcode) {
 
 async function fetchComicMarketValue(name, condition) {
   try {
-    const isRaw = condition === 'Raw / Ungraded';
-    const q = encodeURIComponent(`${name} ${isRaw ? 'loose raw comic' : condition + ' CGC CBCS'} value price estimate`);
+    const isRaw = condition === 'Raw / Ungraded' || condition === 'Unknown Condition';
+    const cleanCond = (condition && condition !== 'Unknown Condition' && condition !== 'Raw / Ungraded') ? `${condition} CGC CBCS` : 'loose raw comic';
+    const q = encodeURIComponent(`${name} ${cleanCond} value price estimate`);
     const apiKey = process.env.SERPAPI_KEY;
     if (!apiKey) return null;
 
@@ -1027,8 +1068,9 @@ async function fetchGradedMarketValue(name, agency, condition) {
   if (!serpApiKey || !name) return null;
 
   try {
-    const query = encodeURIComponent(`${name} ${agency || ''} ${condition || ''}`.trim());
-    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 10000 });
+    const cleanCond = (condition && condition !== 'Unknown Condition') ? condition : '';
+    const query = encodeURIComponent(`${name} ${agency || ''} ${cleanCond}`.trim().replace(/\s+/g, ' '));
+    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 10005 });
     
     if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
       let prices = res.data.shopping_results
@@ -1303,7 +1345,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     let gradedCertNumber = item.gradedCertNumber || null;
     let gradedAgency = item.gradedAgency || null;
 
-    if ((item.itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
+    if ((itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Movie/TV Show. Fetching IMDb Knowledge Graph data for: ${name}`);
       const movieData = await fetchSerpApiMovieMetadata(name);
       if (movieData) {
@@ -1348,7 +1390,7 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       }
-    } else if ((item.itemType === 'game' || options.forceTier === 'game') && name && name !== 'Unknown Item') {
+    } else if ((itemType === 'game' || options.forceTier === 'game') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Video Game. Extracting grading and market value for: ${name}`);
       
       // Check if it's graded
@@ -1436,7 +1478,7 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       }
-    } else if ((item.itemType === 'toy' || options.forceTier === 'toy') && name && name !== 'Unknown Item') {
+    } else if ((itemType === 'toy' || options.forceTier === 'toy') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Toy. Extracting details and calculating Market Value for: ${name}`);
       
       // 1. Extract Year and Brand
@@ -1461,7 +1503,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
 
       // 3. Fetch Market Value
-      if (toyCondition && (toyCondition !== 'Unknown Condition' || options.forceTier === 'market_value_only') && !valueAvg) {
+      if (toyCondition && !valueAvg) {
         const marketData = await fetchToyMarketValue(name, toyCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1469,7 +1511,7 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       }
-    } else if ((item.itemType === 'coin' || options.forceTier === 'coin') && name && name !== 'Unknown Item') {
+    } else if ((itemType === 'coin' || options.forceTier === 'coin') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Coin. Extracting details and calculating Market Value for: ${name}`);
       
       if (details && details.coinGradingAgency) {
@@ -1488,7 +1530,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (coinCondition && (coinCondition !== 'Unknown Condition' && coinCondition !== 'Ungraded' || options.forceTier === 'market_value_only') && !valueAvg) {
+      if (coinCondition && !valueAvg) {
         const marketData = await fetchCoinMarketValue(name, coinCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1496,7 +1538,7 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       }
-    } else if ((item.itemType === 'card' || options.forceTier === 'card') && name && name !== 'Unknown Item') {
+    } else if ((itemType === 'card' || options.forceTier === 'card') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Card. Extracting details and calculating Market Value for: ${name}`);
       
       if (details && details.cardGradingAgency) {
@@ -1515,7 +1557,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (cardCondition && (cardCondition !== 'Unknown Condition' && cardCondition !== 'Raw (Ungraded)' || options.forceTier === 'market_value_only') && !valueAvg) {
+      if (cardCondition && !valueAvg) {
         const marketData = await fetchCardMarketValue(name, cardCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1523,7 +1565,7 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       }
-    } else if ((item.itemType === 'graded' || options.forceTier === 'graded') && name && name !== 'Unknown Item') {
+    } else if ((itemType === 'graded' || options.forceTier === 'graded') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Graded Asset. Extracting details and calculating Market Value for: ${name}`);
       
       if (details && details.gradedAgency) {
@@ -1534,7 +1576,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (gradedCondition && gradedCondition !== 'Unknown Condition' && !valueAvg) {
+      if (gradedCondition && !valueAvg) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1542,7 +1584,7 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       }
-    } else if ((item.itemType === 'comic' || options.forceTier === 'comic') && name && name !== 'Unknown Item') {
+    } else if ((itemType === 'comic' || options.forceTier === 'comic') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Comic. Extracting details and calculating Market Value for: ${name}`);
       
       if (details) {
@@ -1557,13 +1599,24 @@ export async function fetchItemDetails(item, db, options = {}) {
         comicCondition = 'Raw / Ungraded';
       }
       
-      if (comicCondition && comicCondition !== 'Unknown Condition' && !valueAvg) {
+      if (comicCondition && !valueAvg) {
         const marketData = await fetchComicMarketValue(name, comicCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
           valueAvg = marketData.valueAvg;
           valueHigh = marketData.valueHigh;
         }
+      }
+    }
+
+    // Fallback: If no market value was fetched by the type-specific logic, try a generic lookup
+    if (name && name !== 'Unknown Item' && !valueAvg) {
+      console.log(`[Worker] Falling back to generic market value search for: ${name}`);
+      const marketData = await fetchGenericMarketValue(name);
+      if (marketData) {
+        valueLow = marketData.valueLow;
+        valueAvg = marketData.valueAvg;
+        valueHigh = marketData.valueHigh;
       }
     }
 

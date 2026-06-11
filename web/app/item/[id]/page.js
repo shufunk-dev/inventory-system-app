@@ -16,6 +16,7 @@ import CardDetailsWidget from '@/components/CardDetailsWidget';
 import ComicDetailsWidget from '@/components/ComicDetailsWidget';
 import GradedDetailsWidget from '@/components/GradedDetailsWidget';
 import GameDetailsWidget from '@/components/GameDetailsWidget';
+import StandardDetailsWidget from '@/components/StandardDetailsWidget';
 
 export default async function ItemPage({ params }) {
   const { id } = await params;
@@ -390,6 +391,11 @@ export default async function ItemPage({ params }) {
               
               <hr className="border-gray-800 my-12" />
             </div>
+          )}
+
+          {/* Standard Item Market Value Details */}
+          {(item.itemType === 'standard' || !item.itemType) && !isGuest && (
+            <StandardDetailsWidget item={item} />
           )}
 
           {/* Barcodes Section */}

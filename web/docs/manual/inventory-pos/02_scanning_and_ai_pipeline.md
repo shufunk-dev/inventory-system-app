@@ -1,0 +1,84 @@
+# Scanning and AI Pipeline
+
+The core power of this Inventory & POS System lies in its intelligent item identification pipeline. When you scan a barcode or upload an image, the system runs through a multi-tiered fallback pipeline to extract titles, descriptions, categories, and estimated values automatically.
+
+---
+
+## 1. Barcode Scanning Waterfall
+
+When a UPC or EAN barcode is scanned, the system performs a sequential search across multiple database providers:
+
+```
+           [ Scan Barcode ]
+                  │
+                  ▼
+         ┌────────────────┐
+         │ Local Database │ ──(Found?)──► [ Return Item ]
+         └────────────────┘
+                  │ No
+                  ▼
+         ┌────────────────┐
+         │   UPCItemDB    │ ──(Found?)──► [ Import & Return ]
+         └────────────────┘
+                  │ No
+                  ▼
+         ┌────────────────┐
+         │  OpenFoodFacts  │ ──(Found?)──► [ Import & Return ]
+         └────────────────┘
+                  │ No
+                  ▼
+         ┌────────────────┐
+         │  Book Database │ ──(Found?)──► [ Import & Return ]
+         └────────────────┘
+                  │ No
+                  ▼
+         [ Manual Creation ]
+```
+
+### A. Local Database
+The system first checks the local sqlite file `inventory.db` for existing items with the same barcode. This ensures offline speed for previously entered items.
+
+### B. UPCItemDB (Global API)
+If the item is not found locally, the system queries UPCItemDB. This provider returns commercial product titles, descriptions, and categories for general retail merchandise.
+
+### C. OpenFoodFacts
+For groceries, foods, and personal care products, the system queries OpenFoodFacts, importing nutrition facts, ingredients, and brand info.
+
+### D. Open Library / Google Books
+If the scanned barcode matches an ISBN prefix, the system queries book databases to retrieve book titles, authors, publishers, and cover art.
+
+---
+
+## 2. PriceCharting Waterfall
+
+For video games, trading cards (Pokemon, Magic: The Gathering), and comic books, the system uses a specialized value lookup engine.
+
+1. **Exact Matches**: Queries PriceCharting by product ID or barcode.
+2. **Fuzzy Titles**: Queries by title and platform, matching condition state (Loose, Complete-in-Box, New).
+3. **Fallback Value**: If no direct price is found, it uses the average of the last 3 eBay sold listings.
+
+---
+
+## 3. SerpApi Google Lens Integration
+
+For items without barcodes (antiques, artwork, loose toys, diecast cars, collectibles), the system utilizes image-based searches:
+
+* **Trigger**: Take a photo with the mobile app camera or upload a file.
+* **SerpApi Google Lens**: The system uploads the image and queries Google Lens via SerpApi to identify visually similar objects.
+* **Match Resolution**: Google Lens returns a list of visual matches, eBay listings, and store pages. The system extracts common keywords to suggest a title, category, and market price.
+* **User Customization**: Users can edit the automatically generated title (e.g. adding details like "large car" or "era-specific edition") to refine subsequent searches or match personal labeling conventions.
+
+---
+
+## 4. Basic vs. Premium Configurations
+
+Depending on your license tier, different parts of the AI pipeline will be active:
+
+| Feature | Community Edition | Professional | Enterprise |
+| :--- | :--- | :--- | :--- |
+| **Local Lookup** | Unlimited | Unlimited | Unlimited |
+| **OpenFoodFacts** | Active | Active | Active |
+| **UPCItemDB API** | Basic (Rate Limited) | Standard API | Dedicated/Custom API |
+| **PriceCharting Sync**| Manual | Automated Sync | Real-time Webhooks |
+| **Google Lens (SerpApi)**| Disabled | Up to 100/mo | Unlimited / Custom Key |
+| **OCR Count Sheets** | Disabled | Active | Bulk OCR Processing |
