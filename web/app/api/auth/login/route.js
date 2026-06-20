@@ -2,7 +2,7 @@ import { getGlobalDb } from '../../../../lib/db.js';
 import bcrypt from 'bcryptjs';
 import { createSession } from '../../../../lib/auth.js';
 import { resolveTenantIdByEmail, tenantStorage } from '../../../../lib/dbManager.js';
-import { encryptTemp } from '../../../../lib/jwt.js';
+import { encryptTemp, encrypt } from '../../../../lib/jwt.js';
 import { createRequire } from 'module';
 import crypto from 'crypto';
 
@@ -40,8 +40,10 @@ export async function POST(request) {
     if (superEmail && normalizedEmail === superEmail.toLowerCase().trim()) {
       const isMatch = await bcrypt.compare(password, superHash);
       if (isMatch) {
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const sessionToken = await encrypt({ userId: 'super-admin-root', tenantId: 'super-admin', expiresAt });
         await createSession('super-admin-root', 'super-admin');
-        return NextResponse.json({ success: true, isSuperAdmin: true });
+        return NextResponse.json({ success: true, isSuperAdmin: true, token: sessionToken });
       }
     }
 
@@ -109,9 +111,13 @@ export async function POST(request) {
       });
     }
 
+    // Generate the session token so it can be returned in the response body for API clients
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const sessionToken = await encrypt({ userId: user.id, tenantId, expiresAt });
+
     await createSession(user.id, tenantId);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, token: sessionToken });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

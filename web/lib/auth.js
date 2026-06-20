@@ -44,7 +44,24 @@ export async function deleteSession() {
 
 export async function getSession() {
   const cookieStore = await getCookies();
-  const session = cookieStore.get('session')?.value;
+  let session = cookieStore.get('session')?.value;
+
+  if (!session) {
+    try {
+      const { headers } = require('next/headers');
+      const headerStore = await headers();
+      const authHeader = headerStore.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        session = authHeader.substring(7);
+      }
+    } catch (e) {
+      // Fallback outside request context or in tests
+      if (global.mockSessionCookie) {
+        session = global.mockSessionCookie;
+      }
+    }
+  }
+
   if (!session) return null;
   return await decrypt(session);
 }
