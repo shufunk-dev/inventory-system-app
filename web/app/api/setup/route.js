@@ -122,6 +122,6 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('[setup_route] Onboarding failure:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: `Onboarding failure: ${error.message}` }, { status: 500 });
   }
 }
