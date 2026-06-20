@@ -137,19 +137,23 @@ export async function GET() {
     const totalUserCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
     const isFirstUser = totalUserCount === 0;
     
+    // In local-first mode, if there are no root admins, setup is needed
+    const adminCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE isRoot = 1').get().count;
+    const setupNeeded = adminCount === 0 && process.env.SAAS_MODE !== 'true';
+    
     if (process.env.DEMO_MODE === 'true') {
-      return NextResponse.json({ enabled: true });
+      return NextResponse.json({ enabled: true, setupNeeded });
     }
 
     if (process.env.SAAS_MODE === 'true') {
       const smtpConfig = await getSmtpConfig();
-      return NextResponse.json({ enabled: isFirstUser || smtpConfig.enabled });
+      return NextResponse.json({ enabled: isFirstUser || smtpConfig.enabled, setupNeeded });
     } else {
       // Local mode: only the bootstrap admin registration is enabled publicly
-      return NextResponse.json({ enabled: isFirstUser });
+      return NextResponse.json({ enabled: isFirstUser, setupNeeded });
     }
   } catch (e) {
     console.error('Registration status check failed:', e);
-    return NextResponse.json({ enabled: false });
+    return NextResponse.json({ enabled: false, setupNeeded: false });
   }
 }

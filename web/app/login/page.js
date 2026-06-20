@@ -36,12 +36,18 @@ function LoginContent() {
       setError(urlError);
     }
 
-    // Check if registration is enabled
+    // Check if registration is enabled and setup is needed
     fetch('/api/auth/register')
       .then(res => res.json())
-      .then(data => setRegistrationEnabled(!!data.enabled))
+      .then(data => {
+        if (data.setupNeeded) {
+          router.push('/setup');
+        } else {
+          setRegistrationEnabled(!!data.enabled);
+        }
+      })
       .catch(() => setRegistrationEnabled(false));
-  }, [token, verified, urlError]);
+  }, [token, verified, urlError, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
