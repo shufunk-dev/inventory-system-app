@@ -7,6 +7,7 @@ import { buildCategoryTree } from '@/lib/categories';
 
 export default function EditItemForm({ item, initialCategories = [], canEdit = false, isGuest = false }) {
   const [retailPrice, setRetailPrice] = useState(item.retailPrice || '');
+  const [purchasePrice, setPurchasePrice] = useState(item.purchasePrice || '');
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(item.name || '');
   const [description, setDescription] = useState(item.description || '');
@@ -29,6 +30,7 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
   useEffect(() => {
     if (!isEditing) {
       setRetailPrice(item.retailPrice || '');
+      setPurchasePrice(item.purchasePrice || '');
       setName(item.name || '');
       setDescription(item.description || '');
       setCategoryId(item.categoryId || '');
@@ -53,7 +55,7 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
       const res = await fetch(`/api/item/${item.id}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition, retailPrice })
+        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition, retailPrice, purchasePrice })
       });
 
       if (res.ok) {
@@ -91,6 +93,11 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
         {retailPrice !== '' && retailPrice !== null && (
           <div className="inline-block bg-green-500/20 text-green-400 border border-green-500/30 font-bold px-3 py-1 rounded-full text-xs mb-4">
             Retail Price: ${retailPrice}
+          </div>
+        )}
+        {purchasePrice !== '' && purchasePrice !== null && (
+          <div className="inline-block bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold px-3 py-1 rounded-full text-xs mb-4 ml-2">
+            Acquisition Cost: ${purchasePrice}
           </div>
         )}
         
@@ -161,6 +168,18 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
           onChange={e => setRetailPrice(e.target.value)}
           className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
           placeholder="e.g. 19.99"
+        />
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Purchase Price ($) (Acquisition Cost)</label>
+        <input 
+          type="number"
+          step="0.01"
+          value={purchasePrice}
+          onChange={e => setPurchasePrice(e.target.value)}
+          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+          placeholder="How much did you pay for this item?"
         />
       </div>
 

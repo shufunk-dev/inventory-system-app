@@ -156,7 +156,98 @@ export default async function ItemPage({ params }) {
             {/* Details Section */}
             <div className="w-full md:w-1/2 flex flex-col justify-center">
               <EditItemForm item={item} canEdit={canEdit} isGuest={isGuest} />
-              
+
+              {/* Profit & Valuation Calculator Card */}
+              {item.purchasePrice !== null && !isGuest && (
+                <div className="bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 border border-gray-800 rounded-3xl p-6 mb-6 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl"></div>
+                  
+                  <h3 className="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+                    Receipt & Profit Calculator
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-gray-800/20 p-3 rounded-2xl border border-gray-800/40">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Acquisition Cost</p>
+                      <p className="text-xl font-bold font-mono text-white">${item.purchasePrice.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-gray-800/20 p-3 rounded-2xl border border-gray-800/40">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Current Value (Avg)</p>
+                      {item.valueAvg ? (
+                        <p className="text-xl font-bold font-mono text-white">${item.valueAvg.toFixed(2)}</p>
+                      ) : (
+                        <p className="text-sm font-medium text-gray-400 italic mt-1">Pending...</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {item.valueAvg ? (
+                    <div className="space-y-4">
+                      {/* ROI Banner */}
+                      {(() => {
+                        const diff = item.valueAvg - item.purchasePrice;
+                        const pct = item.purchasePrice > 0 ? (diff / item.purchasePrice) * 100 : 0;
+                        const isGain = diff >= 0;
+                        return (
+                          <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                            isGain 
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                          }`}>
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Net Position (ROI)</p>
+                              <p className="text-2xl font-black font-mono">
+                                {isGain ? '+' : ''}{pct.toFixed(1)}%
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">{isGain ? 'Potential Profit' : 'Current Loss'}</p>
+                              <p className="text-lg font-bold font-mono">
+                                {isGain ? '+' : ''}${diff.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Selling Tiers Breakdown */}
+                      <div className="border-t border-gray-800/80 pt-4 space-y-2.5">
+                        <p className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Potential Returns by Selling Price</p>
+                        
+                        {[
+                          { label: 'Low Estimate (Conservative)', val: item.valueLow },
+                          { label: 'Average Value (Expected)', val: item.valueAvg },
+                          { label: 'High Estimate (Premium)', val: item.valueHigh }
+                        ].map((tier, idx) => {
+                          const profit = (tier.val || 0) - item.purchasePrice;
+                          const isProfit = profit >= 0;
+                          return (
+                            <div key={idx} className="flex justify-between items-center text-xs font-semibold">
+                              <span className="text-gray-400">{tier.label}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-300 font-mono">${(tier.val || 0).toFixed(2)}</span>
+                                <span className={`font-mono px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  isProfit 
+                                    ? 'bg-emerald-500/10 text-emerald-400' 
+                                    : 'bg-rose-500/10 text-rose-400'
+                                }`}>
+                                  {isProfit ? '+' : ''}${profit.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 italic text-center py-2">
+                      Market values are not calculated yet. Net position and selling profit breakdowns will be available once market prices are retrieved.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-6">
                 {item.barcode && (!isGuest || (item.itemType && item.itemType !== 'standard' && item.itemType !== 'video')) && (
                   <div className="flex items-center gap-4 bg-gray-800/50 p-4 rounded-2xl">

@@ -42,6 +42,7 @@ export default function ValuationReportPage() {
   const [error, setError] = useState(null);
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeSegment, setActiveSegment] = useState('invested');
 
   useEffect(() => {
     fetch('/api/reports/valuation')
@@ -51,6 +52,8 @@ export default function ValuationReportPage() {
       })
       .then(json => {
         setData(json);
+        const hasInvested = json.items.some(item => item.purchasePrice !== null);
+        setActiveSegment(hasInvested ? 'invested' : 'market_only');
         setLoading(false);
       })
       .catch(err => {
@@ -83,15 +86,25 @@ export default function ValuationReportPage() {
 
   const { summary, breakdown, items } = data;
 
+  const investedItems = items.filter(item => item.purchasePrice !== null);
+  const marketOnlyItems = items.filter(item => item.purchasePrice === null);
+
+  const activeItems = activeSegment === 'invested' ? investedItems : marketOnlyItems;
+
   // Filter items
-  const filteredItems = items.filter(item => {
+  const filteredItems = activeItems.filter(item => {
     const matchesType = selectedType === 'all' || item.itemType === selectedType;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
 
-  // Unique types present in inventory
-  const availableTypes = ['all', ...breakdown.map(b => b.itemType)];
+  // Unique types present in inventory (based on active segment items)
+  const activeBreakdownTypes = breakdown.filter(b => 
+    items.some(item => item.itemType === b.itemType && 
+      (activeSegment === 'invested' ? item.purchasePrice !== null : item.purchasePrice === null)
+    )
+  ).map(b => b.itemType);
+  const availableTypes = ['all', ...activeBreakdownTypes];
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10 selection:bg-blue-500/30">
@@ -111,66 +124,89 @@ export default function ValuationReportPage() {
       </div>
 
       {/* Main KPI Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Metric 1: Total Valuation */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 relative overflow-hidden group shadow-lg">
           <div className="absolute top-0 right-0 p-3 opacity-25">
             <div className="w-20 h-20 bg-emerald-500 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500"></div>
           </div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Estimated Value</p>
-          <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-300">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Total Portfolio Value</p>
+          <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-300">
             ${summary.totalAvg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live live-market aggregate
+            Combined catalog value
           </div>
         </div>
 
-        {/* Metric 2: Low Estimate */}
+        {/* Metric 2: Total Invested Cost */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 relative overflow-hidden group shadow-lg">
           <div className="absolute top-0 right-0 p-3 opacity-20">
             <div className="w-20 h-20 bg-blue-500 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500"></div>
           </div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Conservative Low Range</p>
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Total Invested Cost</p>
           <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-sky-300">
-            ${summary.totalLow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${summary.totalPurchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="flex items-center gap-1 text-xs text-blue-400 mt-4 font-semibold">
-            <TrendingDown className="w-4 h-4" />
-            Lowest market listings
+            <Coins className="w-4 h-4" />
+            Total spent on receipts
           </div>
         </div>
 
-        {/* Metric 3: High Estimate */}
-        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 relative overflow-hidden group shadow-lg">
-          <div className="absolute top-0 right-0 p-3 opacity-20">
-            <div className="w-20 h-20 bg-rose-500 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500"></div>
-          </div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Premium High Range</p>
-          <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-pink-300">
-            ${summary.totalHigh.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div className="flex items-center gap-1 text-xs text-rose-400 mt-4 font-semibold">
-            <TrendingUp className="w-4 h-4" />
-            Highest market listings
-          </div>
-        </div>
+        {/* Metric 3: Net Return (Invested ROI) */}
+        {(() => {
+          const netReturn = summary.purchasedItemsValue - summary.totalPurchasePrice;
+          const roiPct = summary.totalPurchasePrice > 0 ? (netReturn / summary.totalPurchasePrice) * 100 : 0;
+          const isGain = netReturn >= 0;
+          
+          return (
+            <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 relative overflow-hidden group shadow-lg">
+              <div className="absolute top-0 right-0 p-3 opacity-20">
+                <div className={`w-20 h-20 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500 ${isGain ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+              </div>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Net Return (Invested ROI)</p>
+              <p className={`text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r ${isGain ? 'from-emerald-400 to-green-300' : 'from-rose-400 to-pink-300'}`}>
+                {isGain ? '+' : ''}{roiPct.toFixed(1)}%
+              </p>
+              <div className={`flex items-center gap-1 text-xs mt-4 font-bold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isGain ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                {isGain ? 'Profit' : 'Loss'}: {isGain ? '+' : ''}${netReturn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+          );
+        })()}
 
-        {/* Metric 4: Valuation Ratio / Items */}
+        {/* Metric 4: Market Value Only */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 relative overflow-hidden group shadow-lg">
           <div className="absolute top-0 right-0 p-3 opacity-20">
             <div className="w-20 h-20 bg-purple-500 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500"></div>
           </div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Valuation Coverage</p>
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Market Value Only</p>
           <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300">
-            {summary.valuedCount} <span className="text-sm font-bold text-gray-500">of {summary.totalCount} items</span>
+            ${summary.unpricedItemsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <div className="flex items-center gap-1 text-xs text-purple-400 mt-4 font-semibold">
+            <Layers className="w-4 h-4" />
+            Assets without receipts
+          </div>
+        </div>
+
+        {/* Metric 5: Valuation Coverage */}
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 relative overflow-hidden group shadow-lg">
+          <div className="absolute top-0 right-0 p-3 opacity-20">
+            <div className="w-20 h-20 bg-amber-500 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500"></div>
+          </div>
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Valuation Coverage</p>
+          <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300">
+            {summary.valuedCount} <span className="text-xs font-bold text-gray-500">of {summary.totalCount} items</span>
           </p>
           
           <div className="mt-4 space-y-1">
             <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-purple-500 to-indigo-500 h-1.5 rounded-full" 
+                className="bg-gradient-to-r from-amber-500 to-yellow-500 h-1.5 rounded-full" 
                 style={{ width: `${(summary.valuedCount / (summary.totalCount || 1)) * 100}%` }}
               ></div>
             </div>
@@ -269,6 +305,36 @@ export default function ValuationReportPage() {
           </div>
         </div>
 
+        {/* Segment Tabs */}
+        <div className="flex gap-4 border-b border-gray-800/80 pb-2">
+          <button
+            onClick={() => {
+              setActiveSegment('invested');
+              setSelectedType('all');
+            }}
+            className={`pb-3 px-2 text-sm font-extrabold transition-all border-b-2 ${
+              activeSegment === 'invested'
+                ? 'border-blue-500 text-blue-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Invested Assets ({investedItems.length})
+          </button>
+          <button
+            onClick={() => {
+              setActiveSegment('market_only');
+              setSelectedType('all');
+            }}
+            className={`pb-3 px-2 text-sm font-extrabold transition-all border-b-2 ${
+              activeSegment === 'market_only'
+                ? 'border-blue-500 text-blue-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Market Value Only ({marketOnlyItems.length})
+          </button>
+        </div>
+
         {/* Filter Pills */}
         <div className="flex flex-wrap gap-2 pb-2 border-b border-gray-800/80">
           {availableTypes.map(type => {
@@ -283,7 +349,7 @@ export default function ValuationReportPage() {
                     : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
                 }`}
               >
-                {type === 'all' ? 'All Valued Items' : (TYPE_LABELS[type] || type)}
+                {type === 'all' ? 'All Items' : (TYPE_LABELS[type] || type)}
               </button>
             );
           })}
@@ -292,62 +358,125 @@ export default function ValuationReportPage() {
         {filteredItems.length === 0 ? (
           <div className="text-center py-20 bg-gray-950/20 border-2 border-dashed border-gray-850 rounded-2xl">
             <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 font-semibold text-lg">No valued items match filters</p>
+            <p className="text-gray-400 font-semibold text-lg">No items match filters</p>
             <p className="text-gray-500 text-sm mt-1">Try resetting the category filter or searching another keyword.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-800 text-gray-500 text-xs font-extrabold uppercase tracking-wider">
-                  <th className="pb-4 pl-4">Item Details</th>
-                  <th className="pb-4">Type</th>
-                  <th className="pb-4 text-right">Low Estimate</th>
-                  <th className="pb-4 text-right">Average Value</th>
-                  <th className="pb-4 text-right pr-4">High Estimate</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-850 text-sm font-semibold">
-                {filteredItems.map(item => {
-                  const colors = TYPE_COLORS[item.itemType] || TYPE_COLORS.standard;
-                  return (
-                    <tr key={item.id} className="group hover:bg-gray-800/20 transition-colors">
-                      <td className="py-4 pl-4 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-950 border border-gray-850 flex-shrink-0 flex items-center justify-center">
-                          {item.imagePath ? (
-                            <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-gray-600 text-xs">📷</span>
-                          )}
-                        </div>
-                        <Link href={`/item/${item.id}`} className="text-gray-200 group-hover:text-blue-400 transition-colors flex items-center gap-1">
-                          {item.name}
-                          <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </Link>
-                      </td>
-                      
-                      <td className="py-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${colors.split(' ').slice(0, 3).join(' ')}`}>
-                          {TYPE_LABELS[item.itemType] || item.itemType}
-                        </span>
-                      </td>
+            {activeSegment === 'invested' ? (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-800 text-gray-500 text-xs font-extrabold uppercase tracking-wider">
+                    <th className="pb-4 pl-4">Item Details</th>
+                    <th className="pb-4">Type</th>
+                    <th className="pb-4 text-right">Acquisition Cost</th>
+                    <th className="pb-4 text-right">Current Value</th>
+                    <th className="pb-4 text-right">Net Return (ROI)</th>
+                    <th className="pb-4 text-right pr-4">Market Spread (Low-High)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-850 text-sm font-semibold">
+                  {filteredItems.map(item => {
+                    const colors = TYPE_COLORS[item.itemType] || TYPE_COLORS.standard;
+                    const diff = item.valueAvg - item.purchasePrice;
+                    const pct = item.purchasePrice > 0 ? (diff / item.purchasePrice) * 100 : 0;
+                    const isGain = diff >= 0;
+                    
+                    return (
+                      <tr key={item.id} className="group hover:bg-gray-800/20 transition-colors">
+                        <td className="py-4 pl-4 flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-950 border border-gray-850 flex-shrink-0 flex items-center justify-center">
+                            {item.imagePath ? (
+                              <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-gray-600 text-xs">📷</span>
+                            )}
+                          </div>
+                          <Link href={`/item/${item.id}`} className="text-gray-200 group-hover:text-blue-400 transition-colors flex items-center gap-1">
+                            {item.name}
+                            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </Link>
+                        </td>
+                        
+                        <td className="py-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${colors.split(' ').slice(0, 3).join(' ')}`}>
+                            {TYPE_LABELS[item.itemType] || item.itemType}
+                          </span>
+                        </td>
 
-                      <td className="py-4 text-right font-mono text-gray-400">
-                        ${item.valueLow.toFixed(2)}
-                      </td>
+                        <td className="py-4 text-right font-mono text-gray-300">
+                          ${item.purchasePrice.toFixed(2)}
+                        </td>
 
-                      <td className="py-4 text-right font-mono text-emerald-400 font-extrabold">
-                        ${item.valueAvg.toFixed(2)}
-                      </td>
+                        <td className="py-4 text-right font-mono text-white">
+                          ${item.valueAvg > 0 ? item.valueAvg.toFixed(2) : '0.00'}
+                        </td>
 
-                      <td className="py-4 text-right font-mono text-gray-400 pr-4">
-                        ${item.valueHigh.toFixed(2)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td className={`py-4 text-right font-mono font-extrabold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isGain ? '+' : ''}${diff.toFixed(2)} ({isGain ? '+' : ''}{pct.toFixed(1)}%)
+                        </td>
+
+                        <td className="py-4 text-right font-mono text-gray-500 pr-4">
+                          ${item.valueLow.toFixed(2)} - ${item.valueHigh.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-800 text-gray-500 text-xs font-extrabold uppercase tracking-wider">
+                    <th className="pb-4 pl-4">Item Details</th>
+                    <th className="pb-4">Type</th>
+                    <th className="pb-4 text-right">Low Estimate</th>
+                    <th className="pb-4 text-right">Average Value</th>
+                    <th className="pb-4 text-right pr-4">High Estimate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-850 text-sm font-semibold">
+                  {filteredItems.map(item => {
+                    const colors = TYPE_COLORS[item.itemType] || TYPE_COLORS.standard;
+                    return (
+                      <tr key={item.id} className="group hover:bg-gray-800/20 transition-colors">
+                        <td className="py-4 pl-4 flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-950 border border-gray-850 flex-shrink-0 flex items-center justify-center">
+                            {item.imagePath ? (
+                              <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-gray-600 text-xs">📷</span>
+                            )}
+                          </div>
+                          <Link href={`/item/${item.id}`} className="text-gray-200 group-hover:text-blue-400 transition-colors flex items-center gap-1">
+                            {item.name}
+                            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </Link>
+                        </td>
+                        
+                        <td className="py-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${colors.split(' ').slice(0, 3).join(' ')}`}>
+                            {TYPE_LABELS[item.itemType] || item.itemType}
+                          </span>
+                        </td>
+
+                        <td className="py-4 text-right font-mono text-gray-400">
+                          ${item.valueLow.toFixed(2)}
+                        </td>
+
+                        <td className="py-4 text-right font-mono text-emerald-400 font-extrabold">
+                          ${item.valueAvg.toFixed(2)}
+                        </td>
+
+                        <td className="py-4 text-right font-mono text-gray-400 pr-4">
+                          ${item.valueHigh.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>

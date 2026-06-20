@@ -39,6 +39,7 @@ function initializeStoreSchema(dbConn) {
       lastSyncAttempt INTEGER,
       createdAt INTEGER,
       retailPrice REAL,
+      purchasePrice REAL,
       FOREIGN KEY (categoryId) REFERENCES categories (id)
     );
 
@@ -142,6 +143,7 @@ function initializeStoreSchema(dbConn) {
   try { dbConn.exec("ALTER TABLE items ADD COLUMN gradedAgency TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN retailPrice REAL"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN imagePathBack TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN purchasePrice REAL"); } catch(e) {}
 
   // MIGRATION: Remove UNIQUE constraint from categories.name
   try {

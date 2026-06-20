@@ -140,6 +140,7 @@ export function initializeSchema(db) {
       syncStatus TEXT DEFAULT 'pending',
       lastSyncAttempt INTEGER,
       createdAt INTEGER,
+      purchasePrice REAL,
       FOREIGN KEY (categoryId) REFERENCES categories (id),
       FOREIGN KEY (userId) REFERENCES users(id)
     );
@@ -246,7 +247,8 @@ export function initializeSchema(db) {
     { table: 'items', col: 'comicIssue TEXT' },
     { table: 'items', col: 'gradedCondition TEXT' },
     { table: 'items', col: 'gradedCertNumber TEXT' },
-    { table: 'items', col: 'gradedAgency TEXT' }
+    { table: 'items', col: 'gradedAgency TEXT' },
+    { table: 'items', col: 'purchasePrice REAL' }
   ];
 
   for (const item of columnsToAdd) {
@@ -323,6 +325,26 @@ export function closeAllConnections() {
 
 // Master seed data for changelogs (unified layout)
 const seedData = [
+  {
+    version: 'Beta 1.8.3', date: 'June 19, 2026', title: 'Acquisition Cost & Segmented Valuation Report',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Added database schema migrations for purchasePrice column.' },
+      { type: 'web', text: 'Implemented item detail profit/loss calculator matching low, average, and high market value tiers.' },
+      { type: 'web', text: 'Redesigned Valuation Report page with segmented tabs dividing Invested Assets and Market Value Only assets.' },
+      { type: 'web', text: 'Updated Valuation API to compute portfolio-wide ROI statistics and separate unpriced assets.' },
+      { type: 'web', text: 'Added automated test cases covering purchase price summaries and list sorting.' }
+    ])
+  },
+  {
+    version: 'Beta 1.8.2', date: 'June 11, 2026', title: 'Multi-Seat Licensing & Single-Device Deactivation Cooldown',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented stable machine ID hashing generated from host network interfaces.' },
+      { type: 'web', text: 'Updated client activations to submit hostname and username descriptors.' },
+      { type: 'web', text: 'Added support for single-device seat deactivations on multi-seat keys.' },
+      { type: 'web', text: 'Enforced 7-day deactivation cooldown period to prevent licensing abuse.' },
+      { type: 'web', text: 'Created comprehensive integration tests for anti-sharing and device rotations.' }
+    ])
+  },
   {
     version: 'Beta 1.8.1', date: 'June 7, 2026', title: 'Dynamic Booth Numbering & Print Layout Toggle',
     changes: JSON.stringify([
