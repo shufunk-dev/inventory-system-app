@@ -326,6 +326,18 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.8.4', date: 'June 20, 2026', title: 'Direct Mobile Sync & Bearer Authentication',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Extended session authentication to support Bearer Tokens in request headers.' },
+      { type: 'web', text: 'Modified login API to return the session token in the JSON response body.' },
+      { type: 'web', text: 'Added descriptive client-side error handling to setup wizard route.' },
+      { type: 'mobile', text: 'Implemented Server Connection Settings panel (modal) with URL, email, and password inputs persisted locally.' },
+      { type: 'mobile', text: 'Built direct server syncing that logs in, packages the scan queue into a ZIP archive, and uploads it via HTTP.' },
+      { type: 'web', text: 'Optimized Google Books metadata search to prioritize exact matching ISBN identifiers.' },
+      { type: 'web', text: 'Added troubleshooting documentation for pre-2007 mass-market paperback recycled UPC barcodes.' }
+    ])
+  },
+  {
     version: 'Beta 1.8.3', date: 'June 19, 2026', title: 'Acquisition Cost & Segmented Valuation Report',
     changes: JSON.stringify([
       { type: 'web', text: 'Added database schema migrations for purchasePrice column.' },
