@@ -32,6 +32,7 @@ apt-get install -y curl nginx ufw build-essential
 echo "[2/6] Installing Node.js..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs
+npm install -g npm@latest
 
 # 3. Install PM2 (Process Manager to run Next.js in the background)
 echo "[3/6] Installing PM2..."

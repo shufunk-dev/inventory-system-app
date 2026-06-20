@@ -28,6 +28,7 @@ apt-get install -y curl avahi-daemon sqlite3 build-essential git
 echo "[2/4] Installing Node.js (v20)..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs
+npm install -g npm@latest
 
 echo "[3/4] Installing PM2 and application dependencies..."
 npm install -g pm2
