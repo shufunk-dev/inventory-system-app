@@ -47,6 +47,12 @@ For groceries, foods, and personal care products, the system queries OpenFoodFac
 ### D. Open Library / Google Books
 If the scanned barcode matches an ISBN prefix, the system queries book databases to retrieve book titles, authors, publishers, and cover art.
 
+> [!NOTE]
+> **Recycled Barcodes (Pre-2007 Paperbacks)**:
+> Older mass-market paperbacks (such as vintage Pocket Books, Dell, Bantam, or Avon editions printed before 2007) frequently shared generic UPC barcodes across entire price tiers. For example, every $6.50 paperback from a publisher might print the exact same barcode. 
+> * **Symptom**: Scanning these older books may result in the system returning the wrong book title in the series or a completely different book by the same publisher.
+> * **Workaround**: Switch the mobile camera to **Photo Mode** and take a picture of the front cover instead of scanning the barcode. The server's visual Google Lens pipeline will match the cover art and pull the correct book title, description, and market value.
+
 ---
 
 ## 2. PriceCharting Waterfall
