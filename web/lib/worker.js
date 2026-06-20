@@ -11,7 +11,23 @@ async function fetchGoogleBooks(isbn) {
   try {
     const res = await axios.get(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`, { timeout: 4000 });
     if (res.data && res.data.items && res.data.items.length > 0) {
-      const volumeInfo = res.data.items[0].volumeInfo;
+      // Find the exact ISBN match if possible, otherwise fallback to the first item
+      let bestItem = res.data.items[0];
+      const cleanIsbn = isbn.replace(/[^X0-9]/gi, '').toUpperCase();
+      
+      for (const item of res.data.items) {
+        const idents = item.volumeInfo?.industryIdentifiers || [];
+        const hasExactMatch = idents.some(id => {
+          const cleanId = id.identifier.replace(/[^X0-9]/gi, '').toUpperCase();
+          return cleanId === cleanIsbn;
+        });
+        if (hasExactMatch) {
+          bestItem = item;
+          break;
+        }
+      }
+      
+      const volumeInfo = bestItem.volumeInfo;
       return {
         name: volumeInfo.title || null,
         imageUrl: volumeInfo.imageLinks?.thumbnail || null,
