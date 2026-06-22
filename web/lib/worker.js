@@ -356,8 +356,7 @@ async function fetchGenericMarketValue(name) {
   return null;
 }
 
-async function fetchTMDBMovieMetadata(name) {
-  const tmdbApiKey = process.env.TMDB_API_KEY;
+async function fetchTMDBMovieMetadata(name, tmdbApiKey) {
   if (!tmdbApiKey || !name) return null;
 
   try {
@@ -1414,9 +1413,21 @@ export async function fetchItemDetails(item, db, options = {}) {
 
     if ((itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
       let movieData = null;
-      if (process.env.TMDB_API_KEY) {
+
+      let tmdbApiKey = null;
+      try {
+        const keysRow = db.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
+        if (keysRow) {
+          const keys = JSON.parse(keysRow.value);
+          tmdbApiKey = keys.tmdbApiKey || null;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      if (tmdbApiKey) {
         console.log(`[Worker] Querying TMDB for movie details: ${name}`);
-        movieData = await fetchTMDBMovieMetadata(name);
+        movieData = await fetchTMDBMovieMetadata(name, tmdbApiKey);
       }
       if (!movieData && process.env.SERPAPI_KEY) {
         console.log(`[Worker] Falling back to SerpApi for movie details: ${name}`);
@@ -1780,9 +1791,6 @@ async function processNextItem(userId = null) {
       }
       if (keys.priceChartingKey) {
         process.env.PRICECHARTING_KEY = keys.priceChartingKey;
-      }
-      if (keys.tmdbApiKey) {
-        process.env.TMDB_API_KEY = keys.tmdbApiKey;
       }
     }
   } catch (e) {
