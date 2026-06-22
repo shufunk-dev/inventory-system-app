@@ -52,3 +52,4 @@ export-appliance.bat
 Archive/
 *.db
 inventory.db
+*.log
