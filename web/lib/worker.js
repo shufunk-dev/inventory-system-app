@@ -1326,6 +1326,15 @@ export async function fetchItemDetails(item, db, options = {}) {
     const description = (details && details.description) ? details.description : item.description;
     let itemType = (details && details.itemType) ? details.itemType : item.itemType;
 
+    // Auto-classify standard items as video if category keywords suggest it's a movie/DVD
+    if (details && details.category && itemType === 'standard') {
+      const cat = details.category.toLowerCase();
+      if (cat.includes('movies & tv') || cat.includes('dvd') || cat.includes('blu-ray') || cat.includes('vhs') || cat.includes('media > movies')) {
+        console.log(`[Worker] Auto-classified item "${name}" as Video/Movie based on category: ${details.category}`);
+        itemType = 'video';
+      }
+    }
+
     let moviePlot = item.moviePlot || null;
     let movieCast = item.movieCast || null;
     let movieTrailer = item.movieTrailer || null;
