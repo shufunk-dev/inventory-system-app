@@ -16,7 +16,7 @@ export default function SettingsPage() {
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', tmdbApiKey: '' });
   const [smtpConfig, setSmtpConfig] = useState({
     host: '',
     port: '587',
@@ -622,6 +622,16 @@ export default function SettingsPage() {
               onChange={(e) => setApiKeys({...apiKeys, priceChartingKey: e.target.value})}
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="Enter your 40-character PriceCharting token"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">The Movie Database (TMDB) API Key (Free Movie Metadata)</label>
+            <input 
+              type="password"
+              value={apiKeys.tmdbApiKey || ''}
+              onChange={(e) => setApiKeys({...apiKeys, tmdbApiKey: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="Enter your TMDB API v3 key"
             />
           </div>
         </div>

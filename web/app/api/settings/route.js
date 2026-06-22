@@ -21,7 +21,8 @@ export async function GET() {
     apiKeys: {
       googleVisionKey: '',
       serpApiKey: '',
-      priceChartingKey: ''
+      priceChartingKey: '',
+      tmdbApiKey: ''
     },
     activeTier: 'basic',
     smtpConfig: {

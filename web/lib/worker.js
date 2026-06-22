@@ -356,6 +356,48 @@ async function fetchGenericMarketValue(name) {
   return null;
 }
 
+async function fetchTMDBMovieMetadata(name) {
+  const tmdbApiKey = process.env.TMDB_API_KEY;
+  if (!tmdbApiKey || !name) return null;
+
+  try {
+    const searchUrl = `https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(name)}`;
+    const searchRes = await axios.get(searchUrl, { timeout: 10000 });
+    
+    if (searchRes.data && searchRes.data.results && searchRes.data.results.length > 0) {
+      const movieId = searchRes.data.results[0].id;
+      const detailsUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}&append_to_response=videos,credits`;
+      const detailsRes = await axios.get(detailsUrl, { timeout: 10000 });
+      
+      if (detailsRes.data) {
+        const data = detailsRes.data;
+        const moviePlot = data.overview || null;
+        
+        let movieCast = null;
+        if (data.credits && data.credits.cast && Array.isArray(data.credits.cast)) {
+          const castNames = data.credits.cast.slice(0, 8).map(c => c.name);
+          movieCast = JSON.stringify(castNames);
+        }
+        
+        let movieTrailer = null;
+        if (data.videos && data.videos.results && Array.isArray(data.videos.results)) {
+          // Find youtube trailer
+          const trailerObj = data.videos.results.find(v => v.site === 'YouTube' && v.type === 'Trailer') 
+            || data.videos.results.find(v => v.site === 'YouTube');
+          if (trailerObj && trailerObj.key) {
+            movieTrailer = `https://www.youtube.com/watch?v=${trailerObj.key}`;
+          }
+        }
+        
+        return { moviePlot, movieCast, movieTrailer };
+      }
+    }
+  } catch (e) {
+    console.error('TMDB Movie Metadata Fetch error:', e.message);
+  }
+  return null;
+}
+
 async function fetchSerpApiMovieMetadata(name) {
   const serpApiKey = process.env.SERPAPI_KEY;
   if (!serpApiKey || !name) return null;
@@ -1371,8 +1413,15 @@ export async function fetchItemDetails(item, db, options = {}) {
     let gradedAgency = item.gradedAgency || null;
 
     if ((itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
-      console.log(`[Worker] Item is a Movie/TV Show. Fetching IMDb Knowledge Graph data for: ${name}`);
-      const movieData = await fetchSerpApiMovieMetadata(name);
+      let movieData = null;
+      if (process.env.TMDB_API_KEY) {
+        console.log(`[Worker] Querying TMDB for movie details: ${name}`);
+        movieData = await fetchTMDBMovieMetadata(name);
+      }
+      if (!movieData && process.env.SERPAPI_KEY) {
+        console.log(`[Worker] Falling back to SerpApi for movie details: ${name}`);
+        movieData = await fetchSerpApiMovieMetadata(name);
+      }
       if (movieData) {
         moviePlot = movieData.moviePlot;
         movieCast = movieData.movieCast;
@@ -1731,6 +1780,9 @@ async function processNextItem(userId = null) {
       }
       if (keys.priceChartingKey) {
         process.env.PRICECHARTING_KEY = keys.priceChartingKey;
+      }
+      if (keys.tmdbApiKey) {
+        process.env.TMDB_API_KEY = keys.tmdbApiKey;
       }
     }
   } catch (e) {
