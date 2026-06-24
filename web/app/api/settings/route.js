@@ -22,7 +22,9 @@ export async function GET() {
       googleVisionKey: '',
       serpApiKey: '',
       priceChartingKey: '',
-      tmdbApiKey: ''
+      tmdbApiKey: '',
+      googleCseKey: '',
+      googleCseCx: ''
     },
     activeTier: 'basic',
     smtpConfig: {

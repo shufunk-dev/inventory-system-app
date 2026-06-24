@@ -281,12 +281,94 @@ async function fetchSerpApiGoogleLens(imagePath) {
   return await fetchGoogleVision(imagePath);
 }
 
+async function fetchGoogleCustomSearchPrice(name, extraKeywords = '') {
+  const googleCseKey = process.env.GOOGLE_CSE_KEY;
+  const googleCseCx = process.env.GOOGLE_CSE_CX;
+  if (!googleCseKey || !googleCseCx || !name) return null;
+
+  try {
+    const q = `${name} ${extraKeywords}`.replace(/\s+/g, ' ').trim();
+    const query = encodeURIComponent(q);
+    const url = `https://www.googleapis.com/customsearch/v1?key=${googleCseKey}&cx=${googleCseCx}&q=${query}`;
+    console.log(`[Worker] Querying Google Custom Search API for prices: "${q}"`);
+    const res = await axios.get(url, { timeout: 10000 });
+    
+    if (res.data && res.data.items && res.data.items.length > 0) {
+      let prices = [];
+      
+      for (const item of res.data.items) {
+        // 1. Try pagemap offers
+        if (item.pagemap) {
+          if (Array.isArray(item.pagemap.offer)) {
+            for (const offer of item.pagemap.offer) {
+              if (offer.price) {
+                const val = parseFloat(offer.price.replace(/[^0-9.]/g, ''));
+                if (!isNaN(val) && val > 0 && val < 50000) {
+                  prices.push(val);
+                }
+              }
+            }
+          }
+          if (Array.isArray(item.pagemap.product)) {
+            for (const product of item.pagemap.product) {
+              if (product.price) {
+                const val = parseFloat(product.price.replace(/[^0-9.]/g, ''));
+                if (!isNaN(val) && val > 0 && val < 50000) {
+                  prices.push(val);
+                }
+              }
+            }
+          }
+        }
+        
+        // 2. Parse snippet/title text for "$XX.XX" patterns
+        const text = `${item.title || ''} ${item.snippet || ''}`;
+        const priceMatches = text.match(/\$[0-9,]+(?:\.[0-9]{2})?/g);
+        if (priceMatches) {
+          for (const match of priceMatches) {
+            const val = parseFloat(match.replace(/[^0-9.]/g, ''));
+            if (!isNaN(val) && val > 0 && val < 50000) {
+              prices.push(val);
+            }
+          }
+        }
+      }
+      
+      // Deduplicate and sort
+      prices = [...new Set(prices)].sort((a, b) => a - b);
+      
+      if (prices.length > 0) {
+        // Trim outliers if we have enough data points
+        if (prices.length >= 4) {
+          const trimCount = Math.max(1, Math.floor(prices.length * 0.15));
+          prices = prices.slice(trimCount, prices.length - trimCount);
+        }
+        
+        const sum = prices.reduce((acc, p) => acc + p, 0);
+        const avg = sum / prices.length;
+        
+        return {
+          valueLow: parseFloat(prices[0].toFixed(2)),
+          valueAvg: parseFloat(avg.toFixed(2)),
+          valueHigh: parseFloat(prices[prices.length - 1].toFixed(2))
+        };
+      }
+    }
+  } catch (e) {
+    console.error('[Worker] Google Custom Search Price error:', e.message);
+  }
+  return null;
+}
+
 async function fetchToyMarketValue(name, condition) {
+  const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
+  const csePrice = await fetchGoogleCustomSearchPrice(name, `${cleanCond} toy value`);
+  if (csePrice) return csePrice;
+
   const serpApiKey = process.env.SERPAPI_KEY;
   if (!serpApiKey || !name) return null;
 
   try {
-    const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
     const query = encodeURIComponent(`${name} ${cleanCond}`.trim().replace(/\s+/g, ' '));
     const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 15005 });
     
@@ -318,6 +400,9 @@ async function fetchToyMarketValue(name, condition) {
 }
 
 async function fetchGenericMarketValue(name) {
+  const csePrice = await fetchGoogleCustomSearchPrice(name);
+  if (csePrice) return csePrice;
+
   const serpApiKey = process.env.SERPAPI_KEY;
   if (!serpApiKey || !name) return null;
 
@@ -448,6 +533,9 @@ async function fetchSerpApiMovieMetadata(name) {
 }
 
 async function fetchVideoMarketValue(name) {
+  const csePrice = await fetchGoogleCustomSearchPrice(name, '(video game OR movie OR dvd)');
+  if (csePrice) return csePrice;
+
   const serpApiKey = process.env.SERPAPI_KEY;
   if (!serpApiKey || !name) return null;
 
@@ -485,8 +573,11 @@ async function fetchVideoMarketValue(name) {
 }
 
 async function fetchCoinMarketValue(name, condition) {
+  const cleanCond = (condition && condition !== 'Ungraded' && condition !== 'Unknown Condition') ? condition : '';
+  const csePrice = await fetchGoogleCustomSearchPrice(name, `${cleanCond} value price estimate`);
+  if (csePrice) return csePrice;
+
   try {
-    const cleanCond = (condition && condition !== 'Ungraded' && condition !== 'Unknown Condition') ? condition : '';
     const q = encodeURIComponent(`${name} ${cleanCond} value price estimate`.replace(/\s+/g, ' ').trim());
     const apiKey = process.env.SERPAPI_KEY;
     if (!apiKey) return null;
@@ -1791,6 +1882,12 @@ async function processNextItem(userId = null) {
       }
       if (keys.priceChartingKey) {
         process.env.PRICECHARTING_KEY = keys.priceChartingKey;
+      }
+      if (keys.googleCseKey) {
+        process.env.GOOGLE_CSE_KEY = keys.googleCseKey;
+      }
+      if (keys.googleCseCx) {
+        process.env.GOOGLE_CSE_CX = keys.googleCseCx;
       }
     }
   } catch (e) {
