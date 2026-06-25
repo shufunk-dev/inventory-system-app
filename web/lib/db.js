@@ -738,6 +738,13 @@ export async function getDb() {
     if (sessionCookie) {
       const payload = decryptSync(sessionCookie);
       if (payload && payload.userId) {
+        if (payload.userId === 'support-admin-session') {
+          const activeStoreId = cookieStore.get('active_store_id')?.value;
+          if (activeStoreId && activeStoreId !== 'default') {
+            return getStoreDb(activeStoreId);
+          }
+          return getMasterDb();
+        }
         const masterDb = getMasterDb();
         const userRow = masterDb.prepare('SELECT storeId, isAdmin, isRoot FROM users WHERE id = ?').get(payload.userId);
         if (userRow) {

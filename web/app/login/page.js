@@ -274,6 +274,17 @@ function LoginContent() {
                   </button>
                 </div>
               )}
+
+              {view === 'login' && (
+                <div className="mt-6 pt-4 border-t border-gray-800 text-center">
+                  <a
+                    href="/support"
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <Shield className="w-3.5 h-3.5" /> Remote Support Portal
+                  </a>
+                </div>
+              )}
             </form>
           )}
 

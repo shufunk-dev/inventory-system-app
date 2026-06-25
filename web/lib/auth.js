@@ -37,6 +37,28 @@ export async function createSession(userId, tenantId = null) {
   });
 }
 
+export async function createSupportSession(supportEmail, supportName, expiresAt) {
+  // Absolute cap of 24 hours from now
+  const maxExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const finalExpiry = expiresAt < maxExpiry ? expiresAt : maxExpiry;
+
+  const session = await encrypt({
+    userId: 'support-admin-session',
+    supportEmail,
+    supportName,
+    expiresAt: finalExpiry
+  });
+
+  const cookieStore = await getCookies();
+  cookieStore.set('session', session, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production' && process.env.SECURE_COOKIES !== 'false',
+    expires: finalExpiry,
+    sameSite: 'lax',
+    path: '/',
+  });
+}
+
 export async function deleteSession() {
   const cookieStore = await getCookies();
   cookieStore.delete('session');
@@ -79,6 +101,19 @@ export async function getUser() {
       isAdmin: 1,
       isRoot: 1,
       isSuperAdmin: true
+    };
+  }
+
+  if (session.userId === 'support-admin-session') {
+    return {
+      id: 'support-admin-session',
+      email: session.supportEmail || 'support@shufeltdesigns.com',
+      displayName: session.supportName || 'Remote Support Admin',
+      tier: 'premium',
+      activeTier: 'premium',
+      isAdmin: 1,
+      isRoot: 1,
+      isSupportAdmin: true
     };
   }
   

@@ -326,6 +326,15 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.8.6', date: 'June 25, 2026', title: 'Cryptographic Remote Support Tokens & Security Hardening',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented NIST P-256 (ECDSA ES256) asymmetric support token verification in the backend APIs.' },
+      { type: 'web', text: 'Added secure virtual session routing for Remote Support Admins, bypassing database user queries.' },
+      { type: 'web', text: 'Designed and built a premium glassmorphic Support Portal showing local Machine IDs and copyable tokens.' },
+      { type: 'web', text: 'Integrated Remote Support Portal redirection links on the primary login dashboard.' }
+    ])
+  },
+  {
     version: 'Beta 1.8.5', date: 'June 25, 2026', title: 'Shared Catalog Scoping & Appliance Onboarding Refinements',
     changes: JSON.stringify([
       { type: 'web', text: 'Removed individual userId filtering from core inventory lookup APIs (categories, audit, CSV, recipes, dashboard) to support shared catalogs.' },
