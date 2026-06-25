@@ -326,6 +326,16 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.8.5', date: 'June 25, 2026', title: 'Shared Catalog Scoping & Appliance Onboarding Refinements',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Removed individual userId filtering from core inventory lookup APIs (categories, audit, CSV, recipes, dashboard) to support shared catalogs.' },
+      { type: 'web', text: 'Updated setup wizard redirection flow to force-redirect unconfigured instances to setup onboarding page on boot.' },
+      { type: 'appliance', text: 'Configured automatic npm updates in appliance bootstrap scripts.' },
+      { type: 'appliance', text: 'Added troubleshooting guides for Linux swap-space requirements on low-RAM Raspberry Pi devices.' },
+      { type: 'web', text: 'Fixed trial license expiration throttling in the test suite by enforcing test environment variables.' }
+    ])
+  },
+  {
     version: 'Beta 1.8.4', date: 'June 20, 2026', title: 'Direct Mobile Sync & Bearer Authentication',
     changes: JSON.stringify([
       { type: 'web', text: 'Extended session authentication to support Bearer Tokens in request headers.' },

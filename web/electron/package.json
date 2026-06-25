@@ -1,6 +1,6 @@
 {
   "name": "inventory-system-app",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "Inventory System Native App",
   "author": "Shufelt Designs llc",
   "main": "main.js",
