@@ -9,7 +9,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = await getDb();
-    const categories = db.prepare('SELECT * FROM categories WHERE userId = ? ORDER BY name ASC').all(user.id);
+    const categories = db.prepare('SELECT * FROM categories ORDER BY name ASC').all();
     return NextResponse.json(categories);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -28,8 +28,8 @@ export async function POST(request) {
 
     const db = await getDb();
     
-    // Check if category already exists for THIS user
-    const existing = db.prepare('SELECT * FROM categories WHERE lower(name) = lower(?) AND userId = ?').get(name.trim(), user.id);
+    // Check if category already exists
+    const existing = db.prepare('SELECT * FROM categories WHERE lower(name) = lower(?)').get(name.trim());
     if (existing) {
       return NextResponse.json(existing);
     }

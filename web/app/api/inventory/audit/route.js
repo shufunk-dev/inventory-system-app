@@ -29,9 +29,8 @@ export async function GET(request) {
     const countSessions = db.prepare(`
       SELECT id, countDate, status
       FROM physical_counts
-      WHERE userId = ?
       ORDER BY countDate ASC
-    `).all(user.id);
+    `).all();
 
     const mode = searchParams.get('mode');
     if (mode === 'history') {
@@ -85,8 +84,8 @@ export async function GET(request) {
 
       // Get full list of unique brands for user
       const allBrands = db.prepare(`
-        SELECT id, name, category FROM liquor_brands WHERE userId = ? ORDER BY name ASC
-      `).all(user.id);
+        SELECT id, name, category FROM liquor_brands ORDER BY name ASC
+      `).all();
 
       return NextResponse.json({
         posStartDate,
@@ -171,8 +170,7 @@ export async function GET(request) {
       SELECT lv.brandId, lv.sizeMl, lv.cost
       FROM liquor_variants lv
       JOIN liquor_brands lb ON lv.brandId = lb.id
-      WHERE lb.userId = ?
-    `).all(user.id);
+    `).all();
 
     variants.forEach(v => {
       if (v.cost > 0 && v.sizeMl > 0) {
@@ -191,9 +189,8 @@ export async function GET(request) {
       FROM recipe_ingredients ri
       JOIN recipes r ON ri.recipeId = r.id
       JOIN pos_items p ON r.posItemNum = p.itemNum
-      WHERE r.userId = ?
       GROUP BY ri.brandId
-    `).all(user.id);
+    `).all();
 
     const theoreticalMap = new Map();
     salesItems.forEach(item => {

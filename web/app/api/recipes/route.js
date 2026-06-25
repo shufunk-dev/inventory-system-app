@@ -20,8 +20,7 @@ export async function GET(request) {
         p.numSold as posItemNumSold
       FROM recipes r
       JOIN pos_items p ON r.posItemNum = p.itemNum
-      WHERE r.userId = ?
-    `).all(user.id);
+    `).all();
 
     const getIngredientsStmt = db.prepare(`
       SELECT 
@@ -48,17 +47,16 @@ export async function GET(request) {
     const unmappedPosItems = db.prepare(`
       SELECT itemNum, name, price, numSold
       FROM pos_items
-      WHERE userId = ? AND itemNum NOT IN (SELECT posItemNum FROM recipes WHERE userId = ?)
+      WHERE itemNum NOT IN (SELECT posItemNum FROM recipes)
       ORDER BY numSold DESC
-    `).all(user.id, user.id);
+    `).all();
 
     // Also return a list of all available liquor brands (to select from when mapping ingredients)
     const brands = db.prepare(`
       SELECT id, name, category, specificGravity
       FROM liquor_brands
-      WHERE userId = ?
       ORDER BY name ASC
-    `).all(user.id);
+    `).all();
 
     return NextResponse.json({
       recipes: result,
@@ -86,8 +84,8 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Brand name is required' }, { status: 400 });
       }
 
-      // Check if brand already exists for this user
-      const existingBrand = db.prepare('SELECT id FROM liquor_brands WHERE lower(name) = lower(?) AND userId = ?').get(brandName.trim(), user.id);
+      // Check if brand already exists
+      const existingBrand = db.prepare('SELECT id FROM liquor_brands WHERE lower(name) = lower(?)').get(brandName.trim());
       if (existingBrand) {
         return NextResponse.json({ error: 'Brand name already exists' }, { status: 400 });
       }
@@ -108,7 +106,7 @@ export async function POST(request) {
     
     // Check if recipe already exists for this posItemNum
     let recipeId = null;
-    const existing = db.prepare('SELECT id FROM recipes WHERE posItemNum = ? AND userId = ?').get(posItemNum, user.id);
+    const existing = db.prepare('SELECT id FROM recipes WHERE posItemNum = ?').get(posItemNum);
     
     const insertRecipeStmt = db.prepare('INSERT INTO recipes (id, posItemNum, userId) VALUES (?, ?, ?)');
     const deleteIngredientsStmt = db.prepare('DELETE FROM recipe_ingredients WHERE recipeId = ?');
@@ -161,7 +159,7 @@ export async function DELETE(request) {
     }
 
     const db = await getDb();
-    const result = db.prepare('DELETE FROM recipes WHERE id = ? AND userId = ?').run(recipeId, user.id);
+    const result = db.prepare('DELETE FROM recipes WHERE id = ?').run(recipeId);
 
     if (result.changes === 0) {
       return NextResponse.json({ error: 'Recipe not found or unauthorized' }, { status: 404 });

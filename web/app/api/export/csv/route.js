@@ -11,16 +11,15 @@ export async function GET() {
 
     const db = await getDb();
     
-    // Fetch all items for this user
+    // Fetch all items
     const items = db.prepare(`
       SELECT 
         i.id, i.name, i.barcode, i.itemType, i.description, i.createdAt,
         c.name as categoryName
       FROM items i
       LEFT JOIN categories c ON i.categoryId = c.id
-      WHERE i.userId = ?
       ORDER BY i.createdAt DESC
-    `).all(user.id);
+    `).all();
 
     // CSV Header
     let csvStr = "ID,Name,Barcode,Item Type,Category,Description,Date Added\n";

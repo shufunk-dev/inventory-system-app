@@ -341,8 +341,8 @@ export async function POST(request) {
     // Save to DB
     const db = await getDb();
     
-    // Check if a session already exists for this date and user
-    let countRow = db.prepare('SELECT id FROM physical_counts WHERE countDate = ? AND userId = ?').get(countDate, user.id);
+    // Check if a session already exists for this date
+    let countRow = db.prepare('SELECT id FROM physical_counts WHERE countDate = ?').get(countDate);
     let countId;
     let isNewSession = false;
     if (countRow) {
@@ -357,7 +357,7 @@ export async function POST(request) {
     }
 
     // Prepare brand, variant, and item statements
-    const checkBrandStmt = db.prepare('SELECT id FROM liquor_brands WHERE name = ? AND userId = ?');
+    const checkBrandStmt = db.prepare('SELECT id FROM liquor_brands WHERE name = ?');
     const insertBrandStmt = db.prepare(`
       INSERT INTO liquor_brands (id, name, category, specificGravity, userId)
       VALUES (?, ?, ?, ?, ?)
@@ -386,7 +386,7 @@ export async function POST(request) {
     const transaction = db.transaction((items) => {
       for (const item of items) {
         // 1. Resolve or create liquor brand
-        let brandRow = checkBrandStmt.get(item.name, user.id);
+        let brandRow = checkBrandStmt.get(item.name);
         let brandId = brandRow ? brandRow.id : null;
         if (!brandId) {
           brandId = crypto.randomUUID();

@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url);
 
 // Setup isolated testing environment directory
 process.env.USER_DATA_PATH = path.resolve(process.cwd(), 'test_data_trial');
+process.env.NODE_ENV = 'test';
 
 function cleanupTestData() {
   closeDb();

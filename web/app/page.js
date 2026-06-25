@@ -49,7 +49,7 @@ export default async function Home({ searchParams }) {
   const db = await getDb();
 
   // Fetch categories for the filter UI
-  const rawCategories = db.prepare('SELECT * FROM categories WHERE userId = ? ORDER BY name ASC').all(user.id);
+  const rawCategories = db.prepare('SELECT * FROM categories ORDER BY name ASC').all();
   const initialCategories = buildCategoryTree(rawCategories);
 
   // Calculate total valuation
@@ -62,8 +62,8 @@ export default async function Home({ searchParams }) {
   }
 
   // Build the dynamic SQL query
-  let sqlConditions = ['userId = ?'];
-  let sqlParams = [user.id];
+  let sqlConditions = [];
+  let sqlParams = [];
 
   if (query) {
     if (advanced) {
