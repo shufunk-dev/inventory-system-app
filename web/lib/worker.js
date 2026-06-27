@@ -1317,7 +1317,13 @@ export async function fetchItemDetails(item, db, options = {}) {
 
   console.log(`[Worker] Fetching metadata for item: ${item.id} (Barcode: ${barcode})`);
 
+  const originalSerpApiKey = process.env.SERPAPI_KEY;
+  if (options.refreshPrices) {
+    process.env.SERPAPI_KEY = '';
+  }
+
   try {
+    try {
     // Determine the active tier preference from the global settings
     let isPremium = false;
     try {
@@ -1330,10 +1336,14 @@ export async function fetchItemDetails(item, db, options = {}) {
       // ignore
     }
       
-    if (options.forceTier === 'premium') isPremium = true;
-    if (options.forceTier === 'basic') isPremium = false;
-
-    if (options.forceTier) {
+    if (options.refreshPrices) {
+      details = {
+        name: item.name,
+        description: item.description,
+        itemType: item.itemType,
+        imageUrl: item.imagePath
+      };
+    } else if (options.forceTier) {
       if (options.forceTier === 'market_value_only') {
         details = {
           name: item.name,
@@ -1440,7 +1450,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     }
 
     // Ensure we have OCR text for games so the grading parser works even if Lens was used
-    if (details && item.imagePath && (item.itemType === 'game' || options.forceTier === 'game') && (!details.description || !details.description.includes('Detected Text:'))) {
+    if (!options.refreshPrices && details && item.imagePath && (item.itemType === 'game' || options.forceTier === 'game') && (!details.description || !details.description.includes('Detected Text:'))) {
       const ocr = await fetchGoogleVision(item.imagePath);
       if (ocr && ocr.description) {
         details.description = (details.description || '') + '\n\n' + ocr.description;
@@ -1516,11 +1526,11 @@ export async function fetchItemDetails(item, db, options = {}) {
         // ignore
       }
 
-      if (tmdbApiKey) {
+      if (!options.refreshPrices && tmdbApiKey) {
         console.log(`[Worker] Querying TMDB for movie details: ${name}`);
         movieData = await fetchTMDBMovieMetadata(name, tmdbApiKey);
       }
-      if (!movieData && process.env.SERPAPI_KEY) {
+      if (!options.refreshPrices && !movieData && process.env.SERPAPI_KEY) {
         console.log(`[Worker] Falling back to SerpApi for movie details: ${name}`);
         movieData = await fetchSerpApiMovieMetadata(name);
       }
@@ -1531,7 +1541,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
 
       // Check if it's graded (Movies/VHS only)
-      if (description) {
+      if (!options.refreshPrices && description) {
         if (/\bIGS\b/i.test(description)) gradedAgency = 'IGS';
         else if (/\bVGA\b/i.test(description)) gradedAgency = 'VGA'; // Some VHS are VGA
         
@@ -1551,14 +1561,14 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
 
       // Get Market Value
-      if (gradedAgency && gradedCondition && !valueAvg) {
+      if (gradedAgency && gradedCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
           valueAvg = marketData.valueAvg;
           valueHigh = marketData.valueHigh;
         }
-      } else if (!valueAvg) {
+      } else if (!valueAvg || options.refreshPrices) {
         const marketData = await fetchVideoMarketValue(name);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1570,7 +1580,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       console.log(`[Worker] Item is a Video Game. Extracting grading and market value for: ${name}`);
       
       // Check if it's graded
-      if (description) {
+      if (!options.refreshPrices && description) {
         let dtMatch = description.match(/Detected Text:\s*(.+)/i);
         let textToSearch = dtMatch ? dtMatch[1] : description;
 
@@ -1639,14 +1649,14 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
 
       // Get Market Value
-      if (gradedAgency && gradedCondition && !valueAvg) {
+      if (gradedAgency && gradedCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
           valueAvg = marketData.valueAvg;
           valueHigh = marketData.valueHigh;
         }
-      } else if (!valueAvg) {
+      } else if (!valueAvg || options.refreshPrices) {
         const marketData = await fetchVideoMarketValue(name);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1658,18 +1668,18 @@ export async function fetchItemDetails(item, db, options = {}) {
       console.log(`[Worker] Item is a Toy. Extracting details and calculating Market Value for: ${name}`);
       
       // 1. Extract Year and Brand
-      if (!toyYear) {
+      if (!options.refreshPrices && !toyYear) {
         const yearMatch = name.match(/(19[7-9]\d|20[0-2]\d)/);
         if (yearMatch) toyYear = yearMatch[0];
       }
-      if (!toyBrand) {
+      if (!options.refreshPrices && !toyBrand) {
         const brands = ['Hasbro', 'Kenner', 'Mattel', 'Funko', 'NECA', 'Bandai', 'Lego', 'Playmates', 'Takara', 'McFarlane', 'Hot Toys', 'Mezco', 'Sideshow', 'Super7'];
         const brandMatch = brands.find(b => new RegExp('\\b' + b + '\\b', 'i').test(name));
         if (brandMatch) toyBrand = brandMatch;
       }
 
       // 2. Guess Condition (Only if not already set, and only if it's a photo scan!)
-      if (!toyCondition) {
+      if (!options.refreshPrices && !toyCondition) {
         if (barcode) {
           toyCondition = 'Unknown Condition';
         } else {
@@ -1679,7 +1689,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
 
       // 3. Fetch Market Value
-      if (toyCondition && !valueAvg) {
+      if (toyCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchToyMarketValue(name, toyCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1690,7 +1700,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     } else if ((itemType === 'coin' || options.forceTier === 'coin') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Coin. Extracting details and calculating Market Value for: ${name}`);
       
-      if (details && details.coinGradingAgency) {
+      if (!options.refreshPrices && details && details.coinGradingAgency) {
         coinGradingAgency = details.coinGradingAgency;
         coinCertNumber = details.coinCertNumber;
         if ((!coinCondition || coinCondition === 'Unknown Condition' || coinCondition === 'Ungraded') && details.coinCondition) {
@@ -1698,7 +1708,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (!coinCondition) {
+      if (!options.refreshPrices && !coinCondition) {
         if (barcode) {
           coinCondition = 'Unknown Condition';
         } else {
@@ -1706,7 +1716,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (coinCondition && !valueAvg) {
+      if (coinCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchCoinMarketValue(name, coinCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1717,7 +1727,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     } else if ((itemType === 'card' || options.forceTier === 'card') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Card. Extracting details and calculating Market Value for: ${name}`);
       
-      if (details && details.cardGradingAgency) {
+      if (!options.refreshPrices && details && details.cardGradingAgency) {
         cardGradingAgency = details.cardGradingAgency;
         cardCertNumber = details.cardCertNumber;
         if ((!cardCondition || cardCondition === 'Unknown Condition' || cardCondition === 'Raw (Ungraded)') && details.cardCondition) {
@@ -1725,7 +1735,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (!cardCondition) {
+      if (!options.refreshPrices && !cardCondition) {
         if (barcode) {
           cardCondition = 'Unknown Condition';
         } else {
@@ -1733,7 +1743,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (cardCondition && !valueAvg) {
+      if (cardCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchCardMarketValue(name, cardCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1744,7 +1754,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     } else if ((itemType === 'graded' || options.forceTier === 'graded') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Graded Asset. Extracting details and calculating Market Value for: ${name}`);
       
-      if (details && details.gradedAgency) {
+      if (!options.refreshPrices && details && details.gradedAgency) {
         gradedAgency = details.gradedAgency;
         gradedCertNumber = details.gradedCertNumber;
         if ((!gradedCondition || gradedCondition === 'Unknown Condition') && details.gradedCondition) {
@@ -1752,7 +1762,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
       
-      if (gradedCondition && !valueAvg) {
+      if (gradedCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1763,7 +1773,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     } else if ((itemType === 'comic' || options.forceTier === 'comic') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Comic. Extracting details and calculating Market Value for: ${name}`);
       
-      if (details) {
+      if (!options.refreshPrices && details) {
         if (details.comicGradingAgency) comicGradingAgency = details.comicGradingAgency;
         if (details.comicCertNumber) comicCertNumber = details.comicCertNumber;
         if (details.comicCondition) comicCondition = details.comicCondition;
@@ -1771,11 +1781,11 @@ export async function fetchItemDetails(item, db, options = {}) {
         if (details.comicIssue) comicIssue = details.comicIssue;
       }
       
-      if (!comicCondition) {
+      if (!options.refreshPrices && !comicCondition) {
         comicCondition = 'Raw / Ungraded';
       }
       
-      if (comicCondition && !valueAvg) {
+      if (comicCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchComicMarketValue(name, comicCondition);
         if (marketData) {
           valueLow = marketData.valueLow;
@@ -1786,7 +1796,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     }
 
     // Fallback: If no market value was fetched by the type-specific logic, try a generic lookup
-    if (name && name !== 'Unknown Item' && !valueAvg) {
+    if (name && name !== 'Unknown Item' && (!valueAvg || options.refreshPrices)) {
       console.log(`[Worker] Falling back to generic market value search for: ${name}`);
       const marketData = await fetchGenericMarketValue(name);
       if (marketData) {
@@ -1841,11 +1851,14 @@ export async function fetchItemDetails(item, db, options = {}) {
       item.id
     );
 
-    return { success: !!details, details };
-  } catch (err) {
-    console.error(`[Worker] Unexpected error processing ${item.id}:`, err);
-    db.prepare("UPDATE items SET syncStatus = 'failed', lastSyncAttempt = ? WHERE id = ?").run(Date.now(), item.id);
-    return { success: false, reason: 'error' };
+      return { success: !!details, details };
+    } catch (err) {
+      console.error(`[Worker] Unexpected error processing ${item.id}:`, err);
+      db.prepare("UPDATE items SET syncStatus = 'failed', lastSyncAttempt = ? WHERE id = ?").run(Date.now(), item.id);
+      return { success: false, reason: 'error' };
+    }
+  } finally {
+    process.env.SERPAPI_KEY = originalSerpApiKey;
   }
 }
 
@@ -1854,12 +1867,27 @@ async function processNextItem(userId = null) {
   
   // Try to find pending items specifically for the provided user, otherwise get any pending item
   let item;
+  let isRefresh = false;
+
   if (userId) {
     item = db.prepare("SELECT * FROM items WHERE syncStatus = 'pending' AND userId = ? LIMIT 1").get(userId);
   }
   
   if (!item) {
     item = db.prepare("SELECT * FROM items WHERE syncStatus = 'pending' LIMIT 1").get();
+  }
+
+  // If no normal pending item, check for pending price refresh items
+  if (!item) {
+    if (userId) {
+      item = db.prepare("SELECT * FROM items WHERE syncStatus = 'pending_price_refresh' AND userId = ? LIMIT 1").get(userId);
+    }
+    if (!item) {
+      item = db.prepare("SELECT * FROM items WHERE syncStatus = 'pending_price_refresh' LIMIT 1").get();
+    }
+    if (item) {
+      isRefresh = true;
+    }
   }
   
   if (!item) {
@@ -1895,11 +1923,12 @@ async function processNextItem(userId = null) {
   }
   // ------------------------------------------
 
-  const result = await fetchItemDetails(item, db);
+  const result = await fetchItemDetails(item, db, isRefresh ? { refreshPrices: true } : {});
 
   if (result.reason === 'rate_limited') {
     console.log(`[Worker] RATE LIMIT hit. Marking remaining pending items as rate_limited.`);
     db.prepare("UPDATE items SET syncStatus = 'rate_limited', lastSyncAttempt = ? WHERE syncStatus = 'pending'").run(Date.now());
+    db.prepare("UPDATE items SET syncStatus = 'rate_limited', lastSyncAttempt = ? WHERE syncStatus = 'pending_price_refresh'").run(Date.now());
     isWorking = false;
     return;
   }

@@ -8,6 +8,7 @@ import SystemUpdatePanel from './SystemUpdatePanel';
 import AdminSalesReport from './AdminSalesReport';
 import TenantSalesReport from './TenantSalesReport';
 import ServerLogsPanel from './ServerLogsPanel';
+import MarketValueRefreshPanel from './MarketValueRefreshPanel';
 
 export default function AdminDashboardTabs({ users, saasMode, currentUser }) {
   const [activeTab, setActiveTab] = useState('management'); // 'management', 'sales', or 'logs'
@@ -56,6 +57,7 @@ export default function AdminDashboardTabs({ users, saasMode, currentUser }) {
           <>
             <AdminUsersSection users={users} />
             {!saasMode && currentUser?.isRoot === 1 && <AdminStoreProfilesSection />}
+            <MarketValueRefreshPanel />
             {currentUser?.isRoot === 1 && <SystemUpdatePanel />}
           </>
         ) : activeTab === 'sales' ? (

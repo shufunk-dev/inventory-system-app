@@ -750,7 +750,7 @@ export async function getDb() {
         if (userRow) {
           const userStoreId = userRow.storeId;
 
-          if (userStoreId && userStoreId !== 'default' && userRow.isRoot !== 1) {
+          if (userStoreId && userStoreId !== 'default' && userRow.isRoot !== 1 && userRow.isAdmin !== 1) {
             const allowedStores = userStoreId.split(',').map(s => s.trim()).filter(Boolean);
             if (allowedStores.length > 0) {
               const activeStoreId = cookieStore.get('active_store_id')?.value;
