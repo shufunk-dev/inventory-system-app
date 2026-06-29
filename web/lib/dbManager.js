@@ -326,6 +326,25 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.8.8', date: 'June 29, 2026', title: 'Category Valuation Reports & SerpApi Quota Protections',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented dynamic category-specific valuation calculating on homepage stats badge.' },
+      { type: 'web', text: 'Added query-parameter filtering to Valuation Report API, resolving nested subcategories recursively.' },
+      { type: 'web', text: 'Designed category filter banner on the Valuation page with an interactive close-reset toggle.' },
+      { type: 'web', text: 'Completely disabled SerpApi pricing fallbacks, forcing all price lookups to run on Google CSE for quota protection.' },
+      { type: 'web', text: 'Fixed TMDB API Key resolution bug that caused movie metadata imports to bypass TMDB.' },
+      { type: 'web', text: 'Bumped version to 1.8.8 and compiled + published Electron native app installer to GitHub releases.' }
+    ])
+  },
+  {
+    version: 'Beta 1.8.7', date: 'June 27, 2026', title: 'Google Custom Search Quota Safety & Rate Limiting',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented Google CSE 403 (restricted key) and 429 (quota exceeded) error handling.' },
+      { type: 'web', text: 'Added queue safety pause that automatically halts background worker queue and marks remaining items as rate-limited.' },
+      { type: 'web', text: 'Added regression tests to verify rate-limiting worker queue state persistence.' }
+    ])
+  },
+  {
     version: 'Beta 1.8.6', date: 'June 25, 2026', title: 'Cryptographic Remote Support Tokens & Security Hardening',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented NIST P-256 (ECDSA ES256) asymmetric support token verification in the backend APIs.' },
