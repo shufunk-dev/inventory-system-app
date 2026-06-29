@@ -1323,8 +1323,10 @@ export async function fetchItemDetails(item, db, options = {}) {
   console.log(`[Worker] Fetching metadata for item: ${item.id} (Barcode: ${barcode})`);
 
   const originalSerpApiKey = process.env.SERPAPI_KEY;
+  const originalTmdbApiKey = process.env.TMDB_API_KEY;
   if (options.refreshPrices) {
     process.env.SERPAPI_KEY = '';
+    process.env.TMDB_API_KEY = '';
   }
 
   try {
@@ -1520,16 +1522,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     if ((itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
       let movieData = null;
 
-      let tmdbApiKey = null;
-      try {
-        const keysRow = db.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
-        if (keysRow) {
-          const keys = JSON.parse(keysRow.value);
-          tmdbApiKey = keys.tmdbApiKey || null;
-        }
-      } catch (e) {
-        // ignore
-      }
+      const tmdbApiKey = process.env.TMDB_API_KEY || null;
 
       if (!options.refreshPrices && tmdbApiKey) {
         console.log(`[Worker] Querying TMDB for movie details: ${name}`);
@@ -1869,6 +1862,7 @@ export async function fetchItemDetails(item, db, options = {}) {
     }
   } finally {
     process.env.SERPAPI_KEY = originalSerpApiKey;
+    process.env.TMDB_API_KEY = originalTmdbApiKey;
   }
 }
 
@@ -1926,6 +1920,9 @@ async function processNextItem(userId = null) {
       }
       if (keys.googleCseCx) {
         process.env.GOOGLE_CSE_CX = keys.googleCseCx;
+      }
+      if (keys.tmdbApiKey) {
+        process.env.TMDB_API_KEY = keys.tmdbApiKey;
       }
     }
   } catch (e) {
