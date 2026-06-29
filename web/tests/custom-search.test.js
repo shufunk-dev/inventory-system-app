@@ -63,4 +63,56 @@ describe('Google Custom Search Engine Pricing parser', () => {
     // sum: 9.99 + 10.00 + 11.00 + 12.50 + 15.00 = 58.49
     // avg: 58.49 / 5 = 11.70
   });
+
+  test('Propagates 403 Google Custom Search error as RATE_LIMIT and sets syncStatus to rate_limited', async () => {
+    // Set mock env variables
+    process.env.GOOGLE_CSE_KEY = 'mock-cse-key';
+    process.env.GOOGLE_CSE_CX = 'mock-cse-cx';
+
+    // Mock axios.get to return 403 status error
+    axios.get = async (url, config) => {
+      if (url.includes('googleapis.com/customsearch/v1')) {
+        const err = new Error('Request failed with status code 403');
+        err.response = { status: 403, data: { error: { message: 'Quota exceeded' } } };
+        throw err;
+      }
+      return originalAxiosGet(url, config);
+    };
+
+    let updatedStatus = null;
+    const mockDb = {
+      prepare: (sql) => {
+        return {
+          run: (...args) => {
+            if (sql.includes('UPDATE items') && sql.includes('syncStatus = ?')) {
+              // syncStatus is the 4th parameter (index 3)
+              updatedStatus = args[3];
+            } else if (sql.includes('UPDATE items') && sql.includes('syncStatus = \'rate_limited\'')) {
+              updatedStatus = 'rate_limited';
+            }
+          },
+          get: () => ({ value: '{}' })
+        };
+      }
+    };
+
+    const item = {
+      id: 'test-item-403',
+      itemType: 'toy',
+      name: 'Cool Toy',
+      toyCondition: 'Loose'
+    };
+
+    const result = await fetchItemDetails(item, mockDb, { forceTier: 'toy' });
+
+    // Cleanup env
+    delete process.env.GOOGLE_CSE_KEY;
+    delete process.env.GOOGLE_CSE_CX;
+    // Restore axios
+    axios.get = originalAxiosGet;
+
+    assert.strictEqual(result.success, false);
+    assert.strictEqual(result.reason, 'rate_limited');
+    assert.strictEqual(updatedStatus, 'rate_limited');
+  });
 });

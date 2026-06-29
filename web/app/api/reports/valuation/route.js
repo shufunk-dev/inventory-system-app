@@ -1,5 +1,6 @@
 import { getDb } from '../../../../lib/db.js';
 import { getUser } from '../../../../lib/auth.js';
+import { getCategoryAndChildrenIds } from '../../../../lib/categories.js';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
@@ -27,7 +28,43 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    let categoryId = '';
+    if (request && typeof request.url === 'string') {
+      try {
+        const { searchParams } = new URL(request.url);
+        categoryId = searchParams.get('category') || '';
+      } catch (e) {
+        // ignore malformed URLs
+      }
+    }
+
     const db = await getDb();
+
+    let whereClause = '';
+    let queryParams = [];
+    let categoryName = null;
+
+    if (categoryId) {
+      if (categoryId === 'uncategorized') {
+        whereClause = "WHERE (categoryId IS NULL OR categoryId = '')";
+        categoryName = 'Uncategorized';
+      } else {
+        const rawCategories = db.prepare('SELECT * FROM categories').all();
+        const catRow = db.prepare('SELECT name FROM categories WHERE id = ?').get(categoryId);
+        if (catRow) {
+          categoryName = catRow.name;
+        }
+        
+        const allIds = getCategoryAndChildrenIds(rawCategories, categoryId);
+        if (allIds.length > 0) {
+          const placeholders = allIds.map(() => '?').join(',');
+          whereClause = `WHERE categoryId IN (${placeholders})`;
+          queryParams = allIds;
+        } else {
+          whereClause = "WHERE 1 = 0";
+        }
+      }
+    }
 
     // 1. Get overall summaries
     const summary = db.prepare(`
@@ -42,7 +79,8 @@ export async function GET(request) {
         COALESCE(SUM(CASE WHEN purchasePrice IS NOT NULL AND valueAvg IS NOT NULL THEN valueAvg ELSE 0 END), 0) as purchasedItemsValue,
         COALESCE(SUM(CASE WHEN purchasePrice IS NULL AND valueAvg IS NOT NULL THEN valueAvg ELSE 0 END), 0) as unpricedItemsValue
       FROM items
-    `).get();
+      ${whereClause}
+    `).get(...queryParams);
 
     // 2. Get breakdown by itemType
     const breakdown = db.prepare(`
@@ -58,9 +96,10 @@ export async function GET(request) {
         COALESCE(SUM(CASE WHEN purchasePrice IS NOT NULL AND valueAvg IS NOT NULL THEN valueAvg ELSE 0 END), 0) as purchasedItemsValue,
         COALESCE(SUM(CASE WHEN purchasePrice IS NULL AND valueAvg IS NOT NULL THEN valueAvg ELSE 0 END), 0) as unpricedItemsValue
       FROM items
+      ${whereClause}
       GROUP BY itemType
       ORDER BY totalAvg DESC
-    `).all();
+    `).all(...queryParams);
 
     // 3. Get list of all items (with or without market value)
     const items = db.prepare(`
@@ -75,10 +114,12 @@ export async function GET(request) {
         COALESCE(valueAvg, 0) as valueAvg,
         COALESCE(valueHigh, 0) as valueHigh
       FROM items
+      ${whereClause}
       ORDER BY COALESCE(valueAvg, 0) DESC, COALESCE(purchasePrice, 0) DESC
-    `).all();
+    `).all(...queryParams);
 
     return NextResponse.json({
+      categoryName,
       summary: {
         totalCount: summary.totalCount,
         valuedCount: summary.valuedCount,

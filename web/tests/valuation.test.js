@@ -142,4 +142,69 @@ test.describe('Inventory Valuation Report API', () => {
     global.mockSessionCookie = null;
   });
 
+  test('Filters valuation report and breakdowns by selected categoryId', async () => {
+    process.env.SAAS_MODE = 'false';
+
+    // 1. Initialize global DB and seed user
+    const globalDb = await getGlobalDb();
+    const userId = crypto.randomUUID();
+    globalDb.prepare(`
+      INSERT INTO users (id, email, passwordHash, tier, activeTier, isAdmin, isRoot, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(userId, 'collector2@test.com', 'hashedpassword', 'premium', 'premium', 1, 1, Date.now());
+
+    const db = await getDb();
+
+    // 2. Seed categories (location style)
+    db.prepare("INSERT INTO categories (id, name, parentId, userId, createdAt) VALUES ('box-1', 'Box 1', NULL, ?, ?)").run(userId, Date.now());
+    db.prepare("INSERT INTO categories (id, name, parentId, userId, createdAt) VALUES ('box-1-inner', 'Box 1 Inner Slot', 'box-1', ?, ?)").run(userId, Date.now());
+    db.prepare("INSERT INTO categories (id, name, parentId, userId, createdAt) VALUES ('box-2', 'Box 2', NULL, ?, ?)").run(userId, Date.now());
+
+    // 3. Seed items belonging to different categories
+    // coin-1 in box-1
+    db.prepare(`
+      INSERT INTO items (id, categoryId, userId, name, itemType, valueLow, valueAvg, valueHigh, purchasePrice, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('coin-1', 'box-1', userId, 'Box 1 Coin', 'coin', 10.0, 15.0, 20.0, 12.0, Date.now());
+
+    // coin-2 in box-1-inner (child of box-1)
+    db.prepare(`
+      INSERT INTO items (id, categoryId, userId, name, itemType, valueLow, valueAvg, valueHigh, purchasePrice, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('coin-2', 'box-1-inner', userId, 'Box 1 Inner Coin', 'coin', 20.0, 30.0, 40.0, 25.0, Date.now());
+
+    // toy-1 in box-2 (should be excluded when box-1 is filtered)
+    db.prepare(`
+      INSERT INTO items (id, categoryId, userId, name, itemType, valueLow, valueAvg, valueHigh, purchasePrice, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('toy-1', 'box-2', userId, 'Box 2 Toy', 'toy', 50.0, 60.0, 70.0, 45.0, Date.now());
+
+    // 4. Mock Auth session
+    const { encrypt } = await import('../lib/jwt.js');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const sessionCookie = await encrypt({ userId, expiresAt });
+    global.mockSessionCookie = sessionCookie;
+
+    // 5. Query GET with category=box-1 parameter
+    const { GET } = await import('../app/api/reports/valuation/route.js');
+    const response = await GET({ url: 'https://localhost/api/reports/valuation?category=box-1' });
+    assert.strictEqual(response.status, 200);
+
+    const report = await response.json();
+
+    // Verification:
+    assert.strictEqual(report.categoryName, 'Box 1');
+    assert.strictEqual(report.summary.totalCount, 2);
+    assert.strictEqual(report.summary.totalAvg, 45.0);
+    assert.strictEqual(report.summary.totalPurchasePrice, 37.0);
+
+    assert.strictEqual(report.items.length, 2);
+    assert.ok(report.items.some(i => i.id === 'coin-1'));
+    assert.ok(report.items.some(i => i.id === 'coin-2'));
+    assert.strictEqual(report.items.some(i => i.id === 'toy-1'), false);
+
+    // Clean up mock
+    global.mockSessionCookie = null;
+  });
+
 });

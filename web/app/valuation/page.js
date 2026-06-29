@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -36,7 +37,10 @@ const TYPE_COLORS = {
   standard: 'bg-slate-500/20 text-slate-400 border-slate-500/30 progress-slate'
 };
 
-export default function ValuationReportPage() {
+function ValuationReportContent() {
+  const searchParams = useSearchParams();
+  const categoryId = searchParams.get('category') || '';
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,7 +49,11 @@ export default function ValuationReportPage() {
   const [activeSegment, setActiveSegment] = useState('invested');
 
   useEffect(() => {
-    fetch('/api/reports/valuation')
+    setLoading(true);
+    const fetchUrl = categoryId 
+      ? `/api/reports/valuation?category=${encodeURIComponent(categoryId)}`
+      : '/api/reports/valuation';
+    fetch(fetchUrl)
       .then(res => {
         if (!res.ok) throw new Error('Failed to load valuation data');
         return res.json();
@@ -61,7 +69,7 @@ export default function ValuationReportPage() {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [categoryId]);
 
   if (loading) {
     return (
@@ -115,8 +123,14 @@ export default function ValuationReportPage() {
             <PieChart className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-100 to-gray-400 tracking-tight">
+            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-100 to-gray-400 tracking-tight flex items-center gap-3 flex-wrap">
               Inventory Valuation Report
+              {data.categoryName && (
+                <span className="text-xs px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full font-bold inline-flex items-center gap-2">
+                  <span>Filtered: {data.categoryName}</span>
+                  <Link href="/valuation" className="hover:text-white text-blue-500 transition-colors font-black">×</Link>
+                </span>
+              )}
             </h1>
             <p className="text-gray-400 text-sm mt-0.5">Real-time valuation stats across categories based on estimated market value.</p>
           </div>
@@ -492,5 +506,18 @@ export default function ValuationReportPage() {
         .progress-slate { background: linear-gradient(to right, #64748b, #94a3b8); }
       `}</style>
     </main>
+  );
+}
+
+export default function ValuationReportPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4 text-gray-400">
+        <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+        <p className="font-medium text-lg animate-pulse">Calculating Inventory Valuation...</p>
+      </div>
+    }>
+      <ValuationReportContent />
+    </Suspense>
   );
 }

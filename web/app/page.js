@@ -55,7 +55,19 @@ export default async function Home({ searchParams }) {
   // Calculate total valuation
   let totalValuation = 0;
   try {
-    const valRow = db.prepare('SELECT COALESCE(SUM(valueAvg), 0) as total FROM items').get();
+    let valQuery = 'SELECT COALESCE(SUM(valueAvg), 0) as total FROM items';
+    let valParams = [];
+    if (categoryId) {
+      if (categoryId === 'uncategorized') {
+        valQuery += " WHERE (categoryId IS NULL OR categoryId = '')";
+      } else {
+        const allIds = getCategoryAndChildrenIds(rawCategories, categoryId);
+        const placeholders = allIds.map(() => '?').join(',');
+        valQuery += ` WHERE categoryId IN (${placeholders})`;
+        valParams.push(...allIds);
+      }
+    }
+    const valRow = db.prepare(valQuery).get(...valParams);
     totalValuation = valRow.total;
   } catch (e) {
     console.error('Failed to query total valuation for catalog widget:', e);
@@ -115,9 +127,9 @@ export default async function Home({ searchParams }) {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-gray-400 text-base">
               <p>Manage your scanned items seamlessly.</p>
               <span className="hidden sm:inline text-gray-700">|</span>
-              <Link href="/valuation" className="inline-flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20 hover:border-emerald-500/35 transition-all shadow-[0_0_10px_rgba(16,185,129,0.05)] hover:-translate-y-0.5">
+              <Link href={categoryId ? `/valuation?category=${categoryId}` : "/valuation"} className="inline-flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20 hover:border-emerald-500/35 transition-all shadow-[0_0_10px_rgba(16,185,129,0.05)] hover:-translate-y-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Est. Value: ${totalValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} →
+                {categoryId ? 'Category Value' : 'Est. Value'}: ${totalValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} →
               </Link>
             </div>
           </div>

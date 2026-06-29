@@ -356,6 +356,11 @@ async function fetchGoogleCustomSearchPrice(name, extraKeywords = '') {
     }
   } catch (e) {
     console.error('[Worker] Google Custom Search Price error:', e.message);
+    const isRateOrAuthError = (e.response && (e.response.status === 403 || e.response.status === 429)) ||
+                              (e.message && (e.message.includes('403') || e.message.includes('429')));
+    if (isRateOrAuthError) {
+      throw new Error('RATE_LIMIT');
+    }
   }
   return null;
 }
@@ -1853,6 +1858,11 @@ export async function fetchItemDetails(item, db, options = {}) {
 
       return { success: !!details, details };
     } catch (err) {
+      if (err.message === 'RATE_LIMIT') {
+        console.warn(`[Worker] Rate limit or quota error encountered while processing ${item.id}`);
+        db.prepare("UPDATE items SET syncStatus = 'rate_limited', lastSyncAttempt = ? WHERE id = ?").run(Date.now(), item.id);
+        return { success: false, reason: 'rate_limited' };
+      }
       console.error(`[Worker] Unexpected error processing ${item.id}:`, err);
       db.prepare("UPDATE items SET syncStatus = 'failed', lastSyncAttempt = ? WHERE id = ?").run(Date.now(), item.id);
       return { success: false, reason: 'error' };
