@@ -370,37 +370,6 @@ async function fetchToyMarketValue(name, condition) {
   const csePrice = await fetchGoogleCustomSearchPrice(name, `${cleanCond} toy value`);
   if (csePrice) return csePrice;
 
-  const serpApiKey = process.env.SERPAPI_KEY;
-  if (!serpApiKey || !name) return null;
-
-  try {
-    const query = encodeURIComponent(`${name} ${cleanCond}`.trim().replace(/\s+/g, ' '));
-    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 15005 });
-    
-    if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
-      let prices = res.data.shopping_results
-        .filter(r => r.extracted_price)
-        .map(r => r.extracted_price)
-        .sort((a, b) => a - b);
-        
-      if (prices.length >= 5) {
-        // Strip top 10% and bottom 10% to remove outliers
-        const stripCount = Math.max(1, Math.floor(prices.length * 0.1));
-        prices = prices.slice(stripCount, prices.length - stripCount);
-      }
-
-      if (prices.length > 0) {
-        const valueLow = prices[0];
-        const valueHigh = prices[prices.length - 1];
-        const sum = prices.reduce((a, b) => a + b, 0);
-        const valueAvg = +(sum / prices.length).toFixed(2);
-        
-        return { valueLow, valueAvg, valueHigh };
-      }
-    }
-  } catch (e) {
-    console.error('SerpApi Toy Market Fetch error:', e.message);
-  }
   return null;
 }
 
@@ -408,41 +377,6 @@ async function fetchGenericMarketValue(name) {
   const csePrice = await fetchGoogleCustomSearchPrice(name);
   if (csePrice) return csePrice;
 
-  const serpApiKey = process.env.SERPAPI_KEY;
-  if (!serpApiKey || !name) return null;
-
-  try {
-    const query = encodeURIComponent(name);
-    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 10000 });
-    
-    if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
-      let prices = res.data.shopping_results
-        .filter(r => r.extracted_price)
-        .map(r => r.extracted_price)
-        .sort((a, b) => a - b);
-        
-      if (prices.length >= 5) {
-        // Strip top 10% and bottom 10% to remove outliers
-        const stripCount = Math.max(1, Math.floor(prices.length * 0.1));
-        prices = prices.slice(stripCount, prices.length - stripCount);
-      }
-
-      if (prices.length > 0) {
-        const valueLow = prices[0];
-        const valueHigh = prices[prices.length - 1];
-        const sum = prices.reduce((a, b) => a + b, 0);
-        const valueAvg = +(sum / prices.length).toFixed(2);
-        
-        return {
-          valueLow: parseFloat(valueLow.toFixed(2)),
-          valueAvg: parseFloat(valueAvg.toFixed(2)),
-          valueHigh: parseFloat(valueHigh.toFixed(2))
-        };
-      }
-    }
-  } catch (e) {
-    console.error('SerpApi Generic Market Fetch error:', e.message);
-  }
   return null;
 }
 
@@ -541,39 +475,6 @@ async function fetchVideoMarketValue(name) {
   const csePrice = await fetchGoogleCustomSearchPrice(name, '(video game OR movie OR dvd)');
   if (csePrice) return csePrice;
 
-  const serpApiKey = process.env.SERPAPI_KEY;
-  if (!serpApiKey || !name) return null;
-
-  try {
-    const query = encodeURIComponent(`${name} (video game OR movie OR dvd)`);
-    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 10000 });
-    
-    if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
-      let prices = res.data.shopping_results
-        .map(r => r.extracted_price)
-        .filter(p => p !== undefined && p > 0);
-        
-      if (prices.length > 0) {
-        prices.sort((a, b) => a - b);
-        let low = prices[0];
-        let high = prices[prices.length - 1];
-        let avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-
-        if (prices.length >= 3) {
-          const midPrices = prices.slice(1, -1);
-          avg = midPrices.reduce((a, b) => a + b, 0) / midPrices.length;
-        }
-
-        return {
-          valueLow: parseFloat(low.toFixed(2)),
-          valueAvg: parseFloat(avg.toFixed(2)),
-          valueHigh: parseFloat(high.toFixed(2))
-        };
-      }
-    }
-  } catch (e) {
-    console.error('Video Market Value search error:', e.message);
-  }
   return null;
 }
 
@@ -582,38 +483,6 @@ async function fetchCoinMarketValue(name, condition) {
   const csePrice = await fetchGoogleCustomSearchPrice(name, `${cleanCond} value price estimate`);
   if (csePrice) return csePrice;
 
-  try {
-    const q = encodeURIComponent(`${name} ${cleanCond} value price estimate`.replace(/\s+/g, ' ').trim());
-    const apiKey = process.env.SERPAPI_KEY;
-    if (!apiKey) return null;
-
-    const url = `https://serpapi.com/search.json?engine=google_shopping&q=${q}&api_key=${apiKey}`;
-    const res = await axios.get(url);
-
-    if (res.data.shopping_results && res.data.shopping_results.length > 0) {
-      let prices = res.data.shopping_results
-        .map(r => r.extracted_price)
-        .filter(p => p !== undefined && p !== null && typeof p === 'number' && p > 0)
-        .sort((a, b) => a - b);
-
-      if (prices.length > 0) {
-        if (prices.length >= 4) {
-          const trimCount = Math.max(1, Math.floor(prices.length * 0.1));
-          prices = prices.slice(trimCount, prices.length - trimCount);
-        }
-        
-        const sum = prices.reduce((acc, p) => acc + p, 0);
-        const avg = sum / prices.length;
-        return {
-          valueLow: Number(prices[0].toFixed(2)),
-          valueAvg: Number(avg.toFixed(2)),
-          valueHigh: Number(prices[prices.length - 1].toFixed(2))
-        };
-      }
-    }
-  } catch (err) {
-    console.error('fetchCoinMarketValue error:', err.message);
-  }
   return null;
 }
 
@@ -667,69 +536,20 @@ async function fetchGradingAgencyBarcode(barcode) {
 }
 
 async function fetchComicMarketValue(name, condition) {
-  try {
-    const isRaw = condition === 'Raw / Ungraded' || condition === 'Unknown Condition';
-    const cleanCond = (condition && condition !== 'Unknown Condition' && condition !== 'Raw / Ungraded') ? `${condition} CGC CBCS` : 'loose raw comic';
-    const q = encodeURIComponent(`${name} ${cleanCond} value price estimate`);
-    const apiKey = process.env.SERPAPI_KEY;
-    if (!apiKey) return null;
+  const cleanCond = (condition && condition !== 'Unknown Condition' && condition !== 'Raw / Ungraded') ? `${condition} CGC CBCS` : 'loose raw comic';
+  const query = `${name} ${cleanCond} value price estimate`;
+  const csePrice = await fetchGoogleCustomSearchPrice(query);
+  if (csePrice) return csePrice;
 
-    const url = `https://serpapi.com/search.json?engine=google_shopping&q=${q}&api_key=${apiKey}`;
-    const res = await axios.get(url);
-    if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
-      const prices = res.data.shopping_results
-        .map(r => r.extracted_price)
-        .filter(p => p && p > 0)
-        .sort((a, b) => a - b);
-      
-      if (prices.length > 0) {
-        return {
-          valueLow: prices[0],
-          valueAvg: parseFloat((prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)),
-          valueHigh: prices[prices.length - 1]
-        };
-      }
-    }
-  } catch (err) {
-    console.error('fetchComicMarketValue error:', err.message);
-  }
   return null;
 }
 
 async function fetchCardMarketValue(name, condition) {
-  try {
-    const cleanCond = (condition && condition !== 'Raw (Ungraded)' && condition !== 'Unknown Condition') ? condition : '';
-    const q = encodeURIComponent(`${name} ${cleanCond} value price estimate PSA BGS SGC`.replace(/\s+/g, ' ').trim());
-    const apiKey = process.env.SERPAPI_KEY;
-    if (!apiKey) return null;
+  const cleanCond = (condition && condition !== 'Raw (Ungraded)' && condition !== 'Unknown Condition') ? condition : '';
+  const query = `${name} ${cleanCond} value price estimate PSA BGS SGC`.replace(/\s+/g, ' ').trim();
+  const csePrice = await fetchGoogleCustomSearchPrice(query);
+  if (csePrice) return csePrice;
 
-    const url = `https://serpapi.com/search.json?engine=google_shopping&q=${q}&api_key=${apiKey}`;
-    const res = await axios.get(url);
-
-    if (res.data.shopping_results && res.data.shopping_results.length > 0) {
-      let prices = res.data.shopping_results
-        .map(r => r.extracted_price)
-        .filter(p => p !== undefined && p !== null && typeof p === 'number' && p > 0)
-        .sort((a, b) => a - b);
-
-      if (prices.length > 0) {
-        if (prices.length >= 4) {
-          const trimCount = Math.max(1, Math.floor(prices.length * 0.1));
-          prices = prices.slice(trimCount, prices.length - trimCount);
-        }
-        
-        const sum = prices.reduce((acc, p) => acc + p, 0);
-        const avg = sum / prices.length;
-        return {
-          valueLow: Number(prices[0].toFixed(2)),
-          valueAvg: Number(avg.toFixed(2)),
-          valueHigh: Number(prices[prices.length - 1].toFixed(2))
-        };
-      }
-    }
-  } catch (err) {
-    console.error('fetchCardMarketValue error:', err.message);
-  }
   return null;
 }
 
@@ -1217,41 +1037,11 @@ async function fetchOpenFoodFacts(barcode) {
   return null;
 }
 async function fetchGradedMarketValue(name, agency, condition) {
-  const serpApiKey = process.env.SERPAPI_KEY;
-  if (!serpApiKey || !name) return null;
+  const cleanCond = (condition && condition !== 'Unknown Condition') ? condition : '';
+  const query = `${name} ${agency || ''} ${cleanCond}`.trim().replace(/\s+/g, ' ');
+  const csePrice = await fetchGoogleCustomSearchPrice(query);
+  if (csePrice) return csePrice;
 
-  try {
-    const cleanCond = (condition && condition !== 'Unknown Condition') ? condition : '';
-    const query = encodeURIComponent(`${name} ${agency || ''} ${cleanCond}`.trim().replace(/\s+/g, ' '));
-    const res = await axios.get(`https://serpapi.com/search.json?engine=google_shopping&q=${query}&api_key=${serpApiKey}`, { timeout: 10005 });
-    
-    if (res.data && res.data.shopping_results && res.data.shopping_results.length > 0) {
-      let prices = res.data.shopping_results
-        .map(r => r.extracted_price)
-        .filter(p => p !== undefined && p > 0);
-        
-      if (prices.length > 0) {
-        prices.sort((a, b) => a - b);
-        let low = prices[0];
-        let high = prices[prices.length - 1];
-        let avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-
-        // filter outliers
-        if (prices.length >= 3) {
-          const midPrices = prices.slice(1, -1);
-          avg = midPrices.reduce((a, b) => a + b, 0) / midPrices.length;
-        }
-
-        return {
-          valueLow: parseFloat(low.toFixed(2)),
-          valueAvg: parseFloat(avg.toFixed(2)),
-          valueHigh: parseFloat(high.toFixed(2))
-        };
-      }
-    }
-  } catch (e) {
-    console.error('Graded Market Value search error:', e.message);
-  }
   return null;
 }
 

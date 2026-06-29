@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import axios from 'axios';
 import { fetchItemDetails } from '../lib/worker.js';
 
-// Mock axios.get to support UPC lookup and SerpApi Shopping searches
+// Mock axios.get to support UPC lookup, Google CSE pricing, and SerpApi searches
 const originalAxiosGet = axios.get;
 axios.get = async (url, config) => {
   if (url.includes('upcitemdb.com')) {
@@ -25,6 +25,18 @@ axios.get = async (url, config) => {
       };
     }
     return { data: { items: [] } };
+  }
+
+  if (url.includes('googleapis.com/customsearch')) {
+    return {
+      data: {
+        items: [
+          { title: 'Pepsi Soda 12oz Can price is $1.50', snippet: 'Lowest price found' },
+          { title: 'Buy Pepsi Soda 12oz Can for $2.00', snippet: 'Retail price' },
+          { title: 'Pepsi Soda 12oz Can at $2.50', snippet: 'Highest price found' }
+        ]
+      }
+    };
   }
 
   if (url.includes('serpapi.com/search.json') && url.includes('engine=google_shopping')) {
@@ -106,8 +118,9 @@ describe('Automatic Market Data Ingestion on Import', () => {
   });
 
   test('Barcode lookup resolves name and triggers generic market fallback', async () => {
-    // Inject mock SerpApi key and verify fallback triggers
-    process.env.SERPAPI_KEY = 'mock-serpapi-key';
+    // Inject mock Google CSE keys and verify fallback triggers
+    process.env.GOOGLE_CSE_KEY = 'mock-key';
+    process.env.GOOGLE_CSE_CX = 'mock-cx';
 
     const itemId = 'test-item-pepsi';
     db.prepare(`
