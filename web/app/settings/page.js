@@ -28,6 +28,54 @@ export default function SettingsPage() {
   const [testLoading, setTestLoading] = useState(false);
   const [testMessage, setTestMessage] = useState('');
 
+  const [searxngStatus, setSearxngStatus] = useState({
+    platform: '',
+    dockerInstalled: false,
+    containerStatus: 'not_created',
+    endpointActive: false,
+    loading: true
+  });
+  const [searxngActionLoading, setSearxngActionLoading] = useState(false);
+  const [searxngMessage, setSearxngMessage] = useState('');
+  const [searxngError, setSearxngError] = useState('');
+
+  const fetchSearxngStatus = async () => {
+    try {
+      const res = await fetch('/api/admin/searxng');
+      if (res.ok) {
+        const data = await res.json();
+        setSearxngStatus({ ...data, loading: false });
+      }
+    } catch (e) {}
+  };
+
+  const handleSearxngAction = async (action) => {
+    setSearxngActionLoading(true);
+    setSearxngMessage('');
+    setSearxngError('');
+    try {
+      const res = await fetch('/api/admin/searxng', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSearxngMessage(data.message);
+        if (action === 'install') {
+          setApiKeys(prev => ({ ...prev, searxngUrl: 'http://localhost:8080' }));
+        }
+        await fetchSearxngStatus();
+      } else {
+        setSearxngError(data.error || 'Operation failed.');
+      }
+    } catch (e) {
+      setSearxngError('Network error occurred.');
+    } finally {
+      setSearxngActionLoading(false);
+    }
+  };
+
   // Profile customization states
   const [displayName, setDisplayName] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
@@ -74,6 +122,7 @@ export default function SettingsPage() {
                 if (settings.smtpConfig) setSmtpConfig(settings.smtpConfig);
                 if (settings.mallName) setMallName(settings.mallName);
               });
+            fetchSearxngStatus();
 
           } else {
             setActiveTier(data.user.activeTier || 'basic');
@@ -667,6 +716,136 @@ export default function SettingsPage() {
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="e.g. http://localhost:8080 or http://192.168.1.100:8080"
             />
+          </div>
+
+          <div className="bg-gray-950 border border-gray-850 rounded-2xl p-4 sm:p-5 mt-4 space-y-4">
+            <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <span className="flex h-2 w-2 relative">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  searxngStatus.endpointActive ? 'bg-green-400' :
+                  searxngStatus.containerStatus === 'running' ? 'bg-yellow-400' : 'bg-red-400'
+                }`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                  searxngStatus.endpointActive ? 'bg-green-500' :
+                  searxngStatus.containerStatus === 'running' ? 'bg-yellow-500' : 'bg-red-500'
+                }`}></span>
+              </span>
+              SearXNG Self-Hosting Assistant
+            </h4>
+
+            {searxngStatus.loading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></span>
+                <span>Checking host system environment...</span>
+              </div>
+            ) : (
+              <div className="space-y-4 text-sm">
+                {/* Docker Status */}
+                {!searxngStatus.dockerInstalled ? (
+                  <div className="space-y-3">
+                    <div className="text-red-400 bg-red-950/20 border border-red-900/30 p-3.5 rounded-xl">
+                      <strong>Docker Not Found</strong>: Docker must be running on the host system to auto-install SearXNG.
+                    </div>
+                    {searxngStatus.platform === 'linux' ? (
+                      <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl space-y-2">
+                        <p className="text-gray-300 text-xs font-semibold">Detected Server OS: Linux (Raspberry Pi). Run the following commands to install Docker:</p>
+                        <pre className="bg-black/40 text-green-400 p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre-wrap select-all">
+{`curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER`}
+                        </pre>
+                        <p className="text-gray-500 text-[11px] italic">Note: Reboot or run 'newgrp docker' after commands finish, then refresh this page.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl space-y-2">
+                        <p className="text-gray-300 text-xs font-semibold">Detected Server OS: {searxngStatus.platform === 'win32' ? 'Windows' : 'macOS'}</p>
+                        <p className="text-gray-400 text-xs">Docker Desktop is required to host SearXNG locally. Please download it from the official site:</p>
+                        <a 
+                          href="https://www.docker.com/products/docker-desktop/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors mt-1"
+                        >
+                          Download Docker Desktop
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Docker Installed */}
+                    {searxngStatus.containerStatus === 'not_created' && (
+                      <div className="space-y-3">
+                        <p className="text-gray-400 text-xs">
+                          Docker is active. Click below to automatically create and launch a local **SearXNG** container on port **8080**.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleSearxngAction('install')}
+                          disabled={searxngActionLoading}
+                          className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/10 flex items-center gap-2 disabled:opacity-50"
+                        >
+                          {searxngActionLoading ? (
+                            <>
+                              <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                              Installing SearXNG...
+                            </>
+                          ) : 'Install & Start SearXNG via Docker'}
+                        </button>
+                      </div>
+                    )}
+
+                    {searxngStatus.containerStatus === 'stopped' && (
+                      <div className="space-y-3">
+                        <p className="text-gray-400 text-xs">
+                          The local SearXNG container exists but is currently stopped.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleSearxngAction('start')}
+                          disabled={searxngActionLoading}
+                          className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/10 flex items-center gap-2 disabled:opacity-50"
+                        >
+                          {searxngActionLoading ? (
+                            <>
+                              <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                              Starting...
+                            </>
+                          ) : 'Start SearXNG Container'}
+                        </button>
+                      </div>
+                    )}
+
+                    {searxngStatus.containerStatus === 'running' && (
+                      <div className="space-y-2">
+                        {searxngStatus.endpointActive ? (
+                          <div className="text-green-400 bg-green-950/20 border border-green-900/30 p-3.5 rounded-xl text-xs">
+                            <strong>Service Active</strong>: Local SearXNG instance is running and fully responding at <code>http://localhost:8080</code>.
+                          </div>
+                        ) : (
+                          <div className="text-yellow-400 bg-yellow-950/20 border border-yellow-900/30 p-3.5 rounded-xl text-xs flex items-center gap-2">
+                            <span className="animate-spin h-3.5 w-3.5 border-2 border-yellow-400 border-t-transparent rounded-full"></span>
+                            <span>Container is running. Waiting for SearXNG service to initialize...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Messages */}
+                {searxngMessage && (
+                  <div className="text-green-400 bg-green-950/10 border border-green-900/20 p-3.5 rounded-xl text-xs">
+                    {searxngMessage}
+                  </div>
+                )}
+                {searxngError && (
+                  <div className="text-red-400 bg-red-950/10 border border-red-900/20 p-3.5 rounded-xl text-xs">
+                    {searxngError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
