@@ -3,8 +3,8 @@ import { exec } from 'child_process';
 import util from 'util';
 import path from 'path';
 import fs from 'fs';
-import { getGlobalDb } from '../../../../../lib/db.js';
-import { getUser } from '../../../../../lib/auth.js';
+import { getGlobalDb } from '../../../../lib/db.js';
+import { getUser } from '../../../../lib/auth.js';
 import axios from 'axios';
 
 const execPromise = util.promisify(exec);
