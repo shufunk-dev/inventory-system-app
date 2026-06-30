@@ -16,7 +16,7 @@ export default function SettingsPage() {
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', tmdbApiKey: '', googleCseKey: '', googleCseCx: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', tmdbApiKey: '', googleCseKey: '', googleCseCx: '', vertexAiProjectId: '', vertexAiDataStoreId: '', vertexAiLocation: '', vertexAiCredentials: '' });
   const [smtpConfig, setSmtpConfig] = useState({
     host: '',
     port: '587',
@@ -652,6 +652,49 @@ export default function SettingsPage() {
               onChange={(e) => setApiKeys({...apiKeys, tmdbApiKey: e.target.value})}
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="Enter your TMDB API v3 key"
+            />
+          </div>
+
+          <div className="border-t border-gray-800 pt-4 mt-4">
+            <h3 className="text-md font-semibold text-white mb-3">Vertex AI Search Configuration (Recommended Replacement for Custom Search)</h3>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">GCP Project ID</label>
+            <input 
+              type="text"
+              value={apiKeys.vertexAiProjectId || ''}
+              onChange={(e) => setApiKeys({...apiKeys, vertexAiProjectId: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. my-gcp-project-123"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Vertex AI Data Store ID</label>
+            <input 
+              type="text"
+              value={apiKeys.vertexAiDataStoreId || ''}
+              onChange={(e) => setApiKeys({...apiKeys, vertexAiDataStoreId: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. web-pricing-datastore"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Discovery Location (default: "global")</label>
+            <input 
+              type="text"
+              value={apiKeys.vertexAiLocation || ''}
+              onChange={(e) => setApiKeys({...apiKeys, vertexAiLocation: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="global"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Vertex AI Service Account JSON Credentials</label>
+            <textarea 
+              value={apiKeys.vertexAiCredentials || ''}
+              onChange={(e) => setApiKeys({...apiKeys, vertexAiCredentials: e.target.value})}
+              className="w-full h-32 bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
+              placeholder='{ "type": "service_account", ... }'
             />
           </div>
         </div>

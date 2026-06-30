@@ -115,4 +115,114 @@ describe('Google Custom Search Engine Pricing parser', () => {
     assert.strictEqual(result.reason, 'rate_limited');
     assert.strictEqual(updatedStatus, 'rate_limited');
   });
+
+  test('Vertex AI Search pricing parser handles OAuth token signing, query, and output parsing', async () => {
+    const mockCredentials = {
+      type: 'service_account',
+      project_id: 'mock-gcp-project',
+      private_key_id: 'mock-private-key-id',
+      private_key: '', 
+      client_email: 'mock-sa@mock-gcp-project.iam.gserviceaccount.com'
+    };
+
+    const crypto = await import('crypto');
+    const { privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem'
+      }
+    });
+    mockCredentials.private_key = privateKey;
+
+    process.env.VERTEX_AI_PROJECT_ID = 'mock-gcp-project';
+    process.env.VERTEX_AI_DATA_STORE_ID = 'mock-data-store-id';
+    process.env.VERTEX_AI_CREDENTIALS = JSON.stringify(mockCredentials);
+
+    const originalAxiosPost = axios.post;
+    
+    axios.post = async (url, data, config) => {
+      if (url.includes('oauth2.googleapis.com/token')) {
+        return {
+          data: {
+            access_token: 'mock-access-token',
+            expires_in: 3600
+          }
+        };
+      }
+      if (url.includes('discoveryengine.googleapis.com') && url.includes('default_search:search')) {
+        return {
+          data: {
+            results: [
+              {
+                document: {
+                  derivedStructData: {
+                    title: 'Vertex Toy - $40.00',
+                    snippets: [
+                      { snippet: 'We found this vertex toy for $45.00 online.' }
+                    ],
+                    pagemap: {
+                      offer: [
+                        { price: '50.00' }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                document: {
+                  derivedStructData: {
+                    title: 'Vertex Toy Second Source',
+                    snippets: [
+                      { snippet: 'Listed price is $35.00' }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        };
+      }
+      return originalAxiosPost(url, data, config);
+    };
+
+    let updatedLow = null;
+    let updatedAvg = null;
+    let updatedHigh = null;
+
+    const mockDb = {
+      prepare: (sql) => {
+        return {
+          run: (...args) => {
+            if (sql.includes('UPDATE items') && sql.includes('valueLow = ?')) {
+              updatedLow = args[26];
+              updatedAvg = args[27];
+              updatedHigh = args[28];
+            }
+          },
+          get: () => ({ value: '{}' })
+        };
+      }
+    };
+
+    const item = {
+      id: 'vertex-item-abc',
+      itemType: 'toy',
+      name: 'Vertex Toy',
+      toyCondition: 'Loose'
+    };
+
+    const result = await fetchItemDetails(item, mockDb, { forceTier: 'toy' });
+
+    delete process.env.VERTEX_AI_PROJECT_ID;
+    delete process.env.VERTEX_AI_DATA_STORE_ID;
+    delete process.env.VERTEX_AI_CREDENTIALS;
+    axios.post = originalAxiosPost;
+
+    assert.ok(result, 'Should return details');
+    assert.strictEqual(result.success, false);
+    assert.strictEqual(updatedLow, 40.00);
+    assert.strictEqual(updatedAvg, 42.50);
+    assert.strictEqual(updatedHigh, 45.00);
+  });
 });
