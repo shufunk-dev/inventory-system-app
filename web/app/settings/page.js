@@ -16,7 +16,7 @@ export default function SettingsPage() {
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', tmdbApiKey: '', googleCseKey: '', googleCseCx: '', vertexAiProjectId: '', vertexAiDataStoreId: '', vertexAiLocation: '', vertexAiCredentials: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', tmdbApiKey: '', googleCseKey: '', googleCseCx: '', searxngUrl: '' });
   const [smtpConfig, setSmtpConfig] = useState({
     host: '',
     port: '587',
@@ -656,45 +656,16 @@ export default function SettingsPage() {
           </div>
 
           <div className="border-t border-gray-800 pt-4 mt-4">
-            <h3 className="text-md font-semibold text-white mb-3">Vertex AI Search Configuration (Recommended Replacement for Custom Search)</h3>
+            <h3 className="text-md font-semibold text-white mb-3">SearXNG Search Configuration (Free Self-Hosted Alternative)</h3>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">GCP Project ID</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">SearXNG Instance URL</label>
             <input 
               type="text"
-              value={apiKeys.vertexAiProjectId || ''}
-              onChange={(e) => setApiKeys({...apiKeys, vertexAiProjectId: e.target.value})}
+              value={apiKeys.searxngUrl || ''}
+              onChange={(e) => setApiKeys({...apiKeys, searxngUrl: e.target.value})}
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="e.g. my-gcp-project-123"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Vertex AI Data Store ID</label>
-            <input 
-              type="text"
-              value={apiKeys.vertexAiDataStoreId || ''}
-              onChange={(e) => setApiKeys({...apiKeys, vertexAiDataStoreId: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="e.g. web-pricing-datastore"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Discovery Location (default: "global")</label>
-            <input 
-              type="text"
-              value={apiKeys.vertexAiLocation || ''}
-              onChange={(e) => setApiKeys({...apiKeys, vertexAiLocation: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="global"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Vertex AI Service Account JSON Credentials</label>
-            <textarea 
-              value={apiKeys.vertexAiCredentials || ''}
-              onChange={(e) => setApiKeys({...apiKeys, vertexAiCredentials: e.target.value})}
-              className="w-full h-32 bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
-              placeholder='{ "type": "service_account", ... }'
+              placeholder="e.g. http://localhost:8080 or http://192.168.1.100:8080"
             />
           </div>
         </div>

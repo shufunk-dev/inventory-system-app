@@ -25,10 +25,7 @@ export async function GET() {
       tmdbApiKey: '',
       googleCseKey: '',
       googleCseCx: '',
-      vertexAiProjectId: '',
-      vertexAiDataStoreId: '',
-      vertexAiLocation: '',
-      vertexAiCredentials: ''
+      searxngUrl: ''
     },
     activeTier: 'basic',
     smtpConfig: {
@@ -46,17 +43,6 @@ export async function GET() {
       if (row.key === 'mall_name') settings.mallName = row.value;
       if (row.key === 'api_keys') {
         const parsed = JSON.parse(row.value);
-        if (parsed.vertexAiCredentials) {
-          try {
-            const creds = JSON.parse(parsed.vertexAiCredentials);
-            if (creds.private_key) {
-              creds.private_key = '••••••••';
-            }
-            parsed.vertexAiCredentials = JSON.stringify(creds, null, 2);
-          } catch (e) {
-            parsed.vertexAiCredentials = '••••••••';
-          }
-        }
         settings.apiKeys = { ...settings.apiKeys, ...parsed };
       }
       if (row.key === 'active_tier') settings.activeTier = row.value;
@@ -88,32 +74,7 @@ export async function PUT(request) {
         updateStmt.run('mall_name', data.mallName.trim());
       }
       if (data.apiKeys) {
-        let apiKeysToSave = { ...data.apiKeys };
-        if (apiKeysToSave.vertexAiCredentials && apiKeysToSave.vertexAiCredentials.includes('••••••••')) {
-          try {
-            const existingRow = db.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
-            if (existingRow && existingRow.value) {
-              const existingParsed = JSON.parse(existingRow.value);
-              apiKeysToSave.vertexAiCredentials = existingParsed.vertexAiCredentials || '';
-            }
-          } catch(e) {
-            apiKeysToSave.vertexAiCredentials = '';
-          }
-        } else if (apiKeysToSave.vertexAiCredentials) {
-          try {
-            const creds = JSON.parse(apiKeysToSave.vertexAiCredentials);
-            if (creds.private_key === '••••••••') {
-              const existingRow = db.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
-              if (existingRow && existingRow.value) {
-                const existingParsed = JSON.parse(existingRow.value);
-                const existingCreds = JSON.parse(existingParsed.vertexAiCredentials);
-                creds.private_key = existingCreds.private_key;
-                apiKeysToSave.vertexAiCredentials = JSON.stringify(creds);
-              }
-            }
-          } catch (e) {}
-        }
-        updateStmt.run('api_keys', JSON.stringify(apiKeysToSave));
+        updateStmt.run('api_keys', JSON.stringify(data.apiKeys));
       }
       if (data.activeTier) {
         updateStmt.run('active_tier', data.activeTier);

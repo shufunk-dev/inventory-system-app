@@ -3,7 +3,6 @@ import { getDb, getGlobalDb } from './db.js';
 import fs from 'fs/promises';
 import path from 'path';
 import FormData from 'form-data';
-import * as jose from 'jose';
 
 let isWorking = false;
 
@@ -282,127 +281,23 @@ async function fetchSerpApiGoogleLens(imagePath) {
   return await fetchGoogleVision(imagePath);
 }
 
-let cachedGcpAccessToken = null;
-let cachedGcpAccessTokenExpiresAt = 0;
-
-async function getGcpAccessToken() {
-  const now = Math.floor(Date.now() / 1000);
-  if (cachedGcpAccessToken && now < cachedGcpAccessTokenExpiresAt - 60) {
-    return cachedGcpAccessToken;
-  }
-
-  const credentialsJson = process.env.VERTEX_AI_CREDENTIALS;
-  if (!credentialsJson) {
-    throw new Error('Missing VERTEX_AI_CREDENTIALS env variable');
-  }
-
-  const creds = JSON.parse(credentialsJson);
-  const clientEmail = creds.client_email;
-  const privateKeyPem = creds.private_key;
-  if (!clientEmail || !privateKeyPem) {
-    throw new Error('Invalid service account credentials format');
-  }
-
-  const jwtPayload = {
-    iss: clientEmail,
-    scope: 'https://www.googleapis.com/auth/cloud-platform',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600
-  };
-
-  const alg = 'RS256';
-  const privateKey = await jose.importPKCS8(privateKeyPem, alg);
-  const assertion = await new jose.SignJWT(jwtPayload)
-    .setProtectedHeader({ alg })
-    .sign(privateKey);
-
-  const params = new URLSearchParams();
-  params.append('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer');
-  params.append('assertion', assertion);
-
-  const response = await axios.post('https://oauth2.googleapis.com/token', params, { timeout: 10000 });
-  cachedGcpAccessToken = response.data.access_token;
-  cachedGcpAccessTokenExpiresAt = now + (response.data.expires_in || 3600);
-  return cachedGcpAccessToken;
-}
-
-async function fetchVertexAiSearchPrice(name, extraKeywords = '') {
-  const projectId = process.env.VERTEX_AI_PROJECT_ID;
-  const dataStoreId = process.env.VERTEX_AI_DATA_STORE_ID;
-  const location = process.env.VERTEX_AI_LOCATION || 'global';
-  const credentialsJson = process.env.VERTEX_AI_CREDENTIALS;
-
-  if (!projectId || !dataStoreId || !credentialsJson || !name) return null;
+async function fetchSearxngPrice(name, extraKeywords = '') {
+  const searxngUrl = process.env.SEARXNG_URL;
+  if (!searxngUrl || !name) return null;
 
   try {
-    const accessToken = await getGcpAccessToken();
     const q = `${name} ${extraKeywords}`.replace(/\s+/g, ' ').trim();
-    const url = `https://discoveryengine.googleapis.com/v1/projects/${projectId}/locations/${location}/collections/default_collection/dataStores/${dataStoreId}/servingConfigs/default_search:search`;
-
-    console.log(`[Worker] Querying Vertex AI Search API for prices: "${q}"`);
-    
-    const requestBody = {
-      query: q,
-      pageSize: 10,
-      contentSearchSpec: {
-        snippetSpec: {
-          returnSnippet: true
-        }
-      }
-    };
-
-    const res = await axios.post(url, requestBody, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
+    const query = encodeURIComponent(q);
+    const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
+    console.log(`[Worker] Querying SearXNG API for prices: "${q}"`);
+    const res = await axios.get(url, { timeout: 10000 });
 
     if (res.data && res.data.results && res.data.results.length > 0) {
       let prices = [];
-      
-      for (const result of res.data.results) {
-        const doc = result.document;
-        if (!doc || !doc.derivedStructData) continue;
-        
-        const structData = doc.derivedStructData;
-        
-        // 1. Check pagemap offers/products if present
-        if (structData.pagemap) {
-          if (Array.isArray(structData.pagemap.offer)) {
-            for (const offer of structData.pagemap.offer) {
-              if (offer.price) {
-                const val = parseFloat(offer.price.replace(/[^0-9.]/g, ''));
-                if (!isNaN(val) && val > 0 && val < 50000) {
-                  prices.push(val);
-                }
-              }
-            }
-          }
-          if (Array.isArray(structData.pagemap.product)) {
-            for (const product of structData.pagemap.product) {
-              if (product.price) {
-                const val = parseFloat(product.price.replace(/[^0-9.]/g, ''));
-                if (!isNaN(val) && val > 0 && val < 50000) {
-                  prices.push(val);
-                }
-              }
-            }
-          }
-        }
-        
-        // 2. Parse snippets and title text for "$XX.XX" patterns
-        let text = structData.title || '';
-        if (Array.isArray(structData.snippets)) {
-          for (const s of structData.snippets) {
-            if (s.snippet) text += ' ' + s.snippet;
-          }
-        } else if (structData.snippet) {
-          text += ' ' + structData.snippet;
-        }
 
+      for (const item of res.data.results) {
+        // Parse snippet/title text for "$XX.XX" patterns
+        const text = `${item.title || ''} ${item.snippet || ''} ${item.content || ''}`;
         const priceMatches = text.match(/\$[0-9,]+(?:\.[0-9]{2})?/g);
         if (priceMatches) {
           for (const match of priceMatches) {
@@ -413,19 +308,20 @@ async function fetchVertexAiSearchPrice(name, extraKeywords = '') {
           }
         }
       }
-      
+
       // Deduplicate and sort
       prices = [...new Set(prices)].sort((a, b) => a - b);
-      
+
       if (prices.length > 0) {
+        // Trim outliers if we have enough data points
         if (prices.length >= 4) {
           const trimCount = Math.max(1, Math.floor(prices.length * 0.15));
           prices = prices.slice(trimCount, prices.length - trimCount);
         }
-        
+
         const sum = prices.reduce((acc, p) => acc + p, 0);
         const avg = sum / prices.length;
-        
+
         return {
           valueLow: parseFloat(prices[0].toFixed(2)),
           valueAvg: parseFloat(avg.toFixed(2)),
@@ -434,9 +330,9 @@ async function fetchVertexAiSearchPrice(name, extraKeywords = '') {
       }
     }
   } catch (e) {
-    console.error('[Worker] Vertex AI Search Price error:', e.message);
-    const isRateOrAuthError = (e.response && (e.response.status === 403 || e.response.status === 401 || e.response.status === 429)) ||
-                              (e.message && (e.message.includes('403') || e.message.includes('401') || e.message.includes('429')));
+    console.error('[Worker] SearXNG Search Price error:', e.message);
+    const isRateOrAuthError = (e.response && (e.response.status === 403 || e.response.status === 429)) ||
+                              (e.message && (e.message.includes('403') || e.message.includes('429')));
     if (isRateOrAuthError) {
       throw new Error('RATE_LIMIT');
     }
@@ -445,11 +341,8 @@ async function fetchVertexAiSearchPrice(name, extraKeywords = '') {
 }
 
 async function fetchGoogleCustomSearchPrice(name, extraKeywords = '') {
-  const isVertexAiConfigured = process.env.VERTEX_AI_PROJECT_ID && 
-                               process.env.VERTEX_AI_DATA_STORE_ID && 
-                               process.env.VERTEX_AI_CREDENTIALS;
-  if (isVertexAiConfigured) {
-    return await fetchVertexAiSearchPrice(name, extraKeywords);
+  if (process.env.SEARXNG_URL) {
+    return await fetchSearxngPrice(name, extraKeywords);
   }
   return await fetchGoogleCustomSearchPriceInternal(name, extraKeywords);
 }
@@ -1887,17 +1780,8 @@ async function processNextItem(userId = null) {
       if (keys.tmdbApiKey) {
         process.env.TMDB_API_KEY = keys.tmdbApiKey;
       }
-      if (keys.vertexAiProjectId) {
-        process.env.VERTEX_AI_PROJECT_ID = keys.vertexAiProjectId;
-      }
-      if (keys.vertexAiDataStoreId) {
-        process.env.VERTEX_AI_DATA_STORE_ID = keys.vertexAiDataStoreId;
-      }
-      if (keys.vertexAiLocation) {
-        process.env.VERTEX_AI_LOCATION = keys.vertexAiLocation;
-      }
-      if (keys.vertexAiCredentials) {
-        process.env.VERTEX_AI_CREDENTIALS = keys.vertexAiCredentials;
+      if (keys.searxngUrl) {
+        process.env.SEARXNG_URL = keys.searxngUrl;
       }
     }
   } catch (e) {
