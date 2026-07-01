@@ -462,6 +462,7 @@ async function fetchTMDBMovieMetadata(name, tmdbApiKey) {
       if (detailsRes.data) {
         const data = detailsRes.data;
         const moviePlot = data.overview || null;
+        const movieImage = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null;
         
         let movieCast = null;
         if (data.credits && data.credits.cast && Array.isArray(data.credits.cast)) {
@@ -479,7 +480,7 @@ async function fetchTMDBMovieMetadata(name, tmdbApiKey) {
           }
         }
         
-        return { moviePlot, movieCast, movieTrailer };
+        return { moviePlot, movieCast, movieTrailer, movieImage };
       }
     }
   } catch (e) {
@@ -1353,7 +1354,7 @@ export async function fetchItemDetails(item, db, options = {}) {
                          item.name !== 'Pending Sync' &&
                          item.name.trim() !== '';
     let name = isCustomName ? item.name : ((details && details.name) ? details.name : 'Unknown Item');
-    const imagePath = (details && details.imageUrl) ? details.imageUrl : item.imagePath;
+    let imagePath = (details && details.imageUrl) ? details.imageUrl : item.imagePath;
     const description = (details && details.description) ? details.description : item.description;
     let itemType = (details && details.itemType) ? details.itemType : item.itemType;
 
@@ -1415,6 +1416,9 @@ export async function fetchItemDetails(item, db, options = {}) {
         moviePlot = movieData.moviePlot;
         movieCast = movieData.movieCast;
         movieTrailer = movieData.movieTrailer;
+        if (movieData.movieImage && (!imagePath || imagePath.trim() === '' || imagePath.includes('placeholder') || imagePath.includes('Analyzing Photo...'))) {
+          imagePath = movieData.movieImage;
+        }
       }
 
       // Check if it's graded (Movies/VHS only)
