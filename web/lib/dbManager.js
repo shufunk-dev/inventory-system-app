@@ -326,6 +326,17 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.8.9', date: 'July 1, 2026', title: 'TMDB Removal & Commercial-Safe Metadata Resolution',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Completely removed TMDB API integration to eliminate commercial licensing restrictions.' },
+      { type: 'web', text: 'Implemented keyless, commercial-safe movie plot and cover image lookups using the Wikipedia MediaWiki API.' },
+      { type: 'web', text: 'Implemented keyless YouTube movie trailer lookups using SearXNG/Google CSE search scraping.' },
+      { type: 'web', text: 'Cleaned up Settings panel UI and API routes by removing TMDB configuration fields.' },
+      { type: 'web', text: 'Added a dedicated unit test suite for Wikipedia and YouTube metadata resolution.' },
+      { type: 'web', text: 'Bumped version to 1.8.9 and packaged the native Electron installer.' }
+    ])
+  },
+  {
     version: 'Beta 1.8.8', date: 'June 29, 2026', title: 'Category Valuation Reports & SerpApi Quota Protections',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented dynamic category-specific valuation calculating on homepage stats badge.' },
