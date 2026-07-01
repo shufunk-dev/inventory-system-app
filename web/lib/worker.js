@@ -1177,6 +1177,41 @@ export async function fetchItemDetails(item, db, options = {}) {
   let details = null;
   let rateLimited = false;
 
+  // --- GLOBAL API CONFIGURATION INJECTION ---
+  try {
+    const globalDb = await getGlobalDb();
+    const keysRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
+    if (keysRow) {
+      const keys = JSON.parse(keysRow.value);
+      console.log(`[Worker Debug] Loaded API keys. searxngUrl in DB: "${keys.searxngUrl}"`);
+      if (keys.googleVisionKey) {
+        process.env.GOOGLE_VISION_API_KEY = keys.googleVisionKey;
+        process.env.GOOGLE_VISION_KEY = keys.googleVisionKey;
+      }
+      if (keys.serpApiKey) {
+        process.env.SERPAPI_KEY = keys.serpApiKey;
+      }
+      if (keys.priceChartingKey) {
+        process.env.PRICECHARTING_KEY = keys.priceChartingKey;
+      }
+      if (keys.googleCseKey) {
+        process.env.GOOGLE_CSE_KEY = keys.googleCseKey;
+      }
+      if (keys.googleCseCx) {
+        process.env.GOOGLE_CSE_CX = keys.googleCseCx;
+      }
+      if (keys.tmdbApiKey) {
+        process.env.TMDB_API_KEY = keys.tmdbApiKey;
+      }
+      if (keys.searxngUrl) {
+        process.env.SEARXNG_URL = keys.searxngUrl;
+      }
+    }
+  } catch (e) {
+    console.error('Error injecting global API keys:', e);
+  }
+  // ------------------------------------------
+
   console.log(`[Worker] Fetching metadata for item: ${item.id} (Barcode: ${barcode})`);
 
   const originalSerpApiKey = process.env.SERPAPI_KEY;
@@ -1755,41 +1790,6 @@ async function processNextItem(userId = null) {
     isWorking = false;
     return;
   }
-
-  // --- GLOBAL API CONFIGURATION INJECTION ---
-  try {
-    const globalDb = await getGlobalDb();
-    const keysRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
-    if (keysRow) {
-      const keys = JSON.parse(keysRow.value);
-      console.log(`[Worker Debug] Loaded API keys. searxngUrl in DB: "${keys.searxngUrl}"`);
-      if (keys.googleVisionKey) {
-        process.env.GOOGLE_VISION_API_KEY = keys.googleVisionKey;
-        process.env.GOOGLE_VISION_KEY = keys.googleVisionKey;
-      }
-      if (keys.serpApiKey) {
-        process.env.SERPAPI_KEY = keys.serpApiKey;
-      }
-      if (keys.priceChartingKey) {
-        process.env.PRICECHARTING_KEY = keys.priceChartingKey;
-      }
-      if (keys.googleCseKey) {
-        process.env.GOOGLE_CSE_KEY = keys.googleCseKey;
-      }
-      if (keys.googleCseCx) {
-        process.env.GOOGLE_CSE_CX = keys.googleCseCx;
-      }
-      if (keys.tmdbApiKey) {
-        process.env.TMDB_API_KEY = keys.tmdbApiKey;
-      }
-      if (keys.searxngUrl) {
-        process.env.SEARXNG_URL = keys.searxngUrl;
-      }
-    }
-  } catch (e) {
-    console.error('Error injecting global API keys:', e);
-  }
-  // ------------------------------------------
 
   const result = await fetchItemDetails(item, db, isRefresh ? { refreshPrices: true } : {});
 
