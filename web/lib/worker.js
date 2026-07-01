@@ -1347,7 +1347,12 @@ export async function fetchItemDetails(item, db, options = {}) {
     }
 
     const newStatus = details ? 'success' : 'failed';
-    let name = (details && details.name) ? details.name : (item.name || 'Unknown Item');
+    const isCustomName = item.name && 
+                         item.name !== 'Analyzing Photo...' && 
+                         item.name !== 'Unknown Item' && 
+                         item.name !== 'Pending Sync' &&
+                         item.name.trim() !== '';
+    let name = isCustomName ? item.name : ((details && details.name) ? details.name : 'Unknown Item');
     const imagePath = (details && details.imageUrl) ? details.imageUrl : item.imagePath;
     const description = (details && details.description) ? details.description : item.description;
     let itemType = (details && details.itemType) ? details.itemType : item.itemType;
