@@ -341,6 +341,7 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
 }
 
 async function fetchGoogleCustomSearchPrice(name, extraKeywords = '') {
+  console.log(`[Worker Debug] fetchGoogleCustomSearchPrice called. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
   if (process.env.SEARXNG_URL) {
     return await fetchSearxngPrice(name, extraKeywords);
   }
@@ -1761,6 +1762,7 @@ async function processNextItem(userId = null) {
     const keysRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
     if (keysRow) {
       const keys = JSON.parse(keysRow.value);
+      console.log(`[Worker Debug] Loaded API keys. searxngUrl in DB: "${keys.searxngUrl}"`);
       if (keys.googleVisionKey) {
         process.env.GOOGLE_VISION_API_KEY = keys.googleVisionKey;
         process.env.GOOGLE_VISION_KEY = keys.googleVisionKey;
