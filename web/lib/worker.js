@@ -1420,10 +1420,7 @@ export async function fetchItemDetails(item, db, options = {}) {
         console.log(`[Worker] Querying TMDB for movie details: ${name}`);
         movieData = await fetchTMDBMovieMetadata(name, tmdbApiKey);
       }
-      if (!options.refreshPrices && !movieData && process.env.SERPAPI_KEY) {
-        console.log(`[Worker] Falling back to SerpApi for movie details: ${name}`);
-        movieData = await fetchSerpApiMovieMetadata(name);
-      }
+
       if (movieData) {
         moviePlot = movieData.moviePlot;
         movieCast = movieData.movieCast;
