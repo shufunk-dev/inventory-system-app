@@ -488,54 +488,49 @@ async function fetchTMDBMovieMetadata(name, tmdbApiKey) {
   return null;
 }
 
-async function fetchSerpApiMovieMetadata(name) {
-  const serpApiKey = process.env.SERPAPI_KEY;
-  if (!serpApiKey || !name) return null;
+async function fetchOrganicSearch(q) {
+  const query = encodeURIComponent(q);
 
-  try {
-    let moviePlot = null;
-    let movieCast = null;
-    let movieTrailer = null;
-
-    // 1. Fetch Plot and Cast
-    const query1 = encodeURIComponent(`${name} movie`);
-    const res1 = await axios.get(`https://serpapi.com/search.json?q=${query1}&api_key=${serpApiKey}`, { timeout: 15000 });
-    
-    if (res1.data) {
-      if (res1.data.knowledge_graph) {
-        moviePlot = res1.data.knowledge_graph.description || null;
-        if (res1.data.knowledge_graph.cast && Array.isArray(res1.data.knowledge_graph.cast)) {
-          movieCast = JSON.stringify(res1.data.knowledge_graph.cast.map(c => c.name));
-        }
+  // 1. Try SearXNG first if configured
+  const searxngUrl = process.env.SEARXNG_URL;
+  if (searxngUrl) {
+    try {
+      const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
+      console.log(`[Worker] Querying SearXNG for organic search: "${q}"`);
+      const res = await axios.get(url, { timeout: 10000 });
+      if (res.data && res.data.results) {
+        return res.data.results.map(item => ({
+          title: item.title || '',
+          snippet: item.snippet || item.content || '',
+          thumbnail: item.thumbnail || null
+        }));
       }
+    } catch (e) {
+      console.error('[Worker] SearXNG Organic Search error:', e.message);
     }
-
-    // Fallback: If no plot was found, query IMDb directly via SerpApi to get a clean snippet
-    if (!moviePlot) {
-      try {
-        const imdbQuery = encodeURIComponent(`${name} movie site:imdb.com`);
-        const imdbRes = await axios.get(`https://serpapi.com/search.json?q=${imdbQuery}&api_key=${serpApiKey}`, { timeout: 10000 });
-        if (imdbRes.data && imdbRes.data.organic_results && imdbRes.data.organic_results.length > 0) {
-          moviePlot = imdbRes.data.organic_results[0].snippet || null;
-        }
-      } catch (e) {
-        console.error('SerpApi IMDb Fallback error:', e.message);
-      }
-    }
-
-    // 2. Fetch Trailer explicitly using YouTube engine
-    const query2 = encodeURIComponent(`${name} official trailer`);
-    const res2 = await axios.get(`https://serpapi.com/search.json?engine=youtube&search_query=${query2}&api_key=${serpApiKey}`, { timeout: 15000 });
-    
-    if (res2.data && res2.data.video_results && res2.data.video_results.length > 0) {
-      movieTrailer = res2.data.video_results[0].link;
-    }
-
-    return { moviePlot, movieCast, movieTrailer };
-  } catch (e) {
-    console.error('SerpApi Movie Metadata Fetch error:', e.message);
   }
-  return null;
+
+  // 2. Try Google CSE next
+  const googleCseKey = process.env.GOOGLE_CSE_KEY;
+  const googleCseCx = process.env.GOOGLE_CSE_CX;
+  if (googleCseKey && googleCseCx) {
+    try {
+      const url = `https://customsearch.googleapis.com/customsearch/v1?key=${googleCseKey}&cx=${googleCseCx}&q=${query}`;
+      console.log(`[Worker] Querying Google CSE for organic search: "${q}"`);
+      const res = await axios.get(url, { timeout: 10000 });
+      if (res.data && res.data.items) {
+        return res.data.items.map(item => ({
+          title: item.title || '',
+          snippet: item.snippet || item.htmlSnippet || '',
+          thumbnail: (item.pagemap && item.pagemap.cse_image && item.pagemap.cse_image[0]) ? item.pagemap.cse_image[0].src : null
+        }));
+      }
+    } catch (e) {
+      console.error('[Worker] Google CSE Organic Search error:', e.message);
+    }
+  }
+
+  return [];
 }
 
 async function fetchVideoMarketValue(name) {
@@ -555,13 +550,8 @@ async function fetchCoinMarketValue(name, condition) {
 
 async function fetchGradingAgencyBarcode(barcode) {
   try {
-    const q = encodeURIComponent(`PCGS OR NGC cert ${barcode}`);
-    const apiKey = process.env.SERPAPI_KEY;
-    if (!apiKey) return null;
-
-    const url = `https://serpapi.com/search.json?q=${q}&api_key=${apiKey}`;
-    const response = await axios.get(url);
-    const results = response.data.organic_results || [];
+    const q = `PCGS OR NGC cert ${barcode}`;
+    const results = await fetchOrganicSearch(q);
     
     if (results.length > 0) {
       const topResult = results[0];
@@ -622,13 +612,8 @@ async function fetchCardMarketValue(name, condition) {
 
 async function fetchCardGradingAgencyBarcode(barcode) {
   try {
-    const q = encodeURIComponent(`PSA OR BGS OR SGC cert ${barcode}`);
-    const apiKey = process.env.SERPAPI_KEY;
-    if (!apiKey) return null;
-
-    const url = `https://serpapi.com/search.json?q=${q}&api_key=${apiKey}`;
-    const response = await axios.get(url);
-    const results = response.data.organic_results || [];
+    const q = `PSA OR BGS OR SGC cert ${barcode}`;
+    const results = await fetchOrganicSearch(q);
     
     if (results.length > 0) {
       const topResult = results[0];
