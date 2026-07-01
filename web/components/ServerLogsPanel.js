@@ -38,10 +38,10 @@ export default function ServerLogsPanel() {
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
-  // Scroll to bottom when logs change
+  // Scroll to bottom when logs change (scrolling the container itself, not the whole page)
   useEffect(() => {
-    if (terminalEndRef.current && autoRefresh) {
-      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (terminalRef.current && autoRefresh) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [logs, autoRefresh]);
 
