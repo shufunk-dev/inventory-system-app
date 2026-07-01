@@ -16,7 +16,7 @@ export default function SettingsPage() {
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', tmdbApiKey: '', googleCseKey: '', googleCseCx: '', searxngUrl: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', googleCseKey: '', googleCseCx: '', searxngUrl: '' });
   const [smtpConfig, setSmtpConfig] = useState({
     host: '',
     port: '587',
@@ -693,16 +693,7 @@ export default function SettingsPage() {
               placeholder="Enter your 40-character PriceCharting token"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">The Movie Database (TMDB) API Key (Free Movie Metadata)</label>
-            <input 
-              type="password"
-              value={apiKeys.tmdbApiKey || ''}
-              onChange={(e) => setApiKeys({...apiKeys, tmdbApiKey: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="Enter your TMDB API v3 key"
-            />
-          </div>
+
 
           <div className="border-t border-gray-800 pt-4 mt-4">
             <h3 className="text-md font-semibold text-white mb-3">SearXNG Search Configuration (Free Self-Hosted Alternative)</h3>

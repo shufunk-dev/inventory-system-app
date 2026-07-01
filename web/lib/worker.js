@@ -447,44 +447,55 @@ async function fetchGenericMarketValue(name) {
   return null;
 }
 
-async function fetchTMDBMovieMetadata(name, tmdbApiKey) {
-  if (!tmdbApiKey || !name) return null;
-
+export async function fetchWikipediaMovieMetadata(name) {
+  if (!name) return null;
   try {
-    const searchUrl = `https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(name)}`;
+    const searchQuery = `${name} film`;
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchQuery)}&format=json&origin=*`;
     const searchRes = await axios.get(searchUrl, { timeout: 10000 });
     
-    if (searchRes.data && searchRes.data.results && searchRes.data.results.length > 0) {
-      const movieId = searchRes.data.results[0].id;
-      const detailsUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}&append_to_response=videos,credits`;
+    if (searchRes.data && searchRes.data.query && searchRes.data.query.search && searchRes.data.query.search.length > 0) {
+      const title = searchRes.data.query.search[0].title;
+      const detailsUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts|pageimages|info&exintro=1&explaintext=1&titles=${encodeURIComponent(title)}&pithumbsize=500&format=json&origin=*&inprop=url`;
       const detailsRes = await axios.get(detailsUrl, { timeout: 10000 });
       
-      if (detailsRes.data) {
-        const data = detailsRes.data;
-        const moviePlot = data.overview || null;
-        const movieImage = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null;
-        
-        let movieCast = null;
-        if (data.credits && data.credits.cast && Array.isArray(data.credits.cast)) {
-          const castNames = data.credits.cast.slice(0, 8).map(c => c.name);
-          movieCast = JSON.stringify(castNames);
+      if (detailsRes.data && detailsRes.data.query && detailsRes.data.query.pages) {
+        const pages = detailsRes.data.query.pages;
+        const pageId = Object.keys(pages)[0];
+        if (pageId && pageId !== '-1') {
+          const page = pages[pageId];
+          const moviePlot = page.extract || null;
+          const movieImage = page.thumbnail ? page.thumbnail.source : null;
+          
+          return {
+            moviePlot,
+            movieCast: null,
+            movieTrailer: null,
+            movieImage
+          };
         }
-        
-        let movieTrailer = null;
-        if (data.videos && data.videos.results && Array.isArray(data.videos.results)) {
-          // Find youtube trailer
-          const trailerObj = data.videos.results.find(v => v.site === 'YouTube' && v.type === 'Trailer') 
-            || data.videos.results.find(v => v.site === 'YouTube');
-          if (trailerObj && trailerObj.key) {
-            movieTrailer = `https://www.youtube.com/watch?v=${trailerObj.key}`;
-          }
-        }
-        
-        return { moviePlot, movieCast, movieTrailer, movieImage };
       }
     }
   } catch (e) {
-    console.error('TMDB Movie Metadata Fetch error:', e.message);
+    console.error('Wikipedia Movie Metadata Fetch error:', e.message);
+  }
+  return null;
+}
+
+export async function fetchYouTubeTrailer(name) {
+  if (!name) return null;
+  try {
+    const searchResults = await fetchOrganicSearch(`${name} movie trailer youtube`);
+    if (searchResults && searchResults.length > 0) {
+      for (const res of searchResults) {
+        const url = res.url || '';
+        if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+          return url;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('YouTube trailer search error:', e.message);
   }
   return null;
 }
@@ -503,7 +514,8 @@ async function fetchOrganicSearch(q) {
         return res.data.results.map(item => ({
           title: item.title || '',
           snippet: item.snippet || item.content || '',
-          thumbnail: item.thumbnail || null
+          thumbnail: item.thumbnail || null,
+          url: item.url || ''
         }));
       }
     } catch (e) {
@@ -523,7 +535,8 @@ async function fetchOrganicSearch(q) {
         return res.data.items.map(item => ({
           title: item.title || '',
           snippet: item.snippet || item.htmlSnippet || '',
-          thumbnail: (item.pagemap && item.pagemap.cse_image && item.pagemap.cse_image[0]) ? item.pagemap.cse_image[0].src : null
+          thumbnail: (item.pagemap && item.pagemap.cse_image && item.pagemap.cse_image[0]) ? item.pagemap.cse_image[0].src : null,
+          url: item.link || ''
         }));
       }
     } catch (e) {
@@ -1186,9 +1199,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       if (keys.googleCseCx) {
         process.env.GOOGLE_CSE_CX = keys.googleCseCx;
       }
-      if (keys.tmdbApiKey) {
-        process.env.TMDB_API_KEY = keys.tmdbApiKey;
-      }
+
       if (keys.searxngUrl) {
         process.env.SEARXNG_URL = keys.searxngUrl;
       }
@@ -1201,10 +1212,8 @@ export async function fetchItemDetails(item, db, options = {}) {
   console.log(`[Worker] Fetching metadata for item: ${item.id} (Barcode: ${barcode})`);
 
   const originalSerpApiKey = process.env.SERPAPI_KEY;
-  const originalTmdbApiKey = process.env.TMDB_API_KEY;
   if (options.refreshPrices) {
     process.env.SERPAPI_KEY = '';
-    process.env.TMDB_API_KEY = '';
   }
 
   try {
@@ -1405,17 +1414,20 @@ export async function fetchItemDetails(item, db, options = {}) {
     if ((itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
       let movieData = null;
 
-      const tmdbApiKey = process.env.TMDB_API_KEY || null;
-
-      if (!options.refreshPrices && tmdbApiKey) {
-        console.log(`[Worker] Querying TMDB for movie details: ${name}`);
-        movieData = await fetchTMDBMovieMetadata(name, tmdbApiKey);
+      if (!options.refreshPrices) {
+        console.log(`[Worker] Querying Wikipedia for movie details: ${name}`);
+        movieData = await fetchWikipediaMovieMetadata(name);
+        
+        // Fetch trailer link using YouTube helper
+        const trailerUrl = await fetchYouTubeTrailer(name);
+        if (trailerUrl) {
+          movieTrailer = trailerUrl;
+        }
       }
 
       if (movieData) {
         moviePlot = movieData.moviePlot;
         movieCast = movieData.movieCast;
-        movieTrailer = movieData.movieTrailer;
         if (movieData.movieImage && (!imagePath || imagePath.trim() === '' || imagePath.includes('placeholder') || imagePath.includes('Analyzing Photo...'))) {
           imagePath = movieData.movieImage;
         }
@@ -1745,7 +1757,6 @@ export async function fetchItemDetails(item, db, options = {}) {
     }
   } finally {
     process.env.SERPAPI_KEY = originalSerpApiKey;
-    process.env.TMDB_API_KEY = originalTmdbApiKey;
   }
 }
 

@@ -22,7 +22,6 @@ export async function GET() {
       googleVisionKey: '',
       serpApiKey: '',
       priceChartingKey: '',
-      tmdbApiKey: '',
       googleCseKey: '',
       googleCseCx: '',
       searxngUrl: ''
