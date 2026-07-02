@@ -76,7 +76,30 @@ For items without barcodes (antiques, artwork, loose toys, diecast cars, collect
 
 ---
 
-## 4. Basic vs. Premium Configurations
+## 4. Specialized Lookups (Music, Retro Tech, & Tools)
+
+The system includes specialized crawlers and database connectors to enrich details for particular categories of items:
+
+### A. Discogs Music Integration
+For items scanned in **Music Mode**, the background worker queries the Discogs Database API:
+* **Lookup**: Queries by barcode first, falling back to artist/title keywords.
+* **Fields Resolved**: Populates pressing year, country, media format (e.g. Vinyl vs CD), Discogs Release ID, and cover images. 
+* **Goldmine Condition Ratings**: Stores separate ratings for media condition and sleeve condition.
+
+### B. Retro Tech Spec Scraper
+For items scanned in **Retro Tech Mode**, the worker uses organic web searches to target hardware database indexes:
+* **Lookup Sources**: Queries CPU-World, EveryMac, and TechPowerUp.
+* **Hardware Type Resolution**: Automatically classifies common CPU architectures (e.g., Pentium, Xeon, Celeron, Athlon) as CPU types, and matches keywords for GPUs and storage drives.
+* **Fields Resolved**: Extracts clock speeds, capacities, serial numbers, BIOS versions, SMART health reports, and operating system compatibility configurations (e.g. antiX, Lubuntu).
+
+### C. Workshop Tools Recognition
+For items scanned in **Tools & Workshop Mode**, the worker identifies maker brands:
+* **Brand Auto-Detection**: Extracts brands like DeWalt, Makita, Milwaukee, Ryobi, Hakko, Bosch, and Dremel from titles or label photos.
+* **Fields Resolved**: Tracks warranty coverages, purchase dates, and assigned workbench locations (e.g. "Desk 2").
+
+---
+
+## 5. Basic vs. Premium Configurations
 
 Depending on your license tier, different parts of the AI pipeline will be active:
 

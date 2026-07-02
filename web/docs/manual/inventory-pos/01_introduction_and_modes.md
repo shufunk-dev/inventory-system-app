@@ -8,9 +8,13 @@ Welcome to the Inventory & POS System documentation. This system is designed to 
 
 The system offers a flexible configuration that adapts to different business scales. You can toggle between these modes in the Settings module.
 
-### A. Personal Mode
+### A. Personal (Collector) Mode
 Designed for individual collectors, hobbyists, or single-location operators who do not require complex store partitioning or multi-booth overhead.
 * **Scope**: Single-catalog management without store partitions.
+* **Specialized Collection Modules**:
+  * **General Music Archives**: Track Vinyl records, CDs, Cassettes, and 8-Tracks with auto-populating pressing metrics and matrix runouts.
+  * **Retro Computing & Hardware**: Log legacy computers and parts with automatic specification lookups (CPU, GPU, RAM, hard drive health).
+  * **Tools & Workshop Inventory**: Track workshop tools, purchase dates, warranty info, and assigned workbench locations (e.g. Desk 2).
 * **Features**: Full access to AI scanning pipelines, local valuation, and receipt generation.
 * **Data Isolation**: All items exist in a global catalog. No user assignments or vendor restrictions are enforced.
 
