@@ -97,6 +97,13 @@ For items scanned in **Tools & Workshop Mode**, the worker identifies maker bran
 * **Brand Auto-Detection**: Extracts brands like DeWalt, Makita, Milwaukee, Ryobi, Hakko, Bosch, and Dremel from titles or label photos.
 * **Fields Resolved**: Tracks warranty coverages, purchase dates, and assigned workbench locations (e.g. "Desk 2").
 
+### D. Wikipedia Movie & TV Show Resolution
+For video and movie inventory items scanned in **Video Mode**, the system provides a commercial-compliant, keyless metadata resolution loop:
+* **Plot Summaries**: Queries the Wikipedia Action API for the target title (searching for `${name} film`), parsing the article introduction to auto-fill the plot description.
+* **Poster Artwork**: Downloads the primary image associated with the resolved Wikipedia page to display as the cover art.
+* **YouTube Trailers**: Conducts organic web searches (SearXNG or Google CSE) for `${name} movie trailer youtube` and automatically extracts the first valid watch link to associate it as the trailer URL.
+* **Licensing Safety**: Unlike TMDB, Wikipedia's metadata is under Creative Commons/public domain licensing, eliminating commercial distribution liability.
+
 ---
 
 ## 5. Basic vs. Premium Configurations

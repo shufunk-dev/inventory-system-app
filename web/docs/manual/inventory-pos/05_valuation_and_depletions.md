@@ -22,9 +22,24 @@ Instead of manually typing inventory numbers, you can upload hand-written or pri
    * Variance (Difference).
 6. Click **Confirm Ingestion** to update inventory counts and record variance adjustments.
 
+## 2. Scale Ingestion & Specific Gravity Calculations
+
+For retail bars, restaurants, or inventory sections involving liquid weights and open bottles, the system supports high-precision physical weight measurements:
+
+### A. Specific Gravity Volume Formula
+Liquid inventory values (e.g. open liquor bottles) are determined by weighing the bottle on a digital scale. The system calculates the remaining fluid ounces using the specific gravity of the liquid:
+* **Volume Calculation**: Volume is derived as `(Total Weight - Bottle Tare Weight) / (Specific Gravity * Density)`.
+* **Database Mapping**: Every liquid SKU links to a specific gravity constant (e.g. 1.00 for water, 0.94 for high-proof spirits, 1.15 for thick liqueurs).
+* **Automatic Deduction**: Physical weight scans automatically translate to remaining volume decimals, logging accurate counts.
+
+### B. Theoretical Pour Auditing
+The system compares physical weight measurements against recorded Point-of-Sale (POS) transactions:
+* **The Variance Loop**: POS sales indicate the expected fluid ounces sold. If the difference between start weights and end weights exceeds POS sales volumes, the system flags the variance as shrinkage, leakage, or over-pouring.
+* **Alert Thresholds**: Managers are notified of pour discrepancies exceeding a configured threshold percentage.
+
 ---
 
-## 2. Depletion and Usage Logging
+## 3. Depletion and Usage Logging
 
 When items are removed from stock without a register sale (e.g., damaged items, items used internally, promotional giveaways), you must log them as depletions:
 
