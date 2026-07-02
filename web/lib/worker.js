@@ -500,6 +500,119 @@ export async function fetchYouTubeTrailer(name) {
   return null;
 }
 
+export async function fetchDiscogsMetadata(barcode) {
+  if (!barcode) return null;
+  const token = process.env.DISCOGS_API_KEY;
+  if (!token) {
+    console.warn('[Worker] Discogs API key not configured. Skipping lookup.');
+    return null;
+  }
+  try {
+    console.log(`[Worker] Querying Discogs API for barcode: ${barcode}`);
+    const res = await axios.get(`https://api.discogs.com/database/search`, {
+      params: { barcode, token },
+      headers: { 'User-Agent': 'Antigravity-POS-Scanner/1.9' },
+      timeout: 5000
+    });
+    if (res.data && res.data.results && res.data.results.length > 0) {
+      const release = res.data.results[0];
+      const title = release.title || '';
+      const parts = title.split(' - ');
+      const artist = parts[0]?.trim() || 'Unknown Artist';
+      const album = parts.slice(1).join(' - ')?.trim() || title;
+      const pressingYear = release.year ? parseInt(release.year) : null;
+      const pressingCountry = release.country || null;
+      const formats = release.format || [];
+      const isVinyl = formats.some(f => f.toLowerCase().includes('vinyl'));
+      const format = formats.join(', ') || 'Vinyl';
+
+      return {
+        name: `${artist} - ${album}`,
+        description: `[Identified via Discogs API]\n\nArtist: ${artist}\nAlbum: ${album}\nFormat: ${format}\nYear: ${pressingYear || 'N/A'}\nCountry: ${pressingCountry || 'N/A'}\nDiscogs ID: ${release.id}`,
+        imageUrl: release.cover_image || null,
+        musicArtist: artist,
+        musicFormat: isVinyl ? 'Vinyl' : formats[0] || 'Vinyl',
+        musicPressingYear: pressingYear,
+        musicPressingCountry: pressingCountry,
+        discogsReleaseId: release.id
+      };
+    }
+  } catch (e) {
+    console.error('Discogs API error:', e.message);
+  }
+  return null;
+}
+
+export async function fetchHardwareSpecs(query) {
+  if (!query) return null;
+  try {
+    console.log(`[Worker] Querying Web Search for hardware specifications: ${query}`);
+    const results = await fetchOrganicSearch(`${query} specifications specs CPU-World TechPowerUp EveryMac`);
+    if (results && results.length > 0) {
+      const snippet = results.map(r => r.snippet).join(' ').substring(0, 500);
+      const q = query.toLowerCase();
+      let brand = 'Generic';
+      if (q.includes('apple') || q.includes('mac')) brand = 'Apple';
+      else if (q.includes('ibm')) brand = 'IBM';
+      else if (q.includes('intel')) brand = 'Intel';
+      else if (q.includes('amd')) brand = 'AMD';
+      else if (q.includes('nvidia')) brand = 'NVIDIA';
+      else if (q.includes('commodore')) brand = 'Commodore';
+      else if (q.includes('dell')) brand = 'Dell';
+      else if (q.includes('hp')) brand = 'HP';
+      
+      let type = 'System';
+      if (q.includes('cpu') || q.includes('processor') || q.includes('pentium') || q.includes('celeron') || q.includes('athlon') || q.includes('xeon') || q.includes('core i')) type = 'CPU';
+      else if (q.includes('gpu') || q.includes('graphics') || q.includes('geforce') || q.includes('radeon')) type = 'GPU';
+      else if (q.includes('drive') || q.includes('ssd') || q.includes('hdd')) type = 'Drive';
+      
+      return {
+        name: query,
+        description: `[Specifications identified via Web Search]\n\n${snippet}`,
+        hardwareBrand: brand,
+        hardwareModel: query,
+        hardwareType: type,
+        hardwareSpecs: snippet
+      };
+    }
+  } catch (e) {
+    console.error('Hardware Specs fetch error:', e.message);
+  }
+  return null;
+}
+
+
+export async function fetchToolDetails(query) {
+  if (!query) return null;
+  try {
+    console.log(`[Worker] Querying Web Search for tool details: ${query}`);
+    const results = await fetchOrganicSearch(`${query} tool specs manual`);
+    if (results && results.length > 0) {
+      const snippet = results.map(r => r.snippet).join(' ').substring(0, 500);
+      const q = query.toLowerCase();
+      let brand = 'Generic';
+      if (q.includes('dewalt')) brand = 'DeWalt';
+      else if (q.includes('makita')) brand = 'Makita';
+      else if (q.includes('milwaukee')) brand = 'Milwaukee';
+      else if (q.includes('hakko')) brand = 'Hakko';
+      else if (q.includes('ryobi')) brand = 'Ryobi';
+      else if (q.includes('bosch')) brand = 'Bosch';
+      else if (q.includes('craftsman')) brand = 'Craftsman';
+      else if (q.includes('dremel')) brand = 'Dremel';
+      
+      return {
+        name: query,
+        description: `[Tool identified via Web Search]\n\n${snippet}`,
+        toolBrand: brand,
+        toolModel: query
+      };
+    }
+  } catch (e) {
+    console.error('Tool Specs fetch error:', e.message);
+  }
+  return null;
+}
+
 async function fetchOrganicSearch(q) {
   const query = encodeURIComponent(q);
 
@@ -1199,6 +1312,9 @@ export async function fetchItemDetails(item, db, options = {}) {
       if (keys.googleCseCx) {
         process.env.GOOGLE_CSE_CX = keys.googleCseCx;
       }
+      if (keys.discogsApiKey) {
+        process.env.DISCOGS_API_KEY = keys.discogsApiKey;
+      }
 
       if (keys.searxngUrl) {
         process.env.SEARXNG_URL = keys.searxngUrl;
@@ -1277,6 +1393,22 @@ export async function fetchItemDetails(item, db, options = {}) {
         if (item.imagePath) {
           details = await fetchGradedAssetFromImage(item.imagePath, true);
         }
+      } else if (options.forceTier === 'music') {
+        if (barcode) {
+          details = await fetchDiscogsMetadata(barcode);
+        }
+      } else if (options.forceTier === 'hardware') {
+        if (item.name && item.name !== 'Pending Sync' && item.name !== 'Analyzing Photo...') {
+          details = await fetchHardwareSpecs(item.name);
+        } else if (barcode) {
+          details = await fetchHardwareSpecs(barcode);
+        }
+      } else if (options.forceTier === 'tool') {
+        if (item.name && item.name !== 'Pending Sync' && item.name !== 'Analyzing Photo...') {
+          details = await fetchToolDetails(item.name);
+        } else if (barcode) {
+          details = await fetchToolDetails(barcode);
+        }
       }
     } else {
       // Automatic background processing upon import/sync
@@ -1292,7 +1424,13 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       } else if (barcode) {
         // If there's no photo but a barcode, run standard barcode lookup
-        if (item.itemType === 'coin') {
+        if (item.itemType === 'tool') {
+          details = await fetchToolDetails(item.name || barcode);
+        } else if (item.itemType === 'hardware') {
+          details = await fetchHardwareSpecs(item.name || barcode);
+        } else if (item.itemType === 'music') {
+          details = await fetchDiscogsMetadata(barcode);
+        } else if (item.itemType === 'coin') {
           details = await fetchGradingAgencyBarcode(barcode);
         } else if (item.itemType === 'card') {
           details = await fetchCardGradingAgencyBarcode(barcode);
@@ -1410,6 +1548,33 @@ export async function fetchItemDetails(item, db, options = {}) {
     let gradedCondition = item.gradedCondition || null;
     let gradedCertNumber = item.gradedCertNumber || null;
     let gradedAgency = item.gradedAgency || null;
+
+    let musicArtist = item.musicArtist || null;
+    let musicFormat = item.musicFormat || null;
+    let musicMatrixRunout = item.musicMatrixRunout || null;
+    let musicPressingYear = item.musicPressingYear || null;
+    let musicPressingCountry = item.musicPressingCountry || null;
+    let musicVinylWeight = item.musicVinylWeight || null;
+    let musicMediaCondition = item.musicMediaCondition || null;
+    let musicSleeveCondition = item.musicSleeveCondition || null;
+    let discogsReleaseId = item.discogsReleaseId || null;
+
+    let hardwareBrand = item.hardwareBrand || null;
+    let hardwareModel = item.hardwareModel || null;
+    let hardwareSerial = item.hardwareSerial || null;
+    let hardwareType = item.hardwareType || null;
+    let hardwareFirmware = item.hardwareFirmware || null;
+    let hardwareCondition = item.hardwareCondition || null;
+    let hardwareSpecs = item.hardwareSpecs || null;
+    let hardwareCompat = item.hardwareCompat || null;
+    let hardwareSmartHealth = item.hardwareSmartHealth || null;
+
+    let toolBrand = item.toolBrand || null;
+    let toolModel = item.toolModel || null;
+    let toolSerial = item.toolSerial || null;
+    let toolWarrantyStatus = item.toolWarrantyStatus || null;
+    let toolAssignedLocation = item.toolAssignedLocation || null;
+    let toolPurchaseDate = item.toolPurchaseDate || null;
 
     if ((itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
       let movieData = null;
@@ -1686,6 +1851,51 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       }
+    } else if ((itemType === 'music' || options.forceTier === 'music') && name && name !== 'Unknown Item') {
+      console.log(`[Worker] Item is Music. Extracting details and calculating Market Value for: ${name}`);
+      
+      if (!options.refreshPrices && details) {
+        if (details.musicArtist) musicArtist = details.musicArtist;
+        if (details.musicFormat) musicFormat = details.musicFormat;
+        if (details.musicPressingYear) musicPressingYear = details.musicPressingYear;
+        if (details.musicPressingCountry) musicPressingCountry = details.musicPressingCountry;
+        if (details.discogsReleaseId) discogsReleaseId = details.discogsReleaseId;
+      }
+      
+      // Default condition descriptors for Music items
+      if (!options.refreshPrices && !musicMediaCondition) {
+        musicMediaCondition = 'VG+';
+      }
+      if (!options.refreshPrices && !musicSleeveCondition) {
+        musicSleeveCondition = 'VG+';
+      }
+    } else if ((itemType === 'hardware' || options.forceTier === 'hardware') && name && name !== 'Unknown Item') {
+      console.log(`[Worker] Item is Hardware. Extracting details for: ${name}`);
+      
+      if (!options.refreshPrices && details) {
+        if (details.hardwareBrand) hardwareBrand = details.hardwareBrand;
+        if (details.hardwareModel) hardwareModel = details.hardwareModel;
+        if (details.hardwareType) hardwareType = details.hardwareType;
+        if (details.hardwareSpecs) hardwareSpecs = details.hardwareSpecs;
+      }
+      
+      if (!options.refreshPrices && !hardwareCondition) {
+        hardwareCondition = 'Tested / Working';
+      }
+    } else if ((itemType === 'tool' || options.forceTier === 'tool') && name && name !== 'Unknown Item') {
+      console.log(`[Worker] Item is Tool. Extracting details for: ${name}`);
+      
+      if (!options.refreshPrices && details) {
+        if (details.toolBrand) toolBrand = details.toolBrand;
+        if (details.toolModel) toolModel = details.toolModel;
+      }
+      
+      if (!options.refreshPrices && !toolWarrantyStatus) {
+        toolWarrantyStatus = 'Unknown';
+      }
+      if (!options.refreshPrices && !toolAssignedLocation) {
+        toolAssignedLocation = 'Workshop';
+      }
     }
 
     // Fallback: If no market value was fetched by the type-specific logic, try a generic lookup
@@ -1709,7 +1919,10 @@ export async function fetchItemDetails(item, db, options = {}) {
           cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?, 
           comicCondition = ?, comicCertNumber = ?, comicGradingAgency = ?, comicPublisher = ?, comicIssue = ?,
           gradedCondition = ?, gradedCertNumber = ?, gradedAgency = ?,
-          valueLow = ?, valueAvg = ?, valueHigh = ?
+          valueLow = ?, valueAvg = ?, valueHigh = ?,
+          musicArtist = ?, musicFormat = ?, musicMatrixRunout = ?, musicPressingYear = ?, musicPressingCountry = ?, musicVinylWeight = ?, musicMediaCondition = ?, musicSleeveCondition = ?, discogsReleaseId = ?,
+          hardwareBrand = ?, hardwareModel = ?, hardwareSerial = ?, hardwareType = ?, hardwareFirmware = ?, hardwareCondition = ?, hardwareSpecs = ?, hardwareCompat = ?, hardwareSmartHealth = ?,
+          toolBrand = ?, toolModel = ?, toolSerial = ?, toolWarrantyStatus = ?, toolAssignedLocation = ?, toolPurchaseDate = ?
       WHERE id = ?
     `).run(
       name, 
@@ -1741,6 +1954,30 @@ export async function fetchItemDetails(item, db, options = {}) {
       valueLow,
       valueAvg,
       valueHigh,
+      musicArtist,
+      musicFormat,
+      musicMatrixRunout,
+      musicPressingYear,
+      musicPressingCountry,
+      musicVinylWeight,
+      musicMediaCondition,
+      musicSleeveCondition,
+      discogsReleaseId,
+      hardwareBrand,
+      hardwareModel,
+      hardwareSerial,
+      hardwareType,
+      hardwareFirmware,
+      hardwareCondition,
+      hardwareSpecs,
+      hardwareCompat,
+      hardwareSmartHealth,
+      toolBrand,
+      toolModel,
+      toolSerial,
+      toolWarrantyStatus,
+      toolAssignedLocation,
+      toolPurchaseDate,
       item.id
     );
 

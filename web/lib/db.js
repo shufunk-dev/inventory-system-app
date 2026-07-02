@@ -145,6 +145,30 @@ function initializeStoreSchema(dbConn) {
   try { dbConn.exec("ALTER TABLE items ADD COLUMN retailPrice REAL"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN imagePathBack TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN purchasePrice REAL"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicArtist TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicFormat TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicMatrixRunout TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicPressingYear INTEGER"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicPressingCountry TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicVinylWeight TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicMediaCondition TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN musicSleeveCondition TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN discogsReleaseId INTEGER"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareBrand TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareModel TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareSerial TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareType TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareFirmware TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareCondition TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareSpecs TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareCompat TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN hardwareSmartHealth TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN toolBrand TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN toolModel TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN toolSerial TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN toolWarrantyStatus TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN toolAssignedLocation TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN toolPurchaseDate TEXT"); } catch(e) {}
 
   // MIGRATION: Remove UNIQUE constraint from categories.name
   try {

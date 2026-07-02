@@ -248,7 +248,31 @@ export function initializeSchema(db) {
     { table: 'items', col: 'gradedCondition TEXT' },
     { table: 'items', col: 'gradedCertNumber TEXT' },
     { table: 'items', col: 'gradedAgency TEXT' },
-    { table: 'items', col: 'purchasePrice REAL' }
+    { table: 'items', col: 'purchasePrice REAL' },
+    { table: 'items', col: 'musicArtist TEXT' },
+    { table: 'items', col: 'musicFormat TEXT' },
+    { table: 'items', col: 'musicMatrixRunout TEXT' },
+    { table: 'items', col: 'musicPressingYear INTEGER' },
+    { table: 'items', col: 'musicPressingCountry TEXT' },
+    { table: 'items', col: 'musicVinylWeight TEXT' },
+    { table: 'items', col: 'musicMediaCondition TEXT' },
+    { table: 'items', col: 'musicSleeveCondition TEXT' },
+    { table: 'items', col: 'discogsReleaseId INTEGER' },
+    { table: 'items', col: 'hardwareBrand TEXT' },
+    { table: 'items', col: 'hardwareModel TEXT' },
+    { table: 'items', col: 'hardwareSerial TEXT' },
+    { table: 'items', col: 'hardwareType TEXT' },
+    { table: 'items', col: 'hardwareFirmware TEXT' },
+    { table: 'items', col: 'hardwareCondition TEXT' },
+    { table: 'items', col: 'hardwareSpecs TEXT' },
+    { table: 'items', col: 'hardwareCompat TEXT' },
+    { table: 'items', col: 'hardwareSmartHealth TEXT' },
+    { table: 'items', col: 'toolBrand TEXT' },
+    { table: 'items', col: 'toolModel TEXT' },
+    { table: 'items', col: 'toolSerial TEXT' },
+    { table: 'items', col: 'toolWarrantyStatus TEXT' },
+    { table: 'items', col: 'toolAssignedLocation TEXT' },
+    { table: 'items', col: 'toolPurchaseDate TEXT' }
   ];
 
   for (const item of columnsToAdd) {
@@ -325,6 +349,17 @@ export function closeAllConnections() {
 
 // Master seed data for changelogs (unified layout)
 const seedData = [
+  {
+    version: 'Beta 1.9.0', date: 'July 2, 2026', title: 'Music, Retro Tech, & Tools Inventory Modules',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented general Music Archives module supporting Vinyl records, Cassettes, CDs, and 8-Tracks with Discogs API integration.' },
+      { type: 'web', text: 'Implemented Retro Computing & Hardware Archives module with automatic CPU-World, EveryMac, and TechPowerUp web spec parsing.' },
+      { type: 'web', text: 'Implemented Tools & Workshop Inventory module supporting brand tracking, warranty statuses, and assigned locations.' },
+      { type: 'mobile', text: 'Added Music, Retro Tech, and Tools modes to the handheld scanner app dropdown selector.' },
+      { type: 'web', text: 'Added settings support for custom Discogs API tokens in admin dashboard.' },
+      { type: 'web', text: 'Added automated tests for all three new inventory synchronization modules, achieving 100% test coverage.' }
+    ])
+  },
   {
     version: 'Beta 1.8.9', date: 'July 1, 2026', title: 'TMDB Removal & Commercial-Safe Metadata Resolution',
     changes: JSON.stringify([

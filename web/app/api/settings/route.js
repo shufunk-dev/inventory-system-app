@@ -24,7 +24,8 @@ export async function GET() {
       priceChartingKey: '',
       googleCseKey: '',
       googleCseCx: '',
-      searxngUrl: ''
+      searxngUrl: '',
+      discogsApiKey: ''
     },
     activeTier: 'basic',
     smtpConfig: {

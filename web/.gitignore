@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Development test directories, utilities, and scratchpads
+/tests/
+/scripts/
+/scratch/
+/database.sqlite
+

@@ -53,3 +53,16 @@ Archive/
 *.db
 inventory.db
 *.log
+
+# Local Reports and Audits
+compliance_report.html
+compliance_report.pdf
+project_summary.html
+project_summary.pdf
+
+# Web Development and Testing Suites
+web/tests/
+web/scripts/
+web/scratch/
+web/database.sqlite
+
