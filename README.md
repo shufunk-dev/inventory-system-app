@@ -12,13 +12,16 @@ For detailed manuals, live roadmaps, and sprint logs, visit the official page at
 
 ### 1. Dual Operational Modes (Reinstall-Free)
 Lock/unlock features based on product licensing keys:
-- **Collector Mode**: A clean, simplified UI for tracking condition, cataloging assets, shelf locations, and calculating collection net worth (video games, coins, toys, books, etc.).
+- **Collector Mode**: A clean, simplified UI for tracking condition, cataloging assets, shelf locations, and calculating collection net worth (video games, coins, cards, comics, toys, books, music archives, retro computing/hardware, workshop tools, etc.).
 - **Retail Store Mode**: Unlocks the complete POS checkout register, sales transaction logs, tax structures, employee shifts, and supplier profiles.
 - **7-Day Retail Trial**: Test the complete Retail Store Mode features offline using the public trial key: `TRIA-7777-7042-18B0`. This trial key activates all premium features for 7 days, after which the local environment resets back to factory settings to prepare for clean activation.
 
 ### 2. Smart Barcode & Visual Scanning
 - **Standard UPC/EAN Lookups**: Auto-populates item details using Google Books, UPCItemDB, and OpenFoodFacts.
 - **PriceCharting Game Waterfall**: Detects video game categories and queries the PriceCharting API to fetch current market values.
+- **Discogs Music Lookups**: Queries the Discogs API using barcodes or album names to auto-populate artist details, format types (Vinyl/CD/Cassette/8-track), pressing year/country, matrix runout numbers, and condition ratings.
+- **Retro Tech Specs Resolution**: Automatically scrapes specs sheets (like CPU-World, TechPowerUp, and EveryMac) to pull core clocks, RAM configurations, and model metrics for CPUs, GPUs, drives, and systems.
+- **Tools & Workshop Recognition**: Auto-identifies repair tool brands (Hakko, DeWalt, Milwaukee, Makita, Bosch, Ryobi) and logs custom metrics like warranty coverage, purchase dates, and assigned workstation locations (e.g. "Desk 2").
 - **Google Lens Visual Matching**: Allows visual search for un-barcoded items (like vintage toys or graded cards) to retrieve details instantly.
 
 ### 3. Local-First & Offline-First Architecture
