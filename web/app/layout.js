@@ -67,7 +67,7 @@ export default async function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-[#0a0a0a] text-white">
-        <nav className="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-gray-800 bg-[#0a0a0a]/80">
+        <nav className="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-gray-800 bg-[#0a0a0a]/80 no-print">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 items-center justify-between">
               <Link href="/" className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors group">

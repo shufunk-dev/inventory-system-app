@@ -11,7 +11,8 @@ import {
   ArrowUpRight, 
   PieChart,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -106,6 +107,14 @@ function ValuationReportContent() {
     return matchesType && matchesSearch;
   });
 
+  // Calculate totals for print view
+  const printTotals = filteredItems.reduce((acc, item) => {
+    acc.low += item.valueLow || 0;
+    acc.avg += item.valueAvg || 0;
+    acc.high += item.valueHigh || 0;
+    return acc;
+  }, { low: 0, avg: 0, high: 0 });
+
   // Unique types present in inventory (based on active segment items)
   const activeBreakdownTypes = breakdown.filter(b => 
     items.some(item => item.itemType === b.itemType && 
@@ -115,7 +124,8 @@ function ValuationReportContent() {
   const availableTypes = ['all', ...activeBreakdownTypes];
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10 selection:bg-blue-500/30">
+    <>
+      <main className="print-hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10 selection:bg-blue-500/30">
       {/* Premium Header */}
       <div>
         <div className="flex items-center gap-4 mb-2">
@@ -304,18 +314,29 @@ function ValuationReportContent() {
             <p className="text-xs text-gray-500 mt-0.5">Explore individual items that contribute to the overall valuation.</p>
           </div>
           
-          {/* Search bar inside the list */}
-          <div className="relative w-full md:w-80">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
-              <Search className="w-4 h-4" />
-            </span>
-            <input 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search valued items..."
-              className="w-full bg-black/60 border border-gray-800 hover:border-gray-700 focus:border-blue-500 text-white rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none transition-colors"
-            />
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Search bar inside the list */}
+            <div className="relative flex-1 md:w-80 md:flex-none">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
+                <Search className="w-4 h-4" />
+              </span>
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search valued items..."
+                className="w-full bg-black/60 border border-gray-800 hover:border-gray-700 focus:border-blue-500 text-white rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none transition-colors"
+              />
+            </div>
+
+            {/* Print Button */}
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:from-blue-700 active:to-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-[0_0_15px_rgba(37,99,235,0.1)] hover:shadow-[0_0_20px_rgba(37,99,235,0.2)] hover:-translate-y-0.5 cursor-pointer shrink-0"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Print List</span>
+            </button>
           </div>
         </div>
 
@@ -504,8 +525,72 @@ function ValuationReportContent() {
         .progress-rose { background: linear-gradient(to right, #f43f5e, #f87171); }
         .progress-orange { background: linear-gradient(to right, #f97316, #fb923c); }
         .progress-slate { background: linear-gradient(to right, #64748b, #94a3b8); }
+
+        @media print {
+          body, html {
+            background: white !important;
+            color: black !important;
+          }
+          nav, footer, .no-print, .print-hidden {
+            display: none !important;
+          }
+          .page-break-avoid {
+            page-break-inside: avoid;
+          }
+        }
       `}</style>
     </main>
+
+    {/* Print-only layout */}
+    <div className="hidden print:block text-black bg-white p-6 font-sans">
+      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-black tracking-tight">Inventory Valuation Report</h1>
+          {data.categoryName && (
+            <p className="text-sm text-gray-700 mt-1 font-semibold">Category: {data.categoryName}</p>
+          )}
+          <p className="text-xs text-gray-500 mt-0.5">
+            Segment: {activeSegment === 'invested' ? 'Invested Assets' : 'Market Value Only'}
+            {selectedType !== 'all' && ` | Type: ${TYPE_LABELS[selectedType] || selectedType}`}
+            {searchQuery && ` | Search: "${searchQuery}"`}
+          </p>
+        </div>
+        <div className="text-right text-xs text-gray-500">
+          <p>Date: {new Date().toLocaleDateString()}</p>
+          <p>Items Count: {filteredItems.length}</p>
+        </div>
+      </div>
+
+      <table className="w-full text-left border-collapse text-xs">
+        <thead>
+          <tr className="border-b-2 border-black text-black font-bold">
+            <th className="py-2 pl-2">Item Name</th>
+            <th className="py-2 text-right w-28">Low Value</th>
+            <th className="py-2 text-right w-28">Average Value</th>
+            <th className="py-2 text-right pr-2 w-28">High Value</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-250">
+          {filteredItems.map(item => (
+            <tr key={item.id} className="page-break-avoid">
+              <td className="py-2 pl-2 font-medium text-black">{item.name}</td>
+              <td className="py-2 text-right font-mono text-gray-800">${item.valueLow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="py-2 text-right font-mono font-bold text-black">${item.valueAvg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td className="py-2 text-right font-mono text-gray-800 pr-2">${item.valueHigh.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-black font-bold bg-gray-50">
+            <td className="py-3 pl-2 text-sm text-black">Total Valuation</td>
+            <td className="py-3 text-right font-mono text-sm text-black">${printTotals.low.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td className="py-3 text-right font-mono text-sm text-black">${printTotals.avg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td className="py-3 text-right font-mono text-sm text-black pr-2">${printTotals.high.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </>
   );
 }
 
