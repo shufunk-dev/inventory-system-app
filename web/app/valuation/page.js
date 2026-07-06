@@ -579,15 +579,14 @@ function ValuationReportContent() {
               <td className="py-2 text-right font-mono text-gray-800 pr-2">${item.valueHigh.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             </tr>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-black font-bold bg-gray-50">
+          {/* Totals Row - placed at the end of tbody so it only prints once at the bottom of the last page */}
+          <tr className="border-t-2 border-black font-bold bg-gray-50 page-break-avoid">
             <td className="py-3 pl-2 text-sm text-black">Total Valuation</td>
             <td className="py-3 text-right font-mono text-sm text-black">${printTotals.low.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td className="py-3 text-right font-mono text-sm text-black">${printTotals.avg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td className="py-3 text-right font-mono text-sm text-black pr-2">${printTotals.high.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
           </tr>
-        </tfoot>
+        </tbody>
       </table>
     </div>
   </>
