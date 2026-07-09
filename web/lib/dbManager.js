@@ -350,6 +350,13 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.01', date: 'July 9, 2026', title: 'Secure License Offline Verification',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Secured the offline license verification algorithm by requiring LICENSE_SALT environment variables.' },
+      { type: 'web', text: 'Created local keygen utility keygen.mjs gitignored from GitHub.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.0', date: 'July 2, 2026', title: 'Music, Retro Tech, & Tools Inventory Modules',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented general Music Archives module supporting Vinyl records, Cassettes, CDs, and 8-Tracks with Discogs API integration.' },
