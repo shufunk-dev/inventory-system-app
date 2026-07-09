@@ -3,7 +3,7 @@ import { getMachineId } from './machine.js';
 import axios from 'axios';
 import os from 'os';
 
-const LICENSE_SALT = process.env.LICENSE_SALT || 'shufunk-inventory-system-secret-salt-2026';
+const DEFAULT_TRIAL_SALT = 'shufunk-inventory-system-secret-salt-2026';
 
 // Map key prefixes to license types
 const PREFIX_MAP = {
@@ -13,6 +13,30 @@ const PREFIX_MAP = {
   'TRIA': 'trial',     // 7-Day Trial
   'TR5M': 'trial_5m'   // 5-Minute Trial for Testing
 };
+
+/**
+ * Resolves the salt to use based on the key prefix and environment.
+ */
+function getLicenseSalt(prefix) {
+  const licenseSalt = process.env.LICENSE_SALT;
+  if (licenseSalt) {
+    return licenseSalt;
+  }
+
+  // Fallback behavior when LICENSE_SALT is not set in the environment:
+  if (prefix === 'TRIA' || prefix === 'TR5M') {
+    // Trial keys can use the default/public salt so that trials work out of the box
+    return DEFAULT_TRIAL_SALT;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    // Tests are allowed to fall back to the default salt to pass without extra environment config
+    return DEFAULT_TRIAL_SALT;
+  }
+
+  // Reject with null if trying to validate/generate permanent keys without LICENSE_SALT set
+  return null;
+}
 
 /**
  * Validates a license key offline.
@@ -37,8 +61,13 @@ export function validateLicenseKey(key) {
     return { isValid: false, type: null };
   }
 
+  const licenseSalt = getLicenseSalt(prefix);
+  if (!licenseSalt) {
+    return { isValid: false, type: null };
+  }
+
   // Re-generate the expected signature hash
-  const dataToHash = `${prefix}-${salt}-${LICENSE_SALT}`;
+  const dataToHash = `${prefix}-${salt}-${licenseSalt}`;
   const fullHash = crypto.createHash('sha256').update(dataToHash).digest('hex').toUpperCase();
   
   // Extract segments of the hash to match Segment 3 and 4 of the license key
@@ -61,12 +90,17 @@ export function generateLicenseKey(type, identifier = null) {
     throw new Error(`Invalid license type: ${type}`);
   }
 
+  const licenseSalt = getLicenseSalt(prefix);
+  if (!licenseSalt) {
+    throw new Error(`FATAL: LICENSE_SALT environment variable is required to generate permanent '${type}' license keys.`);
+  }
+
   // Use clean alphanumeric identifier or fallback to random 4-digit serial
   const salt = identifier
     ? identifier.toUpperCase().trim().replace(/[^A-Z0-9]/g, '')
     : Math.floor(1000 + Math.random() * 9000).toString();
   
-  const dataToHash = `${prefix}-${salt}-${LICENSE_SALT}`;
+  const dataToHash = `${prefix}-${salt}-${licenseSalt}`;
   const fullHash = crypto.createHash('sha256').update(dataToHash).digest('hex').toUpperCase();
   
   const hash1 = fullHash.substring(0, 4);

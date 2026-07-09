@@ -27,6 +27,7 @@ web/electron/next-server/public/barcodes/
 
 # Local developer information
 github info.txt
+keygen.mjs
 
 # Local Study & Costs Documentation
 *architecture_guide*
