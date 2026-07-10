@@ -452,12 +452,18 @@ export async function fetchWikipediaMovieMetadata(name) {
   try {
     const searchQuery = `${name} film`;
     const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchQuery)}&format=json&origin=*`;
-    const searchRes = await axios.get(searchUrl, { timeout: 10000 });
+    const searchRes = await axios.get(searchUrl, {
+      headers: { 'User-Agent': 'Antigravity-POS-Scanner/1.9' },
+      timeout: 10000
+    });
     
     if (searchRes.data && searchRes.data.query && searchRes.data.query.search && searchRes.data.query.search.length > 0) {
       const title = searchRes.data.query.search[0].title;
       const detailsUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts|pageimages|info&exintro=1&explaintext=1&titles=${encodeURIComponent(title)}&pithumbsize=500&format=json&origin=*&inprop=url`;
-      const detailsRes = await axios.get(detailsUrl, { timeout: 10000 });
+      const detailsRes = await axios.get(detailsUrl, {
+        headers: { 'User-Agent': 'Antigravity-POS-Scanner/1.9' },
+        timeout: 10000
+      });
       
       if (detailsRes.data && detailsRes.data.query && detailsRes.data.query.pages) {
         const pages = detailsRes.data.query.pages;
