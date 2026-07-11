@@ -667,7 +667,7 @@ async function fetchOrganicSearch(q) {
 }
 
 async function fetchVideoMarketValue(name) {
-  const csePrice = await fetchGoogleCustomSearchPrice(name, '(video game OR movie OR dvd)');
+  const csePrice = await fetchGoogleCustomSearchPrice(name, '(video game OR movie OR dvd OR vhs)');
   if (csePrice) return csePrice;
 
   return null;

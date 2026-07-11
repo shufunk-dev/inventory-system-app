@@ -17,6 +17,11 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
   const [toyBrand, setToyBrand] = useState(item.toyBrand || '');
   const [toyYear, setToyYear] = useState(item.toyYear || '');
   
+  // Market Value fields
+  const [valueLow, setValueLow] = useState(item.valueLow !== null && item.valueLow !== undefined ? item.valueLow : '');
+  const [valueAvg, setValueAvg] = useState(item.valueAvg !== null && item.valueAvg !== undefined ? item.valueAvg : '');
+  const [valueHigh, setValueHigh] = useState(item.valueHigh !== null && item.valueHigh !== undefined ? item.valueHigh : '');
+  
   const PRESET_CONDITIONS = ["Empty box", "Figure with missing part", "Opened but complete", "Mint in box", "Unknown Condition"];
   const [toyCondition, setToyCondition] = useState(item.toyCondition || 'Unknown Condition');
   const initialIsOther = !PRESET_CONDITIONS.includes(item.toyCondition) && item.toyCondition !== '' && item.toyCondition !== null;
@@ -36,6 +41,9 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
       setCategoryId(item.categoryId || '');
       setToyBrand(item.toyBrand || '');
       setToyYear(item.toyYear || '');
+      setValueLow(item.valueLow !== null && item.valueLow !== undefined ? item.valueLow : '');
+      setValueAvg(item.valueAvg !== null && item.valueAvg !== undefined ? item.valueAvg : '');
+      setValueHigh(item.valueHigh !== null && item.valueHigh !== undefined ? item.valueHigh : '');
       setToyCondition(item.toyCondition || 'Unknown Condition');
       const updatedIsOther = !PRESET_CONDITIONS.includes(item.toyCondition) && item.toyCondition !== '' && item.toyCondition !== null;
       setIsOther(updatedIsOther);
@@ -55,7 +63,7 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
       const res = await fetch(`/api/item/${item.id}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition, retailPrice, purchasePrice })
+        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition, retailPrice, purchasePrice, valueLow, valueAvg, valueHigh })
       });
 
       if (res.ok) {
@@ -181,6 +189,49 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
           className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
           placeholder="How much did you pay for this item?"
         />
+      </div>
+      
+      <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl mb-6">
+        <h3 className="text-sm font-bold text-blue-400 mb-4 flex items-center gap-2">
+          Estimated Market Value (Manual Overrides)
+          <span className="text-xs text-gray-400 font-normal ml-auto">Overrides automated calculations</span>
+        </h3>
+        
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Low ($)</label>
+            <input 
+              type="number"
+              step="0.01"
+              value={valueLow}
+              onChange={e => setValueLow(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. 8.00"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Average ($)</label>
+            <input 
+              type="number"
+              step="0.01"
+              value={valueAvg}
+              onChange={e => setValueAvg(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. 10.00"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">High ($)</label>
+            <input 
+              type="number"
+              step="0.01"
+              value={valueHigh}
+              onChange={e => setValueHigh(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. 15.00"
+            />
+          </div>
+        </div>
       </div>
 
       {item.itemType === 'toy' && (

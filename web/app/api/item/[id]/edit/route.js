@@ -41,8 +41,11 @@ export async function PUT(request, { params }) {
       purchasePrice = body.purchasePrice !== '' && body.purchasePrice !== null ? parseFloat(body.purchasePrice) : null;
     }
 
-    // Check if condition is changing to reset valuation
+    // Check if name or condition is changing to reset valuation
     let resetValuation = false;
+    if (body.name !== undefined && currentItem.name !== name) {
+      resetValuation = true;
+    }
     if (body.toyCondition !== undefined && currentItem.toyCondition !== toyCondition) {
       resetValuation = true;
     }
@@ -58,7 +61,7 @@ export async function PUT(request, { params }) {
     db.prepare(`
       UPDATE items 
       SET name = ?, description = ?, categoryId = ?, toyBrand = ?, toyYear = ?, toyCondition = ?, coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?, retailPrice = ?, purchasePrice = ?
-      ${resetValuation ? ', valueLow = NULL, valueAvg = NULL, valueHigh = NULL' : ''}
+      ${resetValuation ? ", valueLow = NULL, valueAvg = NULL, valueHigh = NULL, syncStatus = 'pending'" : ''}
       WHERE id = ?
     `).run(
       name,
