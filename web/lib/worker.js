@@ -286,7 +286,14 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
   if (!searxngUrl || !name) return null;
 
   try {
-    const q = `${name} ${extraKeywords}`.replace(/\s+/g, ' ').trim();
+    // Clean up Google-specific OR and parentheses syntax for SearXNG
+    const cleanExtra = extraKeywords
+      .replace(/[()]/g, '')     // remove parentheses
+      .replace(/\bOR\b/g, '')   // remove OR keywords
+      .replace(/\s+/g, ' ')     // collapse spaces
+      .trim();
+
+    const q = `${name} ${cleanExtra}`.replace(/\s+/g, ' ').trim();
     const query = encodeURIComponent(q);
     const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
     console.log(`[Worker] Querying SearXNG API for prices: "${q}"`);
