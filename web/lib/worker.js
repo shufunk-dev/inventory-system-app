@@ -340,8 +340,65 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
   return null;
 }
 
+async function fetchGeminiPrice(name, extraKeywords = '') {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey || !name) return null;
+
+  try {
+    const q = `${name} ${extraKeywords}`.replace(/\s+/g, ' ').trim();
+    console.log(`[Worker] Querying Gemini with Google Search grounding for: "${q}"`);
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+    const payload = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `Perform a Google search to find the estimated market value (Low, Average, and High prices in USD) for the following item: "${q}". You must output the final answer as a raw JSON block in the format: { "valueLow": number, "valueAvg": number, "valueHigh": number }. If no prices can be found, return null values. Do not include any markdown format tags, backticks, or extra text.`
+            }
+          ]
+        }
+      ],
+      tools: [
+        {
+          googleSearch: {}
+        }
+      ]
+    };
+
+    const res = await axios.post(url, payload, { timeout: 15000 });
+    if (res.data && res.data.candidates && res.data.candidates.length > 0) {
+      const text = res.data.candidates[0].content?.parts?.[0]?.text;
+      if (text) {
+        // Strip markdown code fences if present
+        const cleanText = text.replace(/```json/i, '').replace(/```/, '').trim();
+        const parsed = JSON.parse(cleanText);
+        if (parsed.valueLow !== undefined && parsed.valueAvg !== undefined && parsed.valueHigh !== undefined) {
+          return {
+            valueLow: parsed.valueLow !== null ? parseFloat(parsed.valueLow) : null,
+            valueAvg: parsed.valueAvg !== null ? parseFloat(parsed.valueAvg) : null,
+            valueHigh: parsed.valueHigh !== null ? parseFloat(parsed.valueHigh) : null
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Worker] Gemini search grounding price error:', err.message);
+    const isRateOrAuthError = (err.response && (err.response.status === 403 || err.response.status === 429)) ||
+                              (err.message && (err.message.includes('403') || err.message.includes('429')));
+    if (isRateOrAuthError) {
+      throw new Error('RATE_LIMIT');
+    }
+  }
+  return null;
+}
+
 async function fetchGoogleCustomSearchPrice(name, extraKeywords = '') {
-  console.log(`[Worker Debug] fetchGoogleCustomSearchPrice called. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
+  console.log(`[Worker Debug] fetchGoogleCustomSearchPrice called. SEARXNG_URL is: "${process.env.SEARXNG_URL}", GEMINI_API_KEY is configured: ${!!process.env.GEMINI_API_KEY}`);
+  if (process.env.GEMINI_API_KEY) {
+    return await fetchGeminiPrice(name, extraKeywords);
+  }
   if (process.env.SEARXNG_URL) {
     return await fetchSearxngPrice(name, extraKeywords);
   }
@@ -1324,6 +1381,9 @@ export async function fetchItemDetails(item, db, options = {}) {
 
       if (keys.searxngUrl) {
         process.env.SEARXNG_URL = keys.searxngUrl;
+      }
+      if (keys.geminiApiKey) {
+        process.env.GEMINI_API_KEY = keys.geminiApiKey;
       }
     }
   } catch (e) {
