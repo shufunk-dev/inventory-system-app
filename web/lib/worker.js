@@ -1358,6 +1358,10 @@ export async function fetchItemDetails(item, db, options = {}) {
     } catch (e) {
       // ignore
     }
+
+    if (!isPremium) {
+      process.env.SERPAPI_KEY = '';
+    }
       
     if (options.refreshPrices) {
       details = {
