@@ -130,7 +130,7 @@ export default async function RootLayout({ children }) {
                       <div className="flex items-center gap-2 pr-2">
                         <div className={`w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center font-bold text-[10px] tracking-wider ${getRoleColor(user)}`}>
                           {user.profilePicture ? (
-                            <img src={`/uploads/profiles/${user.profilePicture}`} alt="Avatar" className="w-full h-full object-cover" />
+                            <img src={`/api/file/${user.profilePicture}`} alt="Avatar" className="w-full h-full object-cover" />
                           ) : (
                             getInitials(user)
                           )}

@@ -110,7 +110,7 @@ export default function SettingsPage() {
           setUser(data.user);
           setDisplayName(data.user.displayName || '');
           if (data.user.profilePicture) {
-            setProfilePicUrl(`/uploads/profiles/${data.user.profilePicture}`);
+            setProfilePicUrl(`/api/file/${data.user.profilePicture}`);
           }
           
           if (data.user.isAdmin || data.user.isRoot) {
@@ -213,7 +213,7 @@ export default function SettingsPage() {
       if (res.ok) {
         setProfileMessage('Profile updated successfully!');
         if (data.profilePicture) {
-          setProfilePicUrl(`/uploads/profiles/${data.profilePicture}`);
+          setProfilePicUrl(`/api/file/${data.profilePicture}`);
         }
         // Force refresh layout headers
         router.refresh();

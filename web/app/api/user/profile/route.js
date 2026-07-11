@@ -19,7 +19,7 @@ export async function POST(request) {
     let profilePictureFilename = user.profilePicture;
 
     if (file && typeof file === 'object' && file.size > 0) {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'profiles');
+      const uploadDir = path.resolve(process.env.USER_DATA_PATH || process.cwd(), 'uploads');
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
