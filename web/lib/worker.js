@@ -397,10 +397,20 @@ async function fetchGeminiPrice(name, extraKeywords = '') {
 async function fetchGoogleCustomSearchPrice(name, extraKeywords = '') {
   console.log(`[Worker Debug] fetchGoogleCustomSearchPrice called. SEARXNG_URL is: "${process.env.SEARXNG_URL}", GEMINI_API_KEY is configured: ${!!process.env.GEMINI_API_KEY}`);
   if (process.env.GEMINI_API_KEY) {
-    return await fetchGeminiPrice(name, extraKeywords);
+    try {
+      const price = await fetchGeminiPrice(name, extraKeywords);
+      if (price) return price;
+    } catch (e) {
+      console.warn('[Worker] Gemini pricing failed, falling back to other search engines:', e.message);
+    }
   }
   if (process.env.SEARXNG_URL) {
-    return await fetchSearxngPrice(name, extraKeywords);
+    try {
+      const price = await fetchSearxngPrice(name, extraKeywords);
+      if (price) return price;
+    } catch (e) {
+      console.warn('[Worker] SearXNG pricing failed, falling back to Google CSE:', e.message);
+    }
   }
   return await fetchGoogleCustomSearchPriceInternal(name, extraKeywords);
 }
