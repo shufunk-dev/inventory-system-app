@@ -25,8 +25,7 @@ export async function GET() {
       googleCseKey: '',
       googleCseCx: '',
       searxngUrl: '',
-      discogsApiKey: '',
-      geminiApiKey: ''
+      discogsApiKey: ''
     },
     activeTier: 'basic',
     smtpConfig: {

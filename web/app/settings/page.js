@@ -16,7 +16,7 @@ export default function SettingsPage() {
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', googleCseKey: '', googleCseCx: '', searxngUrl: '', discogsApiKey: '', geminiApiKey: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', googleCseKey: '', googleCseCx: '', searxngUrl: '' });
   const [smtpConfig, setSmtpConfig] = useState({
     host: '',
     port: '587',
@@ -661,16 +661,6 @@ export default function SettingsPage() {
               onChange={(e) => setApiKeys({...apiKeys, serpApiKey: e.target.value})}
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="Enter your SerpApi private key"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Gemini API Key (Google AI Studio - For Live Valuations)</label>
-            <input 
-              type="password"
-              value={apiKeys.geminiApiKey || ''}
-              onChange={(e) => setApiKeys({...apiKeys, geminiApiKey: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="Enter your Gemini API key"
             />
           </div>
           <div>
