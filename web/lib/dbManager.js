@@ -221,10 +221,22 @@ export function initializeSchema(db) {
       isWeighted INTEGER DEFAULT 0,
       qtyCalculatedOz REAL
     );
+
+    CREATE TABLE IF NOT EXISTS payment_transactions (
+      id TEXT PRIMARY KEY,
+      receiptNo TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      providerCheckoutId TEXT,
+      amount REAL NOT NULL,
+      status TEXT DEFAULT 'pending',
+      isTraining INTEGER DEFAULT 0,
+      createdAt INTEGER
+    );
   `);
 
   // safe alterations
   const columnsToAdd = [
+    { table: 'payment_transactions', col: 'isTraining INTEGER DEFAULT 0' },
     { table: 'items', col: 'moviePlot TEXT' },
     { table: 'items', col: 'movieCast TEXT' },
     { table: 'items', col: 'movieTrailer TEXT' },

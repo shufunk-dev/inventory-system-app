@@ -114,9 +114,21 @@ function initializeStoreSchema(dbConn) {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS payment_transactions (
+      id TEXT PRIMARY KEY,
+      receiptNo TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      providerCheckoutId TEXT,
+      amount REAL NOT NULL,
+      status TEXT DEFAULT 'pending',
+      isTraining INTEGER DEFAULT 0,
+      createdAt INTEGER
+    );
   `);
 
   // Run alterations safely for store database
+  try { dbConn.exec("ALTER TABLE payment_transactions ADD COLUMN isTraining INTEGER DEFAULT 0"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN userId TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE categories ADD COLUMN userId TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN moviePlot TEXT"); } catch(e) {}

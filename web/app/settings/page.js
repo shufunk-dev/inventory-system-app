@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Key, Save, Loader2, Mail, User, Store } from 'lucide-react';
+import { Shield, Key, Save, Loader2, Mail, User, Store, CreditCard, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import TenantSalesReport from '@/components/TenantSalesReport';
 
@@ -17,6 +17,36 @@ export default function SettingsPage() {
 
 
   const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', googleCseKey: '', googleCseCx: '', searxngUrl: '' });
+  const [paymentConfig, setPaymentConfig] = useState({
+    provider: 'none',
+    stripeApiKey: '',
+    stripeReaderId: '',
+    squareAccessToken: '',
+    squareLocationId: '',
+    squareDeviceId: '',
+    venmoHandle: '',
+    paypalEmail: ''
+  });
+  const [tunnelConfig, setTunnelConfig] = useState({
+    method: 'none',
+    licenseKey: '',
+    customToken: '',
+    activeToken: '',
+    subdomain: '',
+    isConnected: false
+  });
+  const [tunnelStatus, setTunnelStatus] = useState({ status: 'stopped', error: null, subdomain: '', loading: true });
+  const [tunnelActionLoading, setTunnelActionLoading] = useState(false);
+  const [tunnelMessage, setTunnelMessage] = useState('');
+  const [tunnelError, setTunnelError] = useState('');
+  const [printerConfig, setPrinterConfig] = useState({
+    connectionType: 'browser',
+    networkIp: '',
+    networkPort: '9100',
+    paperWidth: '80mm',
+    cashDrawerKick: true,
+    paperCut: true
+  });
   const [smtpConfig, setSmtpConfig] = useState({
     host: '',
     port: '587',
@@ -76,6 +106,85 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchTunnelStatus = async () => {
+    try {
+      const res = await fetch('/api/settings/tunnel');
+      if (res.ok) {
+        const data = await res.json();
+        setTunnelStatus({
+          status: data.status,
+          error: data.error,
+          subdomain: data.subdomain,
+          loading: false
+        });
+        setTunnelConfig(prev => ({
+          ...prev,
+          method: data.method || 'none',
+          isConnected: data.isConnected || false,
+          subdomain: data.subdomain || ''
+        }));
+      }
+    } catch (e) {}
+  };
+
+  const handleConnectTunnel = async () => {
+    setTunnelActionLoading(true);
+    setTunnelMessage('');
+    setTunnelError('');
+    try {
+      const res = await fetch('/api/settings/tunnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tunnelConfig)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTunnelMessage('Tunnel connection initiated successfully!');
+        await fetchTunnelStatus();
+      } else {
+        setTunnelError(data.error || 'Failed to start tunnel.');
+      }
+    } catch (e) {
+      setTunnelError('Network error while starting tunnel.');
+    } finally {
+      setTunnelActionLoading(false);
+    }
+  };
+
+  const handleDisconnectTunnel = async () => {
+    setTunnelActionLoading(true);
+    setTunnelMessage('');
+    setTunnelError('');
+    try {
+      const res = await fetch('/api/settings/tunnel', {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setTunnelMessage('Tunnel disconnected successfully!');
+        await fetchTunnelStatus();
+      } else {
+        const data = await res.json();
+        setTunnelError(data.error || 'Failed to stop tunnel.');
+      }
+    } catch (e) {
+      setTunnelError('Network error while stopping tunnel.');
+    } finally {
+      setTunnelActionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let statusInterval = null;
+    if (tunnelStatus.status === 'connecting') {
+      statusInterval = setInterval(() => {
+        fetchTunnelStatus();
+      }, 3000);
+    }
+    return () => {
+      if (statusInterval) clearInterval(statusInterval);
+    };
+  }, [tunnelStatus.status]);
+
   // Profile customization states
   const [displayName, setDisplayName] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
@@ -121,8 +230,12 @@ export default function SettingsPage() {
                 if (settings.activeTier) setActiveTier(settings.activeTier);
                 if (settings.smtpConfig) setSmtpConfig(settings.smtpConfig);
                 if (settings.mallName) setMallName(settings.mallName);
+                if (settings.paymentConfig) setPaymentConfig(settings.paymentConfig);
+                if (settings.tunnelConfig) setTunnelConfig(settings.tunnelConfig);
+                if (settings.printerConfig) setPrinterConfig(settings.printerConfig);
               });
             fetchSearxngStatus();
+            fetchTunnelStatus();
 
           } else {
             setActiveTier(data.user.activeTier || 'basic');
@@ -141,7 +254,7 @@ export default function SettingsPage() {
         const res = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ activeTier, apiKeys, smtpConfig, mallName })
+          body: JSON.stringify({ activeTier, apiKeys, smtpConfig, mallName, paymentConfig, tunnelConfig, printerConfig })
         });
         if (res.ok) {
           setMessage('Global Settings saved successfully!');
@@ -941,6 +1054,409 @@ sudo usermod -aG docker $USER`}
         </div>
       </div>
 
+      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl mb-8">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+          <CreditCard className="w-5 h-5 text-blue-400" />
+          POS Card Reader Integration
+        </h2>
+        <p className="text-gray-400 mb-6 text-sm">
+          Select and configure your countertop card reader terminal provider for in-person transactions.
+        </p>
+
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Active Provider</label>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setPaymentConfig({ ...paymentConfig, provider: 'none' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${paymentConfig.provider === 'none' ? 'border-blue-500 bg-blue-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                None (QR / Cash Only)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentConfig({ ...paymentConfig, provider: 'stripe' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${paymentConfig.provider === 'stripe' ? 'border-indigo-500 bg-indigo-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                Stripe Terminal
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentConfig({ ...paymentConfig, provider: 'square' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${paymentConfig.provider === 'square' ? 'border-purple-500 bg-purple-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                Square Terminal
+              </button>
+            </div>
+          </div>
+
+          {paymentConfig.provider === 'stripe' && (
+            <div className="space-y-4 border-t border-gray-800 pt-4">
+              <h3 className="text-md font-semibold text-white">Stripe Terminal Settings</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Stripe Secret Key (sk_live_...)</label>
+                <input
+                  type="password"
+                  value={paymentConfig.stripeApiKey || ''}
+                  onChange={(e) => setPaymentConfig({ ...paymentConfig, stripeApiKey: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Target Reader ID (tmr_...)</label>
+                <input
+                  type="text"
+                  value={paymentConfig.stripeReaderId || ''}
+                  onChange={(e) => setPaymentConfig({ ...paymentConfig, stripeReaderId: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. tmr_F9B2A8E1"
+                />
+              </div>
+            </div>
+          )}
+
+          {paymentConfig.provider === 'square' && (
+            <div className="space-y-4 border-t border-gray-800 pt-4">
+              <h3 className="text-md font-semibold text-white">Square Terminal Settings</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Square Sandbox/Access Token (EAAA...)</label>
+                <input
+                  type="password"
+                  value={paymentConfig.squareAccessToken || ''}
+                  onChange={(e) => setPaymentConfig({ ...paymentConfig, squareAccessToken: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Square Location ID</label>
+                  <input
+                    type="text"
+                    value={paymentConfig.squareLocationId || ''}
+                    onChange={(e) => setPaymentConfig({ ...paymentConfig, squareLocationId: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                    placeholder="e.g. L-1234..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Square Device ID</label>
+                  <input
+                    type="text"
+                    value={paymentConfig.squareDeviceId || ''}
+                    onChange={(e) => setPaymentConfig({ ...paymentConfig, squareDeviceId: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                    placeholder="e.g. 421-eq..."
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* QR Code Dynamic Checkouts Configuration */}
+          <div className="space-y-4 border-t border-gray-800 pt-6 mt-6">
+            <h3 className="text-md font-semibold text-white flex items-center gap-2">
+              <QrCode className="w-5 h-5 text-amber-500" />
+              Dynamic Mobile Payments (QR Codes)
+            </h3>
+            <p className="text-xs text-gray-400">
+              Enter credentials to generate dynamic checkout QR codes for Venmo and PayPal on the POS Register screen.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Venmo Username / Handle</label>
+                <input
+                  type="text"
+                  value={paymentConfig.venmoHandle || ''}
+                  onChange={(e) => setPaymentConfig({ ...paymentConfig, venmoHandle: e.target.value })}
+                  className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                  placeholder="e.g. @MyStoreName"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">PayPal Email / Merchant ID</label>
+                <input
+                  type="text"
+                  value={paymentConfig.paypalEmail || ''}
+                  onChange={(e) => setPaymentConfig({ ...paymentConfig, paypalEmail: e.target.value })}
+                  className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                  placeholder="e.g. billing@mystore.com"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Remote Sync & Dynamic Cloud Tunnels Card */}
+      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl mb-8">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+          <QrCode className="w-5 h-5 text-amber-500" />
+          Remote Sync & Dynamic Cloud Tunnels
+        </h2>
+        <p className="text-gray-400 mb-6 text-sm">
+          Securely sync your local register database to the cloud to aggregate sales and access sync APIs.
+        </p>
+
+        <div className="space-y-6">
+          {/* Connection Status Banner */}
+          {!tunnelStatus.loading && (
+            <div className={`p-4 rounded-2xl flex items-center justify-between border ${
+              tunnelStatus.status === 'connected'
+                ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                : tunnelStatus.status === 'connecting'
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                  : 'bg-gray-850 border-gray-800 text-gray-400'
+            }`}>
+              <div className="flex items-center gap-3">
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    tunnelStatus.status === 'connected'
+                      ? 'bg-green-400'
+                      : tunnelStatus.status === 'connecting'
+                        ? 'bg-amber-400'
+                        : 'bg-gray-500'
+                  }`}></span>
+                  <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                    tunnelStatus.status === 'connected'
+                      ? 'bg-green-500'
+                      : tunnelStatus.status === 'connecting'
+                        ? 'bg-amber-500'
+                        : 'bg-gray-650'
+                  }`}></span>
+                </span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider">
+                    {tunnelStatus.status === 'connected'
+                      ? 'Tunnel Active & Online'
+                      : tunnelStatus.status === 'connecting'
+                        ? 'Establishing Tunnel connection...'
+                        : 'Sync Tunnel Offline'}
+                  </p>
+                  {tunnelStatus.status === 'connected' && tunnelStatus.subdomain && (
+                    <a
+                      href={tunnelStatus.subdomain}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 underline font-mono block mt-1 hover:text-blue-300"
+                    >
+                      {tunnelStatus.subdomain}
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                {tunnelStatus.status !== 'stopped' ? (
+                  <button
+                    type="button"
+                    onClick={handleDisconnectTunnel}
+                    disabled={tunnelActionLoading}
+                    className="bg-red-600 hover:bg-red-500 text-white font-bold py-1.5 px-4 rounded-xl text-xs disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleConnectTunnel}
+                    disabled={tunnelActionLoading || tunnelConfig.method === 'none'}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-4 rounded-xl text-xs disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    Connect
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tunnelError && (
+            <p className="text-xs text-red-400 bg-red-950/20 border border-red-900/30 p-3 rounded-xl select-text">
+              {tunnelError}
+            </p>
+          )}
+
+          {tunnelMessage && (
+            <p className="text-xs text-green-400 bg-green-950/20 border border-green-900/30 p-3 rounded-xl">
+              {tunnelMessage}
+            </p>
+          )}
+
+          {/* Sync Configuration Options */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Sync Method</label>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                type="button"
+                onClick={() => setTunnelConfig({ ...tunnelConfig, method: 'none' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${tunnelConfig.method === 'none' ? 'border-blue-500 bg-blue-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                None
+              </button>
+              <button
+                type="button"
+                onClick={() => setTunnelConfig({ ...tunnelConfig, method: 'managed' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${tunnelConfig.method === 'managed' ? 'border-amber-500 bg-amber-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                Managed Cloud Sync
+              </button>
+              <button
+                type="button"
+                onClick={() => setTunnelConfig({ ...tunnelConfig, method: 'self-hosted' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all ${tunnelConfig.method === 'self-hosted' ? 'border-purple-500 bg-purple-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                Self-Hosted Tunnel
+              </button>
+            </div>
+          </div>
+
+          {tunnelConfig.method === 'managed' && (
+            <div className="space-y-4 border-t border-gray-800 pt-4">
+              <h3 className="text-md font-semibold text-white">Managed Sync Settings</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Stripe Subscription License Key</label>
+                <input
+                  type="text"
+                  value={tunnelConfig.licenseKey || ''}
+                  onChange={(e) => setTunnelConfig({ ...tunnelConfig, licenseKey: e.target.value })}
+                  className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                  placeholder="e.g. STOR-1234..."
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Your license key connects to Stripe to verify your store's cloud provisioning status.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {tunnelConfig.method === 'self-hosted' && (
+            <div className="space-y-4 border-t border-gray-800 pt-4">
+              <h3 className="text-md font-semibold text-white">Self-Hosted Tunnel Settings</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Cloudflare Tunnel Token</label>
+                <input
+                  type="password"
+                  value={tunnelConfig.customToken || ''}
+                  onChange={(e) => setTunnelConfig({ ...tunnelConfig, customToken: e.target.value })}
+                  className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                  placeholder="••••••••"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Enter the connection token from your Cloudflare Zero Trust console.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Receipt Printer Configuration Card */}
+      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl mb-8">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+          <Printer className="w-5 h-5 text-indigo-400" />
+          Receipt Printer Configuration
+        </h2>
+        <p className="text-gray-400 mb-6 text-sm">
+          Configure how receipts are printed when checkout payments are completed at the register.
+        </p>
+
+        <div className="space-y-6">
+          {/* Connection Type Buttons */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Printer Connection Type</label>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                type="button"
+                onClick={() => setPrinterConfig({ ...printerConfig, connectionType: 'browser' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 ${printerConfig.connectionType === 'browser' ? 'border-indigo-500 bg-indigo-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                Regular Printer (Browser)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrinterConfig({ ...printerConfig, connectionType: 'network' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 ${printerConfig.connectionType === 'network' ? 'border-blue-500 bg-blue-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                Network Thermal Printer
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrinterConfig({ ...printerConfig, connectionType: 'usb' })}
+                className={`flex-1 py-3 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 ${printerConfig.connectionType === 'usb' ? 'border-purple-500 bg-purple-900/10 text-white' : 'border-gray-800 text-gray-400 bg-gray-900'}`}
+              >
+                USB Thermal Printer (WebUSB)
+              </button>
+            </div>
+          </div>
+
+          {/* Network configurations */}
+          {printerConfig.connectionType === 'network' && (
+            <div className="space-y-4 border-t border-gray-800 pt-4 animate-fade-in">
+              <h3 className="text-md font-semibold text-white">Network Printer Settings</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Printer IP Address</label>
+                  <input
+                    type="text"
+                    value={printerConfig.networkIp || ''}
+                    onChange={(e) => setPrinterConfig({ ...printerConfig, networkIp: e.target.value })}
+                    className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                    placeholder="e.g. 192.168.1.100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Printer TCP Port</label>
+                  <input
+                    type="text"
+                    value={printerConfig.networkPort || '9100'}
+                    onChange={(e) => setPrinterConfig({ ...printerConfig, networkPort: e.target.value })}
+                    className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                    placeholder="9100"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Hardware Triggers */}
+          {printerConfig.connectionType !== 'browser' && (
+            <div className="space-y-4 border-t border-gray-800 pt-4 animate-fade-in">
+              <h3 className="text-md font-semibold text-white">Thermal Hardware Triggers</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between bg-gray-850 border border-gray-800 p-4 rounded-2xl">
+                  <div>
+                    <p className="text-sm font-bold text-white">Automatic Paper Cut</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Feeds and triggers partial print cutting</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPrinterConfig({ ...printerConfig, paperCut: !printerConfig.paperCut })}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${printerConfig.paperCut ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                  >
+                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${printerConfig.paperCut ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between bg-gray-850 border border-gray-800 p-4 rounded-2xl">
+                  <div>
+                    <p className="text-sm font-bold text-white">Kick Cash Drawer</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Sends drawer kick pulse signal to printer port</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPrinterConfig({ ...printerConfig, cashDrawerKick: !printerConfig.cashDrawerKick })}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${printerConfig.cashDrawerKick ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                  >
+                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${printerConfig.cashDrawerKick ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       </>
       )}

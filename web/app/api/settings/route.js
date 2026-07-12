@@ -1,6 +1,21 @@
-import { NextResponse } from 'next/server';
 import { getGlobalDb } from '../../../lib/db.js';
 import { getUser } from '../../../lib/auth.js';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+
+let NextResponse;
+try {
+  const nextServer = require('next/server');
+  NextResponse = nextServer.NextResponse;
+} catch (e) {
+  NextResponse = {
+    json: (body, init) => ({
+      status: init?.status || 200,
+      json: async () => body
+    })
+  };
+}
 
 async function checkAdmin() {
   const user = await getUser();
@@ -13,8 +28,8 @@ export async function GET() {
   }
 
   const db = await getGlobalDb();
-  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?, ?, ?)');
-  const rows = stmt.all('api_keys', 'active_tier', 'smtp_config', 'mall_name');
+  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?, ?, ?, ?, ?, ?)');
+  const rows = stmt.all('api_keys', 'active_tier', 'smtp_config', 'mall_name', 'payment_config', 'tunnel_config', 'printer_config');
   
   let settings = {
     mallName: 'Antique Mall',
@@ -35,6 +50,32 @@ export async function GET() {
       user: '',
       pass: '',
       from: ''
+    },
+    paymentConfig: {
+      provider: 'none',
+      stripeApiKey: '',
+      stripeReaderId: '',
+      squareAccessToken: '',
+      squareLocationId: '',
+      squareDeviceId: '',
+      venmoHandle: '',
+      paypalEmail: ''
+    },
+    tunnelConfig: {
+      method: 'none',
+      licenseKey: '',
+      customToken: '',
+      activeToken: '',
+      subdomain: '',
+      isConnected: false
+    },
+    printerConfig: {
+      connectionType: 'browser',
+      networkIp: '',
+      networkPort: '9100',
+      paperWidth: '80mm',
+      cashDrawerKick: true,
+      paperCut: true
     }
   };
 
@@ -50,6 +91,22 @@ export async function GET() {
         const parsed = JSON.parse(row.value);
         if (parsed.pass) parsed.pass = '••••••••';
         settings.smtpConfig = { ...settings.smtpConfig, ...parsed };
+      }
+      if (row.key === 'payment_config') {
+        const parsed = JSON.parse(row.value);
+        if (parsed.stripeApiKey) parsed.stripeApiKey = '••••••••';
+        if (parsed.squareAccessToken) parsed.squareAccessToken = '••••••••';
+        settings.paymentConfig = { ...settings.paymentConfig, ...parsed };
+      }
+      if (row.key === 'tunnel_config') {
+        const parsed = JSON.parse(row.value);
+        if (parsed.customToken) parsed.customToken = '••••••••';
+        if (parsed.activeToken) parsed.activeToken = '••••••••';
+        settings.tunnelConfig = { ...settings.tunnelConfig, ...parsed };
+      }
+      if (row.key === 'printer_config') {
+        const parsed = JSON.parse(row.value);
+        settings.printerConfig = { ...settings.printerConfig, ...parsed };
       }
     } catch (e) {}
   });
@@ -95,6 +152,57 @@ export async function PUT(request) {
           }
         }
         updateStmt.run('smtp_config', JSON.stringify(configToSave));
+      }
+      if (data.paymentConfig) {
+        let configToSave = { ...data.paymentConfig };
+        
+        // Retrieve and restore masked parameters
+        try {
+          const existingRow = db.prepare("SELECT value FROM system_settings WHERE key = 'payment_config'").get();
+          if (existingRow && existingRow.value) {
+            const existingParsed = JSON.parse(existingRow.value);
+            if (configToSave.stripeApiKey === '••••••••') {
+              configToSave.stripeApiKey = existingParsed.stripeApiKey || '';
+            }
+            if (configToSave.squareAccessToken === '••••••••') {
+              configToSave.squareAccessToken = existingParsed.squareAccessToken || '';
+            }
+          } else {
+            if (configToSave.stripeApiKey === '••••••••') configToSave.stripeApiKey = '';
+            if (configToSave.squareAccessToken === '••••••••') configToSave.squareAccessToken = '';
+          }
+        } catch (e) {
+          if (configToSave.stripeApiKey === '••••••••') configToSave.stripeApiKey = '';
+          if (configToSave.squareAccessToken === '••••••••') configToSave.squareAccessToken = '';
+        }
+        updateStmt.run('payment_config', JSON.stringify(configToSave));
+      }
+      if (data.tunnelConfig) {
+        let configToSave = { ...data.tunnelConfig };
+        
+        // Retrieve and restore masked parameters
+        try {
+          const existingRow = db.prepare("SELECT value FROM system_settings WHERE key = 'tunnel_config'").get();
+          if (existingRow && existingRow.value) {
+            const existingParsed = JSON.parse(existingRow.value);
+            if (configToSave.customToken === '••••••••') {
+              configToSave.customToken = existingParsed.customToken || '';
+            }
+            if (configToSave.activeToken === '••••••••') {
+              configToSave.activeToken = existingParsed.activeToken || '';
+            }
+          } else {
+            if (configToSave.customToken === '••••••••') configToSave.customToken = '';
+            if (configToSave.activeToken === '••••••••') configToSave.activeToken = '';
+          }
+        } catch (e) {
+          if (configToSave.customToken === '••••••••') configToSave.customToken = '';
+          if (configToSave.activeToken === '••••••••') configToSave.activeToken = '';
+        }
+        updateStmt.run('tunnel_config', JSON.stringify(configToSave));
+      }
+      if (data.printerConfig) {
+        updateStmt.run('printer_config', JSON.stringify(data.printerConfig));
       }
     });
 
