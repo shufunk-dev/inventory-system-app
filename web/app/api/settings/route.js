@@ -59,7 +59,9 @@ export async function GET() {
       squareLocationId: '',
       squareDeviceId: '',
       venmoHandle: '',
-      paypalEmail: ''
+      paypalEmail: '',
+      zelleToken: '',
+      zelleBusinessName: ''
     },
     tunnelConfig: {
       method: 'none',
