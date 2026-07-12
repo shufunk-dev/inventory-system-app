@@ -47,6 +47,22 @@ Lock/unlock features based on product licensing keys:
 - **Cross-Store Sales Attribution**: The checkout register scans barcodes (matching UUID or UPC). The system searches booth catalogs, attributes sales to the correct vendor, and generates payout drawers with custom commission deductions.
 - **Print Hub & Thermal Receipts**: Renders monospaced checkout prints optimized for **80mm Thermal Rolls** and **Standard Letter Invoices**, displaying inline booth numbers and metadata per line item.
 
+### 8. Interactive Countertop Tablet Register
+- **Tablet Register Layout**: Redesigns the register UI specifically for countertop iPad/Android cashiering tablets, utilizing collapsible header accordion blocks to save vertical space.
+- **Widescreen Tactile Grid**: Catalog catalog search grids scale dynamically with tactile tap transitions for quick ring-up operations.
+- **Interactive Touch Cart**: Replaces print previews with active checkout carts featuring touch-friendly quantity modifier buttons, clear cart options, and primary checkout payment action triggers.
+- **Clerk Training Sandbox**: Toggling Training Mode isolates checkout databases and runs simulated credit card checkouts with realistic delay timers, allowing cashiers to practice checkout flows offline.
+
+### 9. ESC/POS Direct Printing & Hardware Triggers
+- **ESC/POS Command Encoder**: Compiles receipt data into formatted monospaced binary command blocks (supporting bold double-size formatting, table alignments, and line splits).
+- **Direct TCP Socket Stream**: Routes prints in the background directly to configured network printer IPs on Port 9100, bypassing standard browser print overlays.
+- **Hardware Integrations**: Sends native control codes to trigger automatic paper cuts (`GS V`) and pop cash drawers (`ESC p`).
+- **WebUSB Binary Stream**: Emits hex-encoded buffers for direct USB printing via client WebUSB connections.
+
+### 10. Remote Support Portal & Cryptographic Security
+- **Asymmetric Support Tokens**: Backend APIs verify NIST P-256 (ECDSA ES256) signatures to authorize emergency remote support sessions.
+- **Support Portal**: Provides a glassmorphic support dashboard showcasing local Machine IDs and copyable session tokens.
+
 ---
 
 ## 5 Ecosystem Deployment Formats
