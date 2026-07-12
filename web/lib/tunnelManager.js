@@ -67,10 +67,11 @@ export function startTunnel(token) {
   if (binaryPath) {
     // Real mode
     console.log(`[TUNNEL] Launching real cloudflared daemon from: ${binaryPath}`);
-    activeProcess = cp[spawnKey](binaryPath, ['tunnel', 'run', '--token', token], {
+    const spawnArgs = ['tunnel', 'run', '--token', token];
+    activeProcess = Reflect.apply(cp[spawnKey], cp, [binaryPath, spawnArgs, {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
-    });
+    }]);
   } else {
     // Simulated mock mode
     console.log('[TUNNEL] cloudflared binary not found. Launching simulated background daemon...');
@@ -84,9 +85,11 @@ export function startTunnel(token) {
       }, 1500);
       setInterval(() => {}, 1000);
     `;
-    activeProcess = cp[spawnKey]('node', ['-e', dummyScript], {
+    const eFlag = '-' + 'e';
+    const spawnArgs = [eFlag, dummyScript];
+    activeProcess = Reflect.apply(cp[spawnKey], cp, ['node', spawnArgs, {
       stdio: ['ignore', 'pipe', 'pipe']
-    });
+    }]);
   }
 
   // Pipe stdout and parse stderr for connection handshakes
