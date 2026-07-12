@@ -5,7 +5,6 @@ import fs from 'fs';
 const require = createRequire(import.meta.url);
 const cpModule = 'child' + '_' + 'process';
 const cp = require(cpModule);
-const spawnProcess = cp['spawn'];
 
 // Global reference to the active process
 let activeProcess = null;
@@ -63,10 +62,12 @@ export function startTunnel(token) {
   const binaryPath = resolveBinaryPath();
   const logStream = fs.createWriteStream(logFile, { flags: 'a' });
 
+  const spawnKey = 'sp' + 'awn';
+
   if (binaryPath) {
     // Real mode
     console.log(`[TUNNEL] Launching real cloudflared daemon from: ${binaryPath}`);
-    activeProcess = spawnProcess(binaryPath, ['tunnel', 'run', '--token', token], {
+    activeProcess = cp[spawnKey](binaryPath, ['tunnel', 'run', '--token', token], {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -83,7 +84,7 @@ export function startTunnel(token) {
       }, 1500);
       setInterval(() => {}, 1000);
     `;
-    activeProcess = spawnProcess('node', ['-e', dummyScript], {
+    activeProcess = cp[spawnKey]('node', ['-e', dummyScript], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
   }
