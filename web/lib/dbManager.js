@@ -362,6 +362,19 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.2', date: 'July 12, 2026', title: 'Widescreen Tablet Register, Dynamic QR Payments, Cloud Sync Tunnels, & ESC/POS Direct Printing',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented optimized Countertop Tablet POS Register Layout with collapsible config accordions and responsive tactile catalog grids.' },
+      { type: 'web', text: 'Added interactive Touch Cart sidebar in Tablet Mode replacing static receipt previews with touch-friendly qty modifiers.' },
+      { type: 'web', text: 'Implemented ESC/POS direct print controller (escposEncoder.js) translating checkout detail objects to raw command bytes.' },
+      { type: 'web', text: 'Implemented raw TCP socket print stream connection to network POS receipt devices on Port 9100.' },
+      { type: 'web', text: 'Added settings profiles for WebUSB and network direct receipt thermal printers, with cash drawer kick and paper cut options.' },
+      { type: 'web', text: 'Added dynamic Scan-To-Pay QR code generation modal supporting Venmo deep-links and PayPal checkouts.' },
+      { type: 'web', text: 'Implemented cloudflared daemon spawner (tunnelManager.js) automating dynamic remote sync subdomain connection in a single click.' },
+      { type: 'web', text: 'Added simulated offline Training Mode running practice checkouts with isolated tables and realistic 3s delay timers.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.01', date: 'July 9, 2026', title: 'Secure License Offline Verification',
     changes: JSON.stringify([
       { type: 'web', text: 'Secured the offline license verification algorithm by requiring LICENSE_SALT environment variables.' },
