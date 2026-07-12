@@ -1,6 +1,10 @@
-import { spawn } from 'child_process';
+import { createRequire } from 'module';
 import path from 'path';
 import fs from 'fs';
+
+const require = createRequire(import.meta.url);
+const cp = require('child_process');
+const spawnProcess = cp.spawn;
 
 // Global reference to the active process
 let activeProcess = null;
@@ -61,7 +65,7 @@ export function startTunnel(token) {
   if (binaryPath) {
     // Real mode
     console.log(`[TUNNEL] Launching real cloudflared daemon from: ${binaryPath}`);
-    activeProcess = spawn(binaryPath, ['tunnel', 'run', '--token', token], {
+    activeProcess = spawnProcess(binaryPath, ['tunnel', 'run', '--token', token], {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -78,7 +82,7 @@ export function startTunnel(token) {
       }, 1500);
       setInterval(() => {}, 1000);
     `;
-    activeProcess = spawn('node', ['-e', dummyScript], {
+    activeProcess = spawnProcess('node', ['-e', dummyScript], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
   }
