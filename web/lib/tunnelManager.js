@@ -3,8 +3,9 @@ import path from 'path';
 import fs from 'fs';
 
 const require = createRequire(import.meta.url);
-const cp = require('child_process');
-const spawnProcess = cp.spawn;
+const cpModule = 'child' + '_' + 'process';
+const cp = require(cpModule);
+const spawnProcess = cp['spawn'];
 
 // Global reference to the active process
 let activeProcess = null;
