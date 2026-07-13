@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Key, Save, Loader2, Mail, User, Store, CreditCard, QrCode } from 'lucide-react';
+import { Shield, Key, Save, Loader2, Mail, User, Store, CreditCard, QrCode, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import TenantSalesReport from '@/components/TenantSalesReport';
 
