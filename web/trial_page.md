@@ -14,9 +14,9 @@ To get started, copy and use the following offline activation key during the onb
 ---
 
 ## 💻 Download the App (Windows Executable)
-During this public testing phase, we are focusing on the Windows platform. You can download the compiled installer for the current stable version (**v1.9.2**) directly from our GitHub Releases page:
+During this public testing phase, we are focusing on the Windows platform. You can download the compiled installer for the current stable version (**v1.9.3**) directly from our GitHub Releases page:
 
-👉 **[Download Inventory System Setup v1.9.2 (GitHub)](https://github.com/shufunk-dev/inventory-system-app/releases/tag/v1.9.2)**
+👉 **[Download Inventory System Setup v1.9.3 (GitHub)](https://github.com/shufunk-dev/inventory-system-app/releases/tag/v1.9.3)**
 
 *   **Platform**: Windows 10 / 11
 *   **Format**: Standalone Desktop Installer (`.exe`)

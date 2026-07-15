@@ -362,6 +362,13 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.3', date: 'July 15, 2026', title: 'Payment Integration Updates & Key Management',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Archived and removed Zelle QR payment checkout logic to back burner due to banking constraints.' },
+      { type: 'web', text: 'Added standalone git-ignored license manager server and dashboard panel for off-git key tracking.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.2', date: 'July 12, 2026', title: 'Widescreen Tablet Register, Dynamic QR Payments, Cloud Sync Tunnels, & ESC/POS Direct Printing',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented optimized Countertop Tablet POS Register Layout with collapsible config accordions and responsive tactile catalog grids.' },
