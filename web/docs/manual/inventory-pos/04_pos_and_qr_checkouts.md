@@ -43,7 +43,7 @@ For physical card swipes, insertions, and tap payments, you can connect reader t
 
 ---
 
-## 3. QR Code Payment Generators (Venmo, PayPal & Zelle)
+## 3. QR Code Payment Generators (Venmo & PayPal)
 
 For low-overhead checkouts or craft show booths, you can display scan-to-pay QR codes directly on the register screen.
 
@@ -51,19 +51,14 @@ For low-overhead checkouts or craft show booths, you can display scan-to-pay QR 
 In **Settings** > **POS Card Reader Integration** > **Dynamic Mobile Payments (QR Codes)**:
 * **Venmo Username**: Input your store Venmo handle (e.g. `@ShufeltDesigns`).
 * **PayPal Email**: Input your store PayPal email (e.g. `billing@shufeltdesigns.com`).
-* **Zelle Email / U.S. Mobile Number**: Input your store's Zelle registered email or mobile number.
-* **Zelle Business Display Name**: Input your store's display name for Zelle (defaults to mall name if blank).
 
 ### B. Dynamic Generation
-When checking out via Venmo, PayPal, or Zelle:
+When checking out via Venmo or PayPal:
 1. The system computes the final order total (including tax and discounts).
-2. It dynamically compiles and renders vector QR codes using URI schemes:
+2. It dynamically compiles and renders vector QR codes using mobile URI schemes:
    * **Venmo**: `venmo://paycharge?txn=pay&recipients=[Clean-Handle]&amount=[Total]&note=Receipt%20[No]`
    * **PayPal**: `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=[Email]&amount=[Total]&currency_code=USD&item_name=Receipt%20[No]`
-   * **Zelle**: `https://enroll.zellepay.com/qr-codes?data=[Base64-encoded-JSON-of-{name, token}]`
-3. The customer scans the QR code from the register viewport using their camera or mobile banking app:
-   * **Venmo / PayPal**: Launches the native mobile app with pre-filled billing and amount.
-   * **Zelle**: Launches the customer's mobile banking app, pre-filling the recipient details. *Note: Senders must verify and manually input the exact amount.*
+3. The customer scans the QR code from the register viewport using their camera, launching their native mobile app with pre-filled billing.
 4. The cashier clicks "Mark as Paid & Print" once the customer confirms payment.
 
 ---

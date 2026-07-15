@@ -342,22 +342,10 @@ export default function ReceiptPage() {
       const handle = paymentConfig.venmoHandle || '';
       const cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
       return `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(cleanHandle)}&amount=${total.toFixed(2)}&note=${encodeURIComponent(`Receipt ${receiptNo} at ${mallName}`)}`;
-    } else if (qrProvider === 'paypal') {
+    } else {
       const email = paymentConfig.paypalEmail || '';
       return `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${total.toFixed(2)}&currency_code=USD&item_name=${encodeURIComponent(`Receipt ${receiptNo} at ${mallName}`)}`;
-    } else if (qrProvider === 'zelle') {
-      const token = paymentConfig.zelleToken || '';
-      const name = paymentConfig.zelleBusinessName || mallName || 'Business';
-      try {
-        const payload = JSON.stringify({ name, token });
-        const encoded = btoa(unescape(encodeURIComponent(payload)));
-        return `https://enroll.zellepay.com/qr-codes?data=${encoded}`;
-      } catch (e) {
-        console.error('Error generating Zelle QR payload:', e);
-        return '';
-      }
     }
-    return '';
   };
 
   return (
@@ -1166,25 +1154,13 @@ export default function ReceiptPage() {
               >
                 PayPal
               </button>
-              <button
-                type="button"
-                onClick={() => setQrProvider('zelle')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${qrProvider === 'zelle' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
-              >
-                Zelle
-              </button>
             </div>
 
             <div className="py-4 flex flex-col items-center justify-center min-h-[220px]">
               {(() => {
                 const handle = paymentConfig?.venmoHandle;
                 const email = paymentConfig?.paypalEmail;
-                const zelleToken = paymentConfig?.zelleToken;
-                
-                let isConfigured = false;
-                if (qrProvider === 'venmo') isConfigured = !!handle;
-                else if (qrProvider === 'paypal') isConfigured = !!email;
-                else if (qrProvider === 'zelle') isConfigured = !!zelleToken;
+                const isConfigured = qrProvider === 'venmo' ? !!handle : !!email;
 
                 if (!paymentConfig || !isConfigured) {
                   return (
@@ -1194,11 +1170,7 @@ export default function ReceiptPage() {
                       </div>
                       <p className="text-sm font-semibold text-white">Not Configured</p>
                       <p className="text-xs text-gray-400 leading-relaxed">
-                        Please enter your {
-                          qrProvider === 'venmo' ? 'Venmo Handle' : 
-                          qrProvider === 'paypal' ? 'PayPal Email' : 
-                          'Zelle Email or U.S. Mobile Number'
-                        } inside settings to generate checkout QR codes.
+                        Please enter your {qrProvider === 'venmo' ? 'Venmo Handle' : 'PayPal Email'} inside settings to generate checkout QR codes.
                       </p>
                     </div>
                   );
@@ -1211,18 +1183,9 @@ export default function ReceiptPage() {
                     <div className="bg-white p-3 rounded-2xl shadow-xl border border-gray-800">
                       <QRCodeSVG value={qrValue} size={160} />
                     </div>
-                    <p className="text-xs text-gray-300 leading-relaxed max-w-xs mt-2 text-center">
-                      Scan with mobile banking or Zelle app to pay{' '}
-                      <span className="text-blue-400 font-bold font-mono">
-                        {qrProvider === 'venmo' ? handle : qrProvider === 'paypal' ? email : zelleToken}
-                      </span>{' '}
-                      exactly <span className="text-emerald-400 font-bold">${total.toFixed(2)}</span>.
+                    <p className="text-xs text-gray-300 leading-relaxed max-w-xs mt-2">
+                      Scan with mobile camera or app to pay <span className="text-blue-400 font-bold font-mono">{qrProvider === 'venmo' ? handle : email}</span> exactly <span className="text-emerald-400 font-bold">${total.toFixed(2)}</span>.
                     </p>
-                    {qrProvider === 'zelle' && (
-                      <p className="text-[10px] text-gray-500 text-center max-w-xs leading-normal italic mt-1">
-                        Note: Zelle QR codes pre-fill the recipient. Please verify the amount of <span className="font-bold">${total.toFixed(2)}</span> and recipient name before completing payment in your bank app.
-                      </p>
-                    )}
                   </div>
                 );
               })()}
@@ -1231,11 +1194,7 @@ export default function ReceiptPage() {
             <div className="flex flex-col gap-3 mt-6">
               <button
                 onClick={handleQrPaymentComplete}
-                disabled={qrIsMarkingPaid || (
-                  qrProvider === 'venmo' ? !paymentConfig?.venmoHandle :
-                  qrProvider === 'paypal' ? !paymentConfig?.paypalEmail :
-                  !paymentConfig?.zelleToken
-                )}
+                disabled={qrIsMarkingPaid || (qrProvider === 'venmo' ? !paymentConfig?.venmoHandle : !paymentConfig?.paypalEmail)}
                 className="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-lg shadow-green-600/15"
               >
                 {qrIsMarkingPaid ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}

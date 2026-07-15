@@ -25,9 +25,7 @@ export default function SettingsPage() {
     squareLocationId: '',
     squareDeviceId: '',
     venmoHandle: '',
-    paypalEmail: '',
-    zelleToken: '',
-    zelleBusinessName: ''
+    paypalEmail: ''
   });
   const [tunnelConfig, setTunnelConfig] = useState({
     method: 'none',
@@ -1164,7 +1162,7 @@ sudo usermod -aG docker $USER`}
               Dynamic Mobile Payments (QR Codes)
             </h3>
             <p className="text-xs text-gray-400">
-              Enter credentials to generate dynamic checkout QR codes for Venmo, PayPal, and Zelle (e.g. via Truist) on the POS Register screen.
+              Enter credentials to generate dynamic checkout QR codes for Venmo and PayPal on the POS Register screen.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -1185,26 +1183,6 @@ sudo usermod -aG docker $USER`}
                   onChange={(e) => setPaymentConfig({ ...paymentConfig, paypalEmail: e.target.value })}
                   className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
                   placeholder="e.g. billing@mystore.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Zelle Email / U.S. Mobile Number</label>
-                <input
-                  type="text"
-                  value={paymentConfig.zelleToken || ''}
-                  onChange={(e) => setPaymentConfig({ ...paymentConfig, zelleToken: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
-                  placeholder="e.g. pay@mystore.com or 555-123-4567"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Zelle Business Display Name</label>
-                <input
-                  type="text"
-                  value={paymentConfig.zelleBusinessName || ''}
-                  onChange={(e) => setPaymentConfig({ ...paymentConfig, zelleBusinessName: e.target.value })}
-                  className="w-full bg-gray-850 border border-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm"
-                  placeholder="e.g. Antique Mall (defaults to Mall Name)"
                 />
               </div>
             </div>

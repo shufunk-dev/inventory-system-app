@@ -48,6 +48,7 @@ keygen.mjs
 *cloud_hosting_options*
 start_dev_servers.bat
 export-appliance.bat
+start_license_manager.bat
 
 # Archive and local databases
 Archive/
@@ -66,4 +67,7 @@ web/tests/
 web/scripts/
 web/scratch/
 web/database.sqlite
+
+# Standalone License Manager (Git Ignored)
+license-server/
 

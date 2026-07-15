@@ -37,7 +37,7 @@ export async function POST(request) {
 
     const db = await getDb();
 
-    if (provider === 'venmo' || provider === 'paypal' || provider === 'zelle') {
+    if (provider === 'venmo' || provider === 'paypal') {
       const txId = crypto.randomUUID();
       const refId = 'qr_' + crypto.randomBytes(4).toString('hex');
       
