@@ -71,3 +71,6 @@ web/database.sqlite
 # Standalone License Manager (Git Ignored)
 license-server/
 
+# Standalone Purchase Website (Git Ignored)
+purchase-landing-page/
+

@@ -21,9 +21,13 @@ import { Home, Settings, LogOut, ShieldAlert, BookOpen, Wine, ClipboardList, Pri
 import { getUser } from '@/lib/auth';
 import { getGlobalDb } from '@/lib/db';
 import StoreSelector from '@/components/StoreSelector';
+import { headers } from 'next/headers';
 
 export default async function RootLayout({ children }) {
   const user = await getUser();
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') || '';
+  const isPurchasePage = pathname === '/purchase';
 
   let stores = [];
   let activeStoreId = 'default';
@@ -67,102 +71,129 @@ export default async function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-[#0a0a0a] text-white">
-        <nav className="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-gray-800 bg-[#0a0a0a]/80 no-print">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center justify-between">
-              <Link href="/" className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors group">
-                <div className="bg-blue-600/20 p-2 rounded-lg group-hover:bg-blue-600/40 transition-colors">
-                  <Home className="w-5 h-5 text-blue-400" />
+        {isPurchasePage ? (
+          <nav className="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-gray-800 bg-[#0a0a0a]/80 no-print">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex h-16 items-center justify-between">
+                <Link href="/purchase" className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors group">
+                  <div className="bg-blue-600/20 p-2 rounded-lg group-hover:bg-blue-600/40 transition-colors">
+                    <Home className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <span className="font-semibold tracking-wide">Inventory & POS System</span>
+                </Link>
+                
+                <div className="flex items-center gap-4">
+                  {user ? (
+                    <Link href="/" className="text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-500 hover:to-indigo-550 text-white px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.2)]">
+                      Go to Dashboard
+                    </Link>
+                  ) : (
+                    <Link href="/login" className="text-sm font-medium bg-gray-800 border border-gray-700 hover:bg-gray-700 text-white px-4 py-2 rounded-xl transition-all">
+                      Sign In
+                    </Link>
+                  )}
                 </div>
-                <span className="font-semibold tracking-wide">Home Catalog</span>
-              </Link>
-              
-              <div className="flex items-center gap-6">
-                <Link href="/variance" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
-                  <Wine className="w-4 h-4 text-emerald-400" />
-                  <span className="hidden sm:inline">Auditor</span>
-                </Link>
-
-                <Link href="/valuation" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  <span className="hidden sm:inline">Valuation</span>
-                </Link>
-
-                <Link href="/receipt" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
-                  <Printer className="w-4 h-4 text-sky-400" />
-                  <span className="hidden sm:inline">Receipts</span>
-                </Link>
-
-                <Link href="/changelog" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
-                  <BookOpen className="w-4 h-4" />
-                  <span className="hidden sm:inline">Changelog</span>
-                </Link>
-
-                <div className="text-sm font-medium text-gray-500 bg-gray-900 px-3 py-1 rounded-full border border-gray-800 hidden md:block">
-                  Beta 1.9.01
-                </div>
-
-                {user && (() => {
-                  const getRoleColor = (u) => {
-                    if (u.isRoot || u.isAdmin || u.role === 'admin') return 'bg-purple-600/30 border-purple-500/50 text-purple-400';
-                    if (u.role === 'manager') return 'bg-blue-600/30 border-blue-500/50 text-blue-400';
-                    if (u.role === 'guest') return 'bg-gray-600/30 border-gray-500/50 text-gray-400';
-                    return 'bg-emerald-600/30 border-emerald-500/50 text-emerald-400';
-                  };
-
-                  const getInitials = (u) => {
-                    const name = u.displayName || u.email || '';
-                    return name.slice(0, 2).toUpperCase();
-                  };
-
-                  return (
-                    <div className="flex items-center gap-3 border-l border-gray-800 pl-4">
-                      {process.env.SAAS_MODE !== 'true' && (
-                        isStoreLocked ? (
-                          <div className="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-blue-500/5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                            {singleStoreName}
-                          </div>
-                        ) : (
-                          <StoreSelector stores={filteredStores} activeStoreId={activeStoreId} showDefault={showDefault} />
-                        )
-                      )}
-                      <div className="flex items-center gap-2 pr-2">
-                        <div className={`w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center font-bold text-[10px] tracking-wider ${getRoleColor(user)}`}>
-                          {user.profilePicture ? (
-                            <img src={`/api/file/${user.profilePicture}`} alt="Avatar" className="w-full h-full object-cover" />
-                          ) : (
-                            getInitials(user)
-                          )}
-                        </div>
-                        <span className="hidden md:inline text-xs font-semibold text-gray-300">
-                          {user.displayName || user.email.split('@')[0]}
-                        </span>
-                      </div>
-
-                      {user.isAdmin === 1 && (
-                        <Link href="/admin" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors">
-                          <ShieldAlert className="w-4 h-4" />
-                          <span className="hidden sm:inline">Admin</span>
-                        </Link>
-                      )}
-                      <Link href="/settings" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
-                        <Settings className="w-4 h-4" />
-                        <span className="hidden sm:inline">Settings</span>
-                      </Link>
-                      <form action="/api/auth/logout" method="POST">
-                        <button type="submit" className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors">
-                          <LogOut className="w-4 h-4" />
-                          <span className="hidden sm:inline">Logout</span>
-                        </button>
-                      </form>
-                    </div>
-                  );
-                })()}
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>
+        ) : (
+          <nav className="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-gray-800 bg-[#0a0a0a]/80 no-print">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex h-16 items-center justify-between">
+                <Link href="/" className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors group">
+                  <div className="bg-blue-600/20 p-2 rounded-lg group-hover:bg-blue-600/40 transition-colors">
+                    <Home className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <span className="font-semibold tracking-wide">Home Catalog</span>
+                </Link>
+                
+                <div className="flex items-center gap-6">
+                  <Link href="/variance" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
+                    <Wine className="w-4 h-4 text-emerald-400" />
+                    <span className="hidden sm:inline">Auditor</span>
+                  </Link>
+
+                  <Link href="/valuation" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <span className="hidden sm:inline">Valuation</span>
+                  </Link>
+
+                  <Link href="/receipt" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
+                    <Printer className="w-4 h-4 text-sky-400" />
+                    <span className="hidden sm:inline">Receipts</span>
+                  </Link>
+
+                  <Link href="/changelog" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
+                    <BookOpen className="w-4 h-4" />
+                    <span className="hidden sm:inline">Changelog</span>
+                  </Link>
+
+                  <div className="text-sm font-medium text-gray-500 bg-gray-900 px-3 py-1 rounded-full border border-gray-800 hidden md:block">
+                    Beta 1.9.01
+                  </div>
+
+                  {user && (() => {
+                    const getRoleColor = (u) => {
+                      if (u.isRoot || u.isAdmin || u.role === 'admin') return 'bg-purple-600/30 border-purple-500/50 text-purple-400';
+                      if (u.role === 'manager') return 'bg-blue-600/30 border-blue-500/50 text-blue-400';
+                      if (u.role === 'guest') return 'bg-gray-600/30 border-gray-500/50 text-gray-400';
+                      return 'bg-emerald-600/30 border-emerald-500/50 text-emerald-400';
+                    };
+
+                    const getInitials = (u) => {
+                      const name = u.displayName || u.email || '';
+                      return name.slice(0, 2).toUpperCase();
+                    };
+
+                    return (
+                      <div className="flex items-center gap-3 border-l border-gray-800 pl-4">
+                        {process.env.SAAS_MODE !== 'true' && (
+                          isStoreLocked ? (
+                            <div className="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-blue-500/5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                              {singleStoreName}
+                            </div>
+                          ) : (
+                            <StoreSelector stores={filteredStores} activeStoreId={activeStoreId} showDefault={showDefault} />
+                          )
+                        )}
+                        <div className="flex items-center gap-2 pr-2">
+                          <div className={`w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center font-bold text-[10px] tracking-wider ${getRoleColor(user)}`}>
+                            {user.profilePicture ? (
+                              <img src={`/api/file/${user.profilePicture}`} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              getInitials(user)
+                            )}
+                          </div>
+                          <span className="hidden md:inline text-xs font-semibold text-gray-300">
+                            {user.displayName || user.email.split('@')[0]}
+                          </span>
+                        </div>
+
+                        {user.isAdmin === 1 && (
+                          <Link href="/admin" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                            <ShieldAlert className="w-4 h-4" />
+                            <span className="hidden sm:inline">Admin</span>
+                          </Link>
+                        )}
+                        <Link href="/settings" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+                          <Settings className="w-4 h-4" />
+                          <span className="hidden sm:inline">Settings</span>
+                        </Link>
+                        <form action="/api/auth/logout" method="POST">
+                          <button type="submit" className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors">
+                            <LogOut className="w-4 h-4" />
+                            <span className="hidden sm:inline">Logout</span>
+                          </button>
+                        </form>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </nav>
+        )}
         <div className="flex-1">
           {children}
         </div>
