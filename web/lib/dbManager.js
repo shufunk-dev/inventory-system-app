@@ -364,6 +364,15 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.4', date: 'July 19, 2026', title: 'Video Game Platforms, Movie Formats, & Bulk Rename Upgrades',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Added customizable enabled video game systems and movie formats settings registries.' },
+      { type: 'web', text: 'Implemented Set System and Set Format bulk action modals on the main dashboard for batch updates and auto-classification.' },
+      { type: 'web', text: 'Enhanced visual OCR matching to ignore network badges, publisher logos, and region tags, and prioritize OCR title text.' },
+      { type: 'web', text: 'Implemented bulk rename list dialog for multiple selected dashboard items.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.3', date: 'July 15, 2026', title: 'Payment Integration Updates & Key Management',
     changes: JSON.stringify([
       { type: 'web', text: 'Archived and removed Zelle QR payment checkout logic to back burner due to banking constraints.' },
