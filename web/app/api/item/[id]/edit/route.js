@@ -30,6 +30,8 @@ export async function PUT(request, { params }) {
     const cardCondition = body.cardCondition !== undefined ? body.cardCondition : currentItem.cardCondition;
     const cardCertNumber = body.cardCertNumber !== undefined ? body.cardCertNumber : currentItem.cardCertNumber;
     const cardGradingAgency = body.cardGradingAgency !== undefined ? body.cardGradingAgency : currentItem.cardGradingAgency;
+    const gameSystem = body.gameSystem !== undefined ? body.gameSystem : currentItem.gameSystem;
+    const movieFormat = body.movieFormat !== undefined ? body.movieFormat : currentItem.movieFormat;
     
     let retailPrice = currentItem.retailPrice;
     if (body.retailPrice !== undefined) {
@@ -57,10 +59,16 @@ export async function PUT(request, { params }) {
         (body.cardGradingAgency !== undefined && currentItem.cardGradingAgency !== cardGradingAgency)) {
       resetValuation = true;
     }
+    if (body.gameSystem !== undefined && currentItem.gameSystem !== gameSystem) {
+      resetValuation = true;
+    }
+    if (body.movieFormat !== undefined && currentItem.movieFormat !== movieFormat) {
+      resetValuation = true;
+    }
 
     db.prepare(`
       UPDATE items 
-      SET name = ?, description = ?, categoryId = ?, toyBrand = ?, toyYear = ?, toyCondition = ?, coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?, retailPrice = ?, purchasePrice = ?
+      SET name = ?, description = ?, categoryId = ?, toyBrand = ?, toyYear = ?, toyCondition = ?, coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?, gameSystem = ?, movieFormat = ?, retailPrice = ?, purchasePrice = ?
       ${resetValuation ? ", valueLow = NULL, valueAvg = NULL, valueHigh = NULL, syncStatus = 'pending'" : ''}
       WHERE id = ?
     `).run(
@@ -76,6 +84,8 @@ export async function PUT(request, { params }) {
       cardCondition || null,
       cardCertNumber || null,
       cardGradingAgency || null,
+      gameSystem || null,
+      movieFormat || null,
       retailPrice,
       purchasePrice,
       id

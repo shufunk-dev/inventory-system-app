@@ -284,7 +284,9 @@ export function initializeSchema(db) {
     { table: 'items', col: 'toolSerial TEXT' },
     { table: 'items', col: 'toolWarrantyStatus TEXT' },
     { table: 'items', col: 'toolAssignedLocation TEXT' },
-    { table: 'items', col: 'toolPurchaseDate TEXT' }
+    { table: 'items', col: 'toolPurchaseDate TEXT' },
+    { table: 'items', col: 'gameSystem TEXT' },
+    { table: 'items', col: 'movieFormat TEXT' }
   ];
 
   for (const item of columnsToAdd) {

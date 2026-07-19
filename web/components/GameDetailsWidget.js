@@ -19,6 +19,13 @@ export default function GameDetailsWidget({ item, isGuest = false }) {
           
           <div className="space-y-4 relative z-10">
             <div className="flex justify-between items-center border-b border-gray-700/50 pb-4">
+              <span className="text-gray-400">System</span>
+              <span className="font-bold text-purple-400">
+                {item.gameSystem || 'Not Specified'}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center border-b border-gray-700/50 pb-4">
               <span className="text-gray-400">Format</span>
               <span className="font-bold text-white">
                 {item.gradedAgency ? 'Encapsulated/Slabbed' : 'Raw / Ungraded'}

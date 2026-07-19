@@ -24,21 +24,38 @@ export async function GET() {
   let containerStatus = 'not_created'; // 'running', 'stopped', 'not_created', 'docker_missing'
   let endpointActive = false;
 
-  // 1. Check if docker is installed
+  // 1. Resolve configured SearXNG URL from database
+  let searxngUrl = 'http://localhost:8080';
+  try {
+    const db = await getGlobalDb();
+    const existingRow = db.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
+    if (existingRow && existingRow.value) {
+      const keys = JSON.parse(existingRow.value);
+      if (keys.searxngUrl) {
+        searxngUrl = keys.searxngUrl;
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  // 2. Check if endpoint is active (anywhere on the network)
+  try {
+    const testUrl = `${searxngUrl.replace(/\/$/, '')}/search?q=ping&format=json`;
+    const res = await axios.get(testUrl, { timeout: 2000 });
+    if (res.status === 200) {
+      endpointActive = true;
+    }
+  } catch (e) {
+    // Ignore
+  }
+
+  // 3. Check if docker is installed locally
   try {
     await execPromise('docker --version');
     dockerInstalled = true;
-  } catch (e) {
-    return NextResponse.json({
-      platform,
-      dockerInstalled: false,
-      containerStatus: 'docker_missing',
-      endpointActive: false
-    });
-  }
 
-  // 2. Check container status
-  try {
+    // 4. Check local container status
     const { stdout } = await execPromise('docker ps -a --filter name=searxng --format "{{.Status}}"');
     if (stdout.trim()) {
       if (stdout.toLowerCase().includes('up')) {
@@ -48,17 +65,8 @@ export async function GET() {
       }
     }
   } catch (e) {
-    // Ignore error, assume not created
-  }
-
-  // 3. Check if endpoint is active
-  try {
-    const res = await axios.get('http://localhost:8080/search?q=ping&format=json', { timeout: 2000 });
-    if (res.status === 200) {
-      endpointActive = true;
-    }
-  } catch (e) {
-    // Ignore
+    dockerInstalled = false;
+    containerStatus = 'docker_missing';
   }
 
   return NextResponse.json({

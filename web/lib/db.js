@@ -181,6 +181,8 @@ function initializeStoreSchema(dbConn) {
   try { dbConn.exec("ALTER TABLE items ADD COLUMN toolWarrantyStatus TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN toolAssignedLocation TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN toolPurchaseDate TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN gameSystem TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN movieFormat TEXT"); } catch(e) {}
 
   // MIGRATION: Remove UNIQUE constraint from categories.name
   try {

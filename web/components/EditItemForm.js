@@ -16,6 +16,10 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
   // Toy specific fields
   const [toyBrand, setToyBrand] = useState(item.toyBrand || '');
   const [toyYear, setToyYear] = useState(item.toyYear || '');
+  const [gameSystem, setGameSystem] = useState(item.gameSystem || '');
+  const [enabledGameSystems, setEnabledGameSystems] = useState([]);
+  const [movieFormat, setMovieFormat] = useState(item.movieFormat || '');
+  const [enabledMovieFormats, setEnabledMovieFormats] = useState([]);
   
   // Market Value fields
   const [valueLow, setValueLow] = useState(item.valueLow !== null && item.valueLow !== undefined ? item.valueLow : '');
@@ -41,6 +45,8 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
       setCategoryId(item.categoryId || '');
       setToyBrand(item.toyBrand || '');
       setToyYear(item.toyYear || '');
+      setGameSystem(item.gameSystem || '');
+      setMovieFormat(item.movieFormat || '');
       setValueLow(item.valueLow !== null && item.valueLow !== undefined ? item.valueLow : '');
       setValueAvg(item.valueAvg !== null && item.valueAvg !== undefined ? item.valueAvg : '');
       setValueHigh(item.valueHigh !== null && item.valueHigh !== undefined ? item.valueHigh : '');
@@ -55,7 +61,29 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
     if (isEditing && categories.length === 0) {
       fetch('/api/categories').then(r => r.json()).then(data => setCategories(buildCategoryTree(data))).catch(console.error);
     }
-  }, [isEditing]);
+    if (isEditing && item.itemType === 'game' && enabledGameSystems.length === 0) {
+      fetch('/api/settings')
+        .then(r => r.json())
+        .then(settings => {
+          if (settings.enabledGameSystems) {
+            const filtered = settings.enabledGameSystems.filter(s => s.enabled || s.name === item.gameSystem);
+            setEnabledGameSystems(filtered);
+          }
+        })
+        .catch(console.error);
+    }
+    if (isEditing && item.itemType === 'movie' && enabledMovieFormats.length === 0) {
+      fetch('/api/settings')
+        .then(r => r.json())
+        .then(settings => {
+          if (settings.enabledMovieFormats) {
+            const filtered = settings.enabledMovieFormats.filter(s => s.enabled || s.name === item.movieFormat);
+            setEnabledMovieFormats(filtered);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isEditing, item.gameSystem, item.movieFormat]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -63,7 +91,7 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
       const res = await fetch(`/api/item/${item.id}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition, retailPrice, purchasePrice, valueLow, valueAvg, valueHigh })
+        body: JSON.stringify({ name, description, categoryId, toyBrand, toyYear, toyCondition, retailPrice, purchasePrice, valueLow, valueAvg, valueHigh, gameSystem, movieFormat })
       });
 
       if (res.ok) {
@@ -309,6 +337,52 @@ export default function EditItemForm({ item, initialCategories = [], canEdit = f
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {item.itemType === 'game' && (
+        <div className="bg-purple-900/10 border border-purple-500/20 p-4 rounded-xl mb-6">
+          <h3 className="text-sm font-bold text-purple-400 mb-4 flex items-center gap-2">
+            Video Game Properties
+            <span className="text-xs text-gray-400 font-normal ml-auto">Changes to System will recalculate Market Value</span>
+          </h3>
+          
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Game System / Platform</label>
+            <select
+              value={gameSystem}
+              onChange={e => setGameSystem(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors appearance-none"
+            >
+              <option value="">-- Select System --</option>
+              {enabledGameSystems.map(sys => (
+                <option key={sys.name} value={sys.name}>{sys.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {item.itemType === 'movie' && (
+        <div className="bg-indigo-900/10 border border-indigo-500/20 p-4 rounded-xl mb-6">
+          <h3 className="text-sm font-bold text-indigo-400 mb-4 flex items-center gap-2">
+            Movie Properties
+            <span className="text-xs text-gray-400 font-normal ml-auto">Changes to Format will recalculate value</span>
+          </h3>
+          
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Movie Format</label>
+            <select
+              value={movieFormat}
+              onChange={e => setMovieFormat(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none"
+            >
+              <option value="">-- Select Format --</option>
+              {enabledMovieFormats.map(form => (
+                <option key={form.name} value={form.name}>{form.name}</option>
+              ))}
+            </select>
           </div>
         </div>
       )}

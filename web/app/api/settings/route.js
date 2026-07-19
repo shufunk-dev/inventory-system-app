@@ -22,14 +22,100 @@ async function checkAdmin() {
   return user && (user.isAdmin || user.isRoot);
 }
 
+const DEFAULT_GAME_SYSTEMS = [
+  { name: 'Nintendo Entertainment System (NES)', enabled: true },
+  { name: 'Super Nintendo (SNES)', enabled: true },
+  { name: 'Nintendo 64 (N64)', enabled: true },
+  { name: 'Nintendo GameCube', enabled: true },
+  { name: 'Nintendo Wii', enabled: true },
+  { name: 'Nintendo Wii U', enabled: true },
+  { name: 'Nintendo Switch', enabled: true },
+  { name: 'Game Boy', enabled: true },
+  { name: 'Game Boy Color', enabled: true },
+  { name: 'Game Boy Advance', enabled: true },
+  { name: 'Nintendo DS', enabled: true },
+  { name: 'Nintendo 3DS', enabled: true },
+  { name: 'Sega Master System', enabled: true },
+  { name: 'Sega Genesis', enabled: true },
+  { name: 'Sega Saturn', enabled: true },
+  { name: 'Sega Dreamcast', enabled: true },
+  { name: 'Sega Game Gear', enabled: true },
+  { name: 'PlayStation (PS1)', enabled: true },
+  { name: 'PlayStation 2 (PS2)', enabled: true },
+  { name: 'PlayStation 3 (PS3)', enabled: true },
+  { name: 'PlayStation 4 (PS4)', enabled: true },
+  { name: 'PlayStation 5 (PS5)', enabled: true },
+  { name: 'PlayStation Portable (PSP)', enabled: true },
+  { name: 'PlayStation Vita', enabled: true },
+  { name: 'Xbox', enabled: true },
+  { name: 'Xbox 360', enabled: true },
+  { name: 'Xbox One', enabled: true },
+  { name: 'Xbox Series X/S', enabled: true },
+  { name: 'Atari 2600', enabled: true },
+  { name: 'Atari 7800', enabled: true },
+  { name: 'Atari Lynx', enabled: true },
+  { name: 'Atari Jaguar', enabled: true },
+  { name: 'TurboGrafx-16', enabled: true },
+  { name: 'Neo Geo', enabled: true },
+  { name: 'PC / MS-DOS', enabled: true },
+  { name: 'Mac', enabled: true }
+];
+
+const DEFAULT_MOVIE_FORMATS = [
+  { name: 'VHS', enabled: true },
+  { name: 'DVD', enabled: true },
+  { name: 'Blu-ray', enabled: true },
+  { name: '4K Ultra HD', enabled: true },
+  { name: 'LaserDisc', enabled: true },
+  { name: 'BetaMax', enabled: true },
+  { name: 'VCD', enabled: true },
+  { name: 'HD DVD', enabled: true },
+  { name: 'Digital Copy', enabled: true }
+];
+
 export async function GET() {
-  if (!(await checkAdmin())) {
+  const user = await getUser();
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  if (!(user.isAdmin || user.isRoot)) {
+    const db = await getGlobalDb();
+    const rows = db.prepare("SELECT key, value FROM system_settings WHERE key IN ('mall_name', 'enabled_game_systems', 'enabled_movie_formats')").all();
+    let settings = {
+      mallName: 'Antique Mall',
+      enabledGameSystems: DEFAULT_GAME_SYSTEMS,
+      enabledMovieFormats: DEFAULT_MOVIE_FORMATS
+    };
+    rows.forEach(row => {
+      if (row.key === 'mall_name') settings.mallName = row.value;
+      if (row.key === 'enabled_game_systems') {
+        try {
+          const parsed = JSON.parse(row.value);
+          const merged = DEFAULT_GAME_SYSTEMS.map(defSys => {
+            const matched = parsed.find(p => p.name === defSys.name);
+            return matched ? { ...defSys, enabled: matched.enabled } : defSys;
+          });
+          settings.enabledGameSystems = merged;
+        } catch (e) {}
+      }
+      if (row.key === 'enabled_movie_formats') {
+        try {
+          const parsed = JSON.parse(row.value);
+          const merged = DEFAULT_MOVIE_FORMATS.map(defForm => {
+            const matched = parsed.find(p => p.name === defForm.name);
+            return matched ? { ...defForm, enabled: matched.enabled } : defForm;
+          });
+          settings.enabledMovieFormats = merged;
+        } catch (e) {}
+      }
+    });
+    return NextResponse.json(settings);
+  }
+
   const db = await getGlobalDb();
-  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?, ?, ?, ?, ?, ?)');
-  const rows = stmt.all('api_keys', 'active_tier', 'smtp_config', 'mall_name', 'payment_config', 'tunnel_config', 'printer_config');
+  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const rows = stmt.all('api_keys', 'active_tier', 'smtp_config', 'mall_name', 'payment_config', 'tunnel_config', 'printer_config', 'enabled_game_systems', 'enabled_movie_formats');
   
   let settings = {
     mallName: 'Antique Mall',
@@ -37,8 +123,6 @@ export async function GET() {
       googleVisionKey: '',
       serpApiKey: '',
       priceChartingKey: '',
-      googleCseKey: '',
-      googleCseCx: '',
       searxngUrl: '',
       discogsApiKey: ''
     },
@@ -76,7 +160,9 @@ export async function GET() {
       paperWidth: '80mm',
       cashDrawerKick: true,
       paperCut: true
-    }
+    },
+    enabledGameSystems: DEFAULT_GAME_SYSTEMS,
+    enabledMovieFormats: DEFAULT_MOVIE_FORMATS
   };
 
   rows.forEach(row => {
@@ -107,6 +193,22 @@ export async function GET() {
       if (row.key === 'printer_config') {
         const parsed = JSON.parse(row.value);
         settings.printerConfig = { ...settings.printerConfig, ...parsed };
+      }
+      if (row.key === 'enabled_game_systems') {
+        const parsed = JSON.parse(row.value);
+        const merged = DEFAULT_GAME_SYSTEMS.map(defSys => {
+          const matched = parsed.find(p => p.name === defSys.name);
+          return matched ? { ...defSys, enabled: matched.enabled } : defSys;
+        });
+        settings.enabledGameSystems = merged;
+      }
+      if (row.key === 'enabled_movie_formats') {
+        const parsed = JSON.parse(row.value);
+        const merged = DEFAULT_MOVIE_FORMATS.map(defForm => {
+          const matched = parsed.find(p => p.name === defForm.name);
+          return matched ? { ...defForm, enabled: matched.enabled } : defForm;
+        });
+        settings.enabledMovieFormats = merged;
       }
     } catch (e) {}
   });
@@ -203,6 +305,12 @@ export async function PUT(request) {
       }
       if (data.printerConfig) {
         updateStmt.run('printer_config', JSON.stringify(data.printerConfig));
+      }
+      if (data.enabledGameSystems) {
+        updateStmt.run('enabled_game_systems', JSON.stringify(data.enabledGameSystems));
+      }
+      if (data.enabledMovieFormats) {
+        updateStmt.run('enabled_movie_formats', JSON.stringify(data.enabledMovieFormats));
       }
     });
 

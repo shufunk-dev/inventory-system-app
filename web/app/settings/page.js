@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Key, Save, Loader2, Mail, User, Store, CreditCard, QrCode, Printer } from 'lucide-react';
+import { Shield, Key, Save, Loader2, Mail, User, Store, CreditCard, QrCode, Printer, Gamepad2, Film } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import TenantSalesReport from '@/components/TenantSalesReport';
 
@@ -13,10 +13,12 @@ export default function SettingsPage() {
   const [activeTier, setActiveTier] = useState('basic');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [enabledGameSystems, setEnabledGameSystems] = useState([]);
+  const [enabledMovieFormats, setEnabledMovieFormats] = useState([]);
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', googleCseKey: '', googleCseCx: '', searxngUrl: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', searxngUrl: '' });
   const [paymentConfig, setPaymentConfig] = useState({
     provider: 'none',
     stripeApiKey: '',
@@ -233,6 +235,8 @@ export default function SettingsPage() {
                 if (settings.paymentConfig) setPaymentConfig(settings.paymentConfig);
                 if (settings.tunnelConfig) setTunnelConfig(settings.tunnelConfig);
                 if (settings.printerConfig) setPrinterConfig(settings.printerConfig);
+                if (settings.enabledGameSystems) setEnabledGameSystems(settings.enabledGameSystems);
+                if (settings.enabledMovieFormats) setEnabledMovieFormats(settings.enabledMovieFormats);
               });
             fetchSearxngStatus();
             fetchTunnelStatus();
@@ -254,7 +258,7 @@ export default function SettingsPage() {
         const res = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ activeTier, apiKeys, smtpConfig, mallName, paymentConfig, tunnelConfig, printerConfig })
+          body: JSON.stringify({ activeTier, apiKeys, smtpConfig, mallName, paymentConfig, tunnelConfig, printerConfig, enabledGameSystems, enabledMovieFormats })
         });
         if (res.ok) {
           setMessage('Global Settings saved successfully!');
@@ -777,26 +781,6 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Google Custom Search JSON API Key (For Valuations)</label>
-            <input 
-              type="password"
-              value={apiKeys.googleCseKey || ''}
-              onChange={(e) => setApiKeys({...apiKeys, googleCseKey: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="AIzaSy..."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Google Custom Search Engine ID (CX)</label>
-            <input 
-              type="text"
-              value={apiKeys.googleCseCx || ''}
-              onChange={(e) => setApiKeys({...apiKeys, googleCseCx: e.target.value})}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="e.g. 574218b0e8c8dfd..."
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">PriceCharting API Token (For Video Games)</label>
             <input 
               type="password"
@@ -844,97 +828,99 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="space-y-4 text-sm">
-                {/* Docker Status */}
-                {!searxngStatus.dockerInstalled ? (
-                  <div className="space-y-3">
-                    <div className="text-red-400 bg-red-950/20 border border-red-900/30 p-3.5 rounded-xl">
-                      <strong>Docker Not Found</strong>: Docker must be running on the host system to auto-install SearXNG.
-                    </div>
-                    {searxngStatus.platform === 'linux' ? (
-                      <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl space-y-2">
-                        <p className="text-gray-300 text-xs font-semibold">Detected Server OS: Linux (Raspberry Pi). Run the following commands to install Docker:</p>
-                        <pre className="bg-black/40 text-green-400 p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre-wrap select-all">
+                {searxngStatus.endpointActive ? (
+                  <div className="text-green-400 bg-green-950/20 border border-green-900/30 p-3.5 rounded-xl text-xs">
+                    <strong>Service Active</strong>: SearXNG instance is responding and active at <code>{apiKeys.searxngUrl || 'http://localhost:8080'}</code>.
+                  </div>
+                ) : (
+                  <>
+                    {/* Docker Status */}
+                    {!searxngStatus.dockerInstalled ? (
+                      <div className="space-y-3">
+                        <div className="text-red-400 bg-red-950/20 border border-red-900/30 p-3.5 rounded-xl">
+                          <strong>Docker Not Found</strong>: Docker must be running on the host system to auto-install SearXNG.
+                        </div>
+                        {searxngStatus.platform === 'linux' ? (
+                          <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl space-y-2">
+                            <p className="text-gray-300 text-xs font-semibold">Detected Server OS: Linux (Raspberry Pi). Run the following commands to install Docker:</p>
+                            <pre className="bg-black/40 text-green-400 p-3 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre-wrap select-all">
 {`curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 sudo usermod -aG docker $USER`}
-                        </pre>
-                        <p className="text-gray-500 text-[11px] italic">Note: Reboot or run 'newgrp docker' after commands finish, then refresh this page.</p>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl space-y-2">
-                        <p className="text-gray-300 text-xs font-semibold">Detected Server OS: {searxngStatus.platform === 'win32' ? 'Windows' : 'macOS'}</p>
-                        <p className="text-gray-400 text-xs">Docker Desktop is required to host SearXNG locally. Please download it from the official site:</p>
-                        <a 
-                          href="https://www.docker.com/products/docker-desktop/" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors mt-1"
-                        >
-                          Download Docker Desktop
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Docker Installed */}
-                    {searxngStatus.containerStatus === 'not_created' && (
-                      <div className="space-y-3">
-                        <p className="text-gray-400 text-xs">
-                          Docker is active. Click below to automatically create and launch a local **SearXNG** container on port **8080**.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleSearxngAction('install')}
-                          disabled={searxngActionLoading}
-                          className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/10 flex items-center gap-2 disabled:opacity-50"
-                        >
-                          {searxngActionLoading ? (
-                            <>
-                              <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
-                              Installing SearXNG...
-                            </>
-                          ) : 'Install & Start SearXNG via Docker'}
-                        </button>
-                      </div>
-                    )}
-
-                    {searxngStatus.containerStatus === 'stopped' && (
-                      <div className="space-y-3">
-                        <p className="text-gray-400 text-xs">
-                          The local SearXNG container exists but is currently stopped.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleSearxngAction('start')}
-                          disabled={searxngActionLoading}
-                          className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/10 flex items-center gap-2 disabled:opacity-50"
-                        >
-                          {searxngActionLoading ? (
-                            <>
-                              <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
-                              Starting...
-                            </>
-                          ) : 'Start SearXNG Container'}
-                        </button>
-                      </div>
-                    )}
-
-                    {searxngStatus.containerStatus === 'running' && (
-                      <div className="space-y-2">
-                        {searxngStatus.endpointActive ? (
-                          <div className="text-green-400 bg-green-950/20 border border-green-900/30 p-3.5 rounded-xl text-xs">
-                            <strong>Service Active</strong>: Local SearXNG instance is running and fully responding at <code>http://localhost:8080</code>.
+                            </pre>
+                            <p className="text-gray-500 text-[11px] italic">Note: Reboot or run 'newgrp docker' after commands finish, then refresh this page.</p>
                           </div>
                         ) : (
-                          <div className="text-yellow-400 bg-yellow-950/20 border border-yellow-900/30 p-3.5 rounded-xl text-xs flex items-center gap-2">
-                            <span className="animate-spin h-3.5 w-3.5 border-2 border-yellow-400 border-t-transparent rounded-full"></span>
-                            <span>Container is running. Waiting for SearXNG service to initialize...</span>
+                          <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl space-y-2">
+                            <p className="text-gray-300 text-xs font-semibold">Detected Server OS: {searxngStatus.platform === 'win32' ? 'Windows' : 'macOS'}</p>
+                            <p className="text-gray-400 text-xs">Docker Desktop is required to host SearXNG locally. Please download it from the official site:</p>
+                            <a 
+                              href="https://www.docker.com/products/docker-desktop/" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors mt-1"
+                            >
+                              Download Docker Desktop
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Docker Installed */}
+                        {searxngStatus.containerStatus === 'not_created' && (
+                          <div className="space-y-3">
+                            <p className="text-gray-400 text-xs">
+                              Docker is active. Click below to automatically create and launch a local **SearXNG** container on port **8080**.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => handleSearxngAction('install')}
+                              disabled={searxngActionLoading}
+                              className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/10 flex items-center gap-2 disabled:opacity-50"
+                            >
+                              {searxngActionLoading ? (
+                                <>
+                                  <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                                  Installing SearXNG...
+                                </>
+                              ) : 'Install & Start SearXNG via Docker'}
+                            </button>
+                          </div>
+                        )}
+
+                        {searxngStatus.containerStatus === 'stopped' && (
+                          <div className="space-y-3">
+                            <p className="text-gray-400 text-xs">
+                              The local SearXNG container exists but is currently stopped.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => handleSearxngAction('start')}
+                              disabled={searxngActionLoading}
+                              className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-green-500/10 flex items-center gap-2 disabled:opacity-50"
+                            >
+                              {searxngActionLoading ? (
+                                <>
+                                  <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                                  Starting...
+                                </>
+                              ) : 'Start SearXNG Container'}
+                            </button>
+                          </div>
+                        )}
+
+                        {searxngStatus.containerStatus === 'running' && (
+                          <div className="space-y-2">
+                            <div className="text-yellow-400 bg-yellow-950/20 border border-yellow-900/30 p-3.5 rounded-xl text-xs flex items-center gap-2">
+                              <span className="animate-spin h-3.5 w-3.5 border-2 border-yellow-400 border-t-transparent rounded-full"></span>
+                              <span>Container is running. Waiting for SearXNG service to initialize...</span>
+                            </div>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
                 
                 {/* Messages */}
@@ -1349,6 +1335,98 @@ sudo usermod -aG docker $USER`}
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Video Game Console Settings Card */}
+      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl mb-8">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+          <Gamepad2 className="w-5 h-5 text-purple-400" />
+          Video Game Console Settings
+        </h2>
+        <p className="text-gray-400 mb-6 text-sm">
+          Customize which video game systems appear in the catalog dropdown selection list. Uncheck systems you do not sell or collect to keep the list clean and compact.
+        </p>
+
+        <div className="flex gap-4 mb-6 border-b border-gray-800 pb-4">
+          <button
+            type="button"
+            onClick={() => setEnabledGameSystems(enabledGameSystems.map(s => ({ ...s, enabled: true })))}
+            className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+          >
+            Select All
+          </button>
+          <button
+            type="button"
+            onClick={() => setEnabledGameSystems(enabledGameSystems.map(s => ({ ...s, enabled: false })))}
+            className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+          >
+            Clear All
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2 bg-gray-950/40 p-4 rounded-2xl border border-gray-800/60 custom-scrollbar">
+          {enabledGameSystems.map((sys, idx) => (
+            <label key={sys.name} className="flex items-center gap-3 cursor-pointer group hover:bg-gray-800/20 p-1.5 rounded-lg transition-colors">
+              <input
+                type="checkbox"
+                checked={sys.enabled}
+                onChange={(e) => {
+                  const updated = [...enabledGameSystems];
+                  updated[idx] = { ...sys, enabled: e.target.checked };
+                  setEnabledGameSystems(updated);
+                }}
+                className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-purple-600 focus:ring-purple-500 cursor-pointer"
+              />
+              <span className="text-sm text-gray-300 group-hover:text-white transition-colors select-none">{sys.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Movie Format Settings Card */}
+      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl mb-8">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+          <Film className="w-5 h-5 text-indigo-400" />
+          Movie Format Settings
+        </h2>
+        <p className="text-gray-400 mb-6 text-sm">
+          Customize which movie formats appear in the catalog dropdown selection list. Uncheck formats you do not sell or collect to keep the list clean and compact.
+        </p>
+
+        <div className="flex gap-4 mb-6 border-b border-gray-800 pb-4">
+          <button
+            type="button"
+            onClick={() => setEnabledMovieFormats(enabledMovieFormats.map(s => ({ ...s, enabled: true })))}
+            className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+          >
+            Select All
+          </button>
+          <button
+            type="button"
+            onClick={() => setEnabledMovieFormats(enabledMovieFormats.map(s => ({ ...s, enabled: false })))}
+            className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+          >
+            Clear All
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2 bg-gray-950/40 p-4 rounded-2xl border border-gray-800/60 custom-scrollbar">
+          {enabledMovieFormats.map((form, idx) => (
+            <label key={form.name} className="flex items-center gap-3 cursor-pointer group hover:bg-gray-800/20 p-1.5 rounded-lg transition-colors">
+              <input
+                type="checkbox"
+                checked={form.enabled}
+                onChange={(e) => {
+                  const updated = [...enabledMovieFormats];
+                  updated[idx] = { ...form, enabled: e.target.checked };
+                  setEnabledMovieFormats(updated);
+                }}
+                className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span className="text-sm text-gray-300 group-hover:text-white transition-colors select-none">{form.name}</span>
+            </label>
+          ))}
         </div>
       </div>
 

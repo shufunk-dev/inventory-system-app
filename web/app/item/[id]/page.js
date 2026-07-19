@@ -336,6 +336,15 @@ export default async function ItemPage({ params }) {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
+                  {item.movieFormat && (
+                    <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex items-center justify-between">
+                      <span className="text-gray-400 text-sm font-medium">Movie Format</span>
+                      <span className="bg-rose-600 text-white font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
+                        {item.movieFormat}
+                      </span>
+                    </div>
+                  )}
+                  
                   {item.moviePlot && (
                     <div className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50">
                       <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Plot Summary</h3>

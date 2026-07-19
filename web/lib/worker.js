@@ -96,34 +96,204 @@ async function fetchGoogleVision(imagePath) {
     let descriptionParts = ['[Identified via Google Vision AI]'];
 
     const genericTerms = [
-      'art', 'font', 'rectangle', 'meter', 'video game', 'games', 'electronics', 'gadget', 
-      'toy', 'box', 'text', 'logo', 'brand', 'pattern', 'design', 'illustration', 'drawing', 'paper',
+      'art', 'arts', 'font', 'fonts', 'rectangle', 'rectangles', 'triangle', 'triangles', 'circle', 'circles', 'square', 'squares', 'oval', 'ovals', 'shape', 'shapes', 'meter', 'meters', 'video game', 'video games', 'game', 'games', 'electronics', 'gadget', 'gadgets', 'pc game', 'pc games', 'computer game', 'computer games',
+      'toy', 'toys', 'box', 'boxes', 'cartridge', 'cartridges', 'text', 'texts', 'logo', 'logos', 'brand', 'brands', 'pattern', 'patterns', 'design', 'designs', 'illustration', 'illustrations', 'drawing', 'drawings', 'paper',
       'nintendo', 'nintendo entertainment system', 'nes', 'super nintendo', 'snes', 'playstation', 
       'playstation 2', 'playstation 3', 'playstation 4', 'ps2', 'ps3', 'ps4', 'xbox', 'xbox 360', 
-      'sega', 'genesis', 'konami', 'capcom', 'electronic arts', 'ea', 'ubisoft', 'activision', 'square enix',
+      'wii', 'wii u', 'wiiu', 'nintendo ds', 'ds', 'nintendo 3ds', '3ds', 'psp', 'playstation portable', 'vita', 'playstation vita', 'switch', 'nintendo switch', 
+      'windows', 'dos', 'ms-dos', 'cd-rom', 'cdrom', 'dvd-rom', 'dvdrom', 'floppy disc', 'floppy disk', 'diskette', 'software', 'pc cd', 'pc dvd', 'macintosh', 'mac', 
+      'sega', 'genesis', 'konami', 'capcom', 'electronic arts', 'ea', 'sony', 'microsoft', 'ubisoft', 'activision', 'square enix', 'bandai', 'namco', 'bandai namco', 'thq', 'atari', 'midway', 'acclaim', 'snk', 'atlus', 'valve', 'mojang', 'rockstar', 'square', 'enix', 'hudson', 'lucasarts', 'bethesda', 'codemasters', 'bungie', 'koei', 'tecmo', 'koei tecmo',
+      'tengen', 'rare', 'midway', 'williams', 'virgin', 'acclaim', 'ljn', 'sierra', 'infogrames', 'sunsoft', 'jaleco', 'data east', 'taito', 'kemco', 'tecmo', 'snk',
       'hand', 'finger', 'thumb', 'fingers', 'skin', 'nail', 'arm', 'person', 'h&m', 'money', 'currency', 'silver', 'gold', 'coin', 'coins', 'cash',
       'bottle', 'glass bottle', 'drink', 'beverage', 'can', 'soda can', 'water bottle', 'liquid', 'liqueur', 'liquor', 'alcohol', 'alcoholic drink', 'energy drink',
-      'glass', 'metal', 'plastic', 'wood', 'ceramic'
+      'glass', 'metal', 'plastic', 'wood', 'ceramic', 'concrete', 'stone', 'cement', 'brick', 'floor', 'table', 'wall', 'counter', 'desk', 'background',
+      'still life photography', 'still life', 'photography',
+      'consumer', 'service', 'department', 'boulevard', 'blvd', 'avenue', 'parkway', 'suite', 'plaza', 'highway', 'hwy', 'office', 'offices', 'california', 'texas', 'incorporated', 'corp', 'corporation',
+      'copyright', 'trademarks', 'registered trademark', 'registered trademarks', 'rights reserved', 'sega of america', 'printed in', 'assembled in', 'manufactured by', 'distributed by', 'customer service', 'consumer service', 'service center', 'corporate office', 'business office',
+      'book cover', 'book covers', 'album cover', 'album covers', 'cd cover', 'cd covers', 'cover art', 'cover arts', 'movie poster', 'movie posters', 'poster', 'posters', 'advertising', 'magazine', 'magazines', 'comic book', 'comic books', 'novel', 'novels', 'graphic design', 'paper product', 'paper products',
+      'dvd cover', 'dvd covers', 'vhs cover', 'vhs covers', 'screenshot', 'screenshots', 'case', 'cases', 'sleeve', 'sleeves', 'packaging', 'packagings', 'product', 'products', 'label', 'labels', 'signage', 'billboard', 'billboards', 'display', 'displays', 'graphics',
+      'dvd', 'dvds', 'vhs', 'vhses', 'blu-ray', 'blu-rays', 'cd', 'cds', 'disc', 'discs', 'optical disc', 'optical discs', 'media', 'medias', 'movie', 'movies', 'film', 'films',
+      'ntsc', 'pal', 'secam', 'uc', 'u/c', 'ntsc-u', 'ntsc-j',
+      'esrb', 'pegi', 'cero', 'usk', 'everyone', 'teen', 'mature', 'adults only', 'rp',
+      'content rated by', 'rated by', 'featuring the voice of', 'licensed by', 'official seal', 'made in', 'all rights reserved',
+      'greatest hits', 'platinum hits', 'player\'s choice',
+      'visual arts', 'performing arts', 'graphic arts', 'modern art', 'fine art', 'clip art', 'painting', 'paintings',
+      'new', 'used', 'preowned', 'pre-owned',
+      'fiction', 'fictional', 'fictional character', 'fictional characters', 'character', 'characters', 'jewel case', 'jewel cases',
+      'online interactions', 'not rated', 'online int', 'contenu evalue', 'contenu', 'evalue', 'rating', 'ratings', 'adolescent', 'adolescents', 'no re', 'no rating',
+      'evaluadas', 'evaluadas por', 'enfants et adultes', 'enfants', 'adultes', 'contert', 'contert gated by', 'gated by', 'das por esrs', 'das por esrb'
     ];
 
-    const isGeneric = (str) => {
+    const isGeneric = (str, exactOnly = false) => {
       if (!str) return true;
-      const lowerStr = str.toLowerCase();
+      const lowerStr = str.toLowerCase().trim();
+      
+      // Filter out non-Latin script names (e.g. Arabic, Cyrillic, Chinese) to fallback to English covers
+      const latinRegex = /^[\u0000-\u024F\s\d.,;:#@!?"'()\[\]{}|&+=/\\~`-]*$/;
+      if (!latinRegex.test(str)) return true;
+      
+      // 1. Filter out PlayStation/Nintendo/Sega serial and catalog codes (e.g. SLUS-01234, NUS-006, DOL-001, NES-GP-USA, T-12016)
+      if (/\b[a-z]{3,4}[- ]?\d{3,5}\b/i.test(lowerStr)) return true;
+      if (/\b(nes|dmg|cgb|agb)[- ][a-z]{2,4}(?:[- ][a-z]{3})?\b/i.test(lowerStr)) return true;
+      if (/\bT[- ]?\d{4,6}\b/i.test(lowerStr)) return true;
+      
+      // 2. Filter out alphanumeric store codes (e.g. 040210VDM, 200749GOS)
+      if (/^(?=[a-z]*\d)(?=\d*[a-z])[a-z\d]{5,}$/i.test(lowerStr)) return true;
+      
+      // 3. Filter out purely numeric tags that aren't typical years (e.g. 200749)
+      if (/^\d+$/.test(lowerStr)) {
+        const num = parseInt(lowerStr, 10);
+        if (!(num >= 1980 && num <= 2030)) return true;
+      }
+      
+      // 4. Filter out price tags (e.g. $59.99, $19)
+      if (/\$\d+/.test(lowerStr)) return true;
+
+      if (exactOnly) {
+        return genericTerms.includes(lowerStr);
+      }
+
       return genericTerms.some(term => {
         const regex = new RegExp(`\\b${term}\\b`, 'i');
         return regex.test(lowerStr);
       });
     };
 
-    if (response.webDetection?.bestGuessLabels?.length > 0 && response.webDetection.bestGuessLabels[0].label) {
-      const guess = response.webDetection.bestGuessLabels[0].label;
-      if (!isGeneric(guess)) {
-        bestName = guess;
-        bestName = bestName.replace(/\b\w/g, l => l.toUpperCase());
+    // 1. Check for specific non-generic logos first (extremely high-precision brand matching)
+    let logoName = null;
+    if (response.logoAnnotations?.length > 0) {
+      const validLogo = response.logoAnnotations.find(l => l.description && !isGeneric(l.description, true));
+      if (validLogo) {
+        logoName = validLogo.description;
+      } else {
+        logoName = response.logoAnnotations[0].description;
       }
-    } 
-    
-    if (!bestName && response.webDetection?.webEntities?.length > 0) {
+    }
+
+    // 2. Try to get title from OCR text (using logo index, logo space-stripped matching, or standard OCR lines)
+    let ocrName = null;
+    if (response.textAnnotations?.length > 0) {
+      const lines = response.textAnnotations[0].description.split('\n')
+        .map(l => {
+          let cleaned = l.trim().replace(/-/g, ' ').replace(/\s+/g, ' ');
+          // Remove region codes
+          cleaned = cleaned.replace(/\b(ntsc|pal|secam|uc|u\/c|ntsc-u|ntsc-j)\b/ig, '');
+          // Remove ratings
+          cleaned = cleaned.replace(/\b(esrb|pegi|cero|usk|everyone|teen|mature|adults only|rp|content rated by|rated by|evaluadas|evaluadas por|enfants et adultes|enfants|adultes|contert|contert gated by|gated by|das por esrs|das por esrb|online interactions|not rated|online int|contenu evalue|contenu|evalue|rating|ratings|adolescent|adolescents|no re|no rating)\b/ig, '');
+          // Remove serial codes
+          cleaned = cleaned.replace(/\b[a-z]{3,4}[- ]?\d{3,5}\b/ig, '');
+          cleaned = cleaned.replace(/\b(nes|dmg|cgb|agb)[- ][a-z]{2,4}(?:[- ][a-z]{3})?\b/ig, '');
+          cleaned = cleaned.replace(/\bT[- ]?\d{4,6}\b/ig, '');
+          cleaned = cleaned.replace(/^(?=[a-z]*\d)(?=\d*[a-z])[a-z\d]{5,}$/ig, '');
+          // Remove price tags
+          cleaned = cleaned.replace(/\$\d+(?:\.\d{2})?/g, '');
+          // Remove console names, brand names, and network badges
+          cleaned = cleaned.replace(/\b(xbox 360|xbox|playstation|ps1|ps2|ps3|ps4|ps5|nintendo|nes|snes|sega|genesis|gameboy|game boy|gamecube|wii|wii u|wiiu|ds|3ds|psp|vita|switch|sony|microsoft|live|xbox live|psn|playstation network|nintendo network|wi-fi|wifi|windows|dos|ms-dos|cd-rom|cdrom|dvd-rom|dvdrom|software|pc cd|pc dvd|floppy disc|floppy disk|diskette|macintosh|mac)\b/ig, '');
+          
+          return cleaned.trim().replace(/\s+/g, ' ');
+        })
+        .filter(l => l.length > 3 && !isGeneric(l));
+        
+      if (lines.length > 0) {
+        if (logoName && !isGeneric(logoName, true)) {
+          const logoWords = logoName.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+          if (logoWords.length > 0) {
+            let logoIndex = -1;
+            const firstWord = logoWords[0];
+            for (let i = 0; i < lines.length; i++) {
+              const regex = new RegExp(`\\b${firstWord}\\b`, 'i');
+              if (regex.test(lines[i])) {
+                const sliceLines = lines.slice(i, i + 3);
+                const combined = sliceLines.join(' ').toLowerCase();
+                if (logoWords.every(w => combined.includes(w))) {
+                  logoIndex = i;
+                  break;
+                }
+              }
+            }
+
+            if (logoIndex !== -1) {
+              const candidates = [];
+              const sliceLines = lines.slice(logoIndex, logoIndex + 3);
+              for (const line of sliceLines) {
+                if (candidates.length === 0) {
+                  candidates.push(line);
+                } else {
+                  const combined = candidates.join(' ').toLowerCase();
+                  const cleanLine = line.toLowerCase();
+                  if (combined.includes(cleanLine)) continue;
+                  const words = cleanLine.split(/\s+/);
+                  if (words.every(w => combined.includes(w))) continue;
+                  if (combined.length < 25) {
+                    candidates.push(line);
+                  } else {
+                    break;
+                  }
+                }
+              }
+              ocrName = candidates.join(' ');
+            } else {
+              // Space-stripped matching
+              const candidates = [];
+              for (const line of lines) {
+                if (candidates.length === 0) {
+                  candidates.push(line);
+                } else {
+                  const combined = candidates.join(' ').toLowerCase();
+                  const cleanLine = line.toLowerCase();
+                  if (combined.includes(cleanLine)) continue;
+                  const words = cleanLine.split(/\s+/);
+                  if (words.every(w => combined.includes(w))) continue;
+                  if (combined.length < 25) {
+                    candidates.push(line);
+                  } else {
+                    break;
+                  }
+                }
+              }
+              const ocrTitle = candidates.join(' ');
+              if (ocrTitle) {
+                const cleanLogo = logoName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const cleanOcr = ocrTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (cleanOcr.includes(cleanLogo) || cleanLogo.includes(cleanOcr)) {
+                  ocrName = ocrTitle;
+                }
+              }
+            }
+          }
+        }
+        
+        if (!ocrName) {
+          const candidates = [];
+          for (const line of lines) {
+            if (candidates.length === 0) {
+              candidates.push(line);
+            } else {
+              const combined = candidates.join(' ').toLowerCase();
+              const cleanLine = line.toLowerCase();
+              if (combined.includes(cleanLine)) continue;
+              const words = cleanLine.split(/\s+/);
+              if (words.every(w => combined.includes(w))) continue;
+              if (combined.length < 25) {
+                candidates.push(line);
+              } else {
+                break;
+              }
+            }
+            if (candidates.length >= 3) break;
+          }
+          ocrName = candidates.join(' ');
+        }
+        
+        if (ocrName) {
+          ocrName = ocrName.replace(/\b\w/g, l => l.toUpperCase());
+        }
+      }
+    }
+
+    // 3. Try to get title from Web Entities
+    let webEntityName = null;
+    if (response.webDetection?.webEntities?.length > 0) {
       const validEntities = response.webDetection.webEntities.filter(e => 
         e.description && !isGeneric(e.description)
       );
@@ -137,41 +307,30 @@ async function fetchGoogleVision(imagePath) {
           return bScore - aScore;
         });
 
-        bestName = validEntities[0].description;
+        webEntityName = validEntities[0].description;
       }
     }
 
-    // 2.5 Fallback to Logo if it couldn't find a valid entity
-    let logoName = null;
-    if (!bestName && response.logoAnnotations?.length > 0) {
-      logoName = response.logoAnnotations[0].description;
+    // 4. Try to get title from Best Guess Label
+    let bestGuessName = null;
+    if (response.webDetection?.bestGuessLabels?.length > 0 && response.webDetection.bestGuessLabels[0].label) {
+      const guess = response.webDetection.bestGuessLabels[0].label;
+      if (!isGeneric(guess)) {
+        bestGuessName = guess.replace(/\b\w/g, l => l.toUpperCase());
+      }
+    }
+
+    // Combine using the cleaned candidate resolution order
+    if (ocrName) {
+      bestName = ocrName;
+    } else if (logoName && !isGeneric(logoName, true)) {
       bestName = logoName;
-    }
-
-    if (response.textAnnotations?.length > 0) {
-      const lines = response.textAnnotations[0].description.split('\n')
-        .map(l => l.trim().replace(/-/g, ' ').replace(/\s+/g, ' ')) // Clean up dashes
-        .filter(l => l.length > 3 && !isGeneric(l));
-        
-      if (lines.length > 0) {
-        // If we found a logo, try to find where it appears in the OCR text and grab the next few words
-        if (logoName) {
-          const logoIndex = lines.findIndex(l => l.toLowerCase().includes(logoName.toLowerCase()));
-          if (logoIndex !== -1) {
-            // Grab the logo line and up to 2 lines after it to form the full product name
-            const combinedName = lines.slice(logoIndex, logoIndex + 3).join(' ');
-            if (combinedName.length > logoName.length) {
-              bestName = combinedName;
-            }
-          }
-        } else if (!bestName) {
-          bestName = lines[0]; // Often the main title or publisher at the top of the box
-        }
-        
-        if (bestName) {
-          bestName = bestName.replace(/\b\w/g, l => l.toUpperCase());
-        }
-      }
+    } else if (webEntityName) {
+      bestName = webEntityName;
+    } else if (bestGuessName) {
+      bestName = bestGuessName;
+    } else if (logoName) {
+      bestName = logoName;
     }
 
     // 2. Logos/Brands
@@ -341,115 +500,31 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
     const isRateOrAuthError = (e.response && (e.response.status === 403 || e.response.status === 429)) ||
                               (e.message && (e.message.includes('403') || e.message.includes('429')));
     if (isRateOrAuthError) {
-      throw new Error('RATE_LIMIT');
+      console.warn('[Worker] SearXNG is rate limited or unauthorized. Skipping price lookup.');
     }
   }
   return null;
 }
 
-async function fetchGoogleCustomSearchPrice(name, extraKeywords = '') {
-  console.log(`[Worker Debug] fetchGoogleCustomSearchPrice called. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
+async function fetchSearchEnginePrice(name, extraKeywords = '') {
+  console.log(`[Worker Debug] fetchSearchEnginePrice called. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
   if (process.env.SEARXNG_URL) {
     return await fetchSearxngPrice(name, extraKeywords);
-  }
-  return await fetchGoogleCustomSearchPriceInternal(name, extraKeywords);
-}
-
-async function fetchGoogleCustomSearchPriceInternal(name, extraKeywords = '') {
-  const googleCseKey = process.env.GOOGLE_CSE_KEY;
-  const googleCseCx = process.env.GOOGLE_CSE_CX;
-  if (!googleCseKey || !googleCseCx || !name) return null;
-
-  try {
-    const q = `${name} ${extraKeywords}`.replace(/\s+/g, ' ').trim();
-    const query = encodeURIComponent(q);
-    const url = `https://www.googleapis.com/customsearch/v1?key=${googleCseKey}&cx=${googleCseCx}&q=${query}`;
-    console.log(`[Worker] Querying Google Custom Search API for prices: "${q}"`);
-    const res = await axios.get(url, { timeout: 10000 });
-    
-    if (res.data && res.data.items && res.data.items.length > 0) {
-      let prices = [];
-      
-      for (const item of res.data.items) {
-        // 1. Try pagemap offers
-        if (item.pagemap) {
-          if (Array.isArray(item.pagemap.offer)) {
-            for (const offer of item.pagemap.offer) {
-              if (offer.price) {
-                const val = parseFloat(offer.price.replace(/[^0-9.]/g, ''));
-                if (!isNaN(val) && val > 0 && val < 50000) {
-                  prices.push(val);
-                }
-              }
-            }
-          }
-          if (Array.isArray(item.pagemap.product)) {
-            for (const product of item.pagemap.product) {
-              if (product.price) {
-                const val = parseFloat(product.price.replace(/[^0-9.]/g, ''));
-                if (!isNaN(val) && val > 0 && val < 50000) {
-                  prices.push(val);
-                }
-              }
-            }
-          }
-        }
-        
-        // 2. Parse snippet/title text for "$XX.XX" patterns
-        const text = `${item.title || ''} ${item.snippet || ''}`;
-        const priceMatches = text.match(/\$[0-9,]+(?:\.[0-9]{2})?/g);
-        if (priceMatches) {
-          for (const match of priceMatches) {
-            const val = parseFloat(match.replace(/[^0-9.]/g, ''));
-            if (!isNaN(val) && val > 0 && val < 50000) {
-              prices.push(val);
-            }
-          }
-        }
-      }
-      
-      // Deduplicate and sort
-      prices = [...new Set(prices)].sort((a, b) => a - b);
-      
-      if (prices.length > 0) {
-        // Trim outliers if we have enough data points
-        if (prices.length >= 4) {
-          const trimCount = Math.max(1, Math.floor(prices.length * 0.15));
-          prices = prices.slice(trimCount, prices.length - trimCount);
-        }
-        
-        const sum = prices.reduce((acc, p) => acc + p, 0);
-        const avg = sum / prices.length;
-        
-        return {
-          valueLow: parseFloat(prices[0].toFixed(2)),
-          valueAvg: parseFloat(avg.toFixed(2)),
-          valueHigh: parseFloat(prices[prices.length - 1].toFixed(2))
-        };
-      }
-    }
-  } catch (e) {
-    console.error('[Worker] Google Custom Search Price error:', e.message);
-    const isRateOrAuthError = (e.response && (e.response.status === 403 || e.response.status === 429)) ||
-                              (e.message && (e.message.includes('403') || e.message.includes('429')));
-    if (isRateOrAuthError) {
-      throw new Error('RATE_LIMIT');
-    }
   }
   return null;
 }
 
 async function fetchToyMarketValue(name, condition) {
   const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
-  const csePrice = await fetchGoogleCustomSearchPrice(name, `${cleanCond} toy value`);
-  if (csePrice) return csePrice;
+  const price = await fetchSearchEnginePrice(name, `${cleanCond} toy value`);
+  if (price) return price;
 
   return null;
 }
 
 async function fetchGenericMarketValue(name) {
-  const csePrice = await fetchGoogleCustomSearchPrice(name);
-  if (csePrice) return csePrice;
+  const price = await fetchSearchEnginePrice(name);
+  if (price) return price;
 
   return null;
 }
@@ -649,41 +724,29 @@ async function fetchOrganicSearch(q) {
     }
   }
 
-  // 2. Try Google CSE next
-  const googleCseKey = process.env.GOOGLE_CSE_KEY;
-  const googleCseCx = process.env.GOOGLE_CSE_CX;
-  if (googleCseKey && googleCseCx) {
-    try {
-      const url = `https://customsearch.googleapis.com/customsearch/v1?key=${googleCseKey}&cx=${googleCseCx}&q=${query}`;
-      console.log(`[Worker] Querying Google CSE for organic search: "${q}"`);
-      const res = await axios.get(url, { timeout: 10000 });
-      if (res.data && res.data.items) {
-        return res.data.items.map(item => ({
-          title: item.title || '',
-          snippet: item.snippet || item.htmlSnippet || '',
-          thumbnail: (item.pagemap && item.pagemap.cse_image && item.pagemap.cse_image[0]) ? item.pagemap.cse_image[0].src : null,
-          url: item.link || ''
-        }));
-      }
-    } catch (e) {
-      console.error('[Worker] Google CSE Organic Search error:', e.message);
-    }
-  }
-
   return [];
 }
 
 async function fetchVideoMarketValue(name) {
-  const csePrice = await fetchGoogleCustomSearchPrice(name, '(video game OR movie OR dvd OR vhs)');
-  if (csePrice) return csePrice;
+  const price = await fetchSearchEnginePrice(name, '(video game OR movie OR dvd OR vhs)');
+  if (price) return price;
+
+  return null;
+}
+
+async function fetchVideoGameMarketValue(name, gameSystem = null) {
+  const sysTag = gameSystem ? gameSystem : '';
+  const query = `${name} ${sysTag} video game price value pricecharting`.replace(/\s+/g, ' ').trim();
+  const price = await fetchSearchEnginePrice(query);
+  if (price) return price;
 
   return null;
 }
 
 async function fetchCoinMarketValue(name, condition) {
   const cleanCond = (condition && condition !== 'Ungraded' && condition !== 'Unknown Condition') ? condition : '';
-  const csePrice = await fetchGoogleCustomSearchPrice(name, `${cleanCond} value price estimate`);
-  if (csePrice) return csePrice;
+  const price = await fetchSearchEnginePrice(name, `${cleanCond} value price estimate`);
+  if (price) return price;
 
   return null;
 }
@@ -735,8 +798,8 @@ async function fetchGradingAgencyBarcode(barcode) {
 async function fetchComicMarketValue(name, condition) {
   const cleanCond = (condition && condition !== 'Unknown Condition' && condition !== 'Raw / Ungraded') ? `${condition} CGC CBCS` : 'loose raw comic';
   const query = `${name} ${cleanCond} value price estimate`;
-  const csePrice = await fetchGoogleCustomSearchPrice(query);
-  if (csePrice) return csePrice;
+  const price = await fetchSearchEnginePrice(query);
+  if (price) return price;
 
   return null;
 }
@@ -744,8 +807,8 @@ async function fetchComicMarketValue(name, condition) {
 async function fetchCardMarketValue(name, condition) {
   const cleanCond = (condition && condition !== 'Raw (Ungraded)' && condition !== 'Unknown Condition') ? condition : '';
   const query = `${name} ${cleanCond} value price estimate PSA BGS SGC`.replace(/\s+/g, ' ').trim();
-  const csePrice = await fetchGoogleCustomSearchPrice(query);
-  if (csePrice) return csePrice;
+  const price = await fetchSearchEnginePrice(query);
+  if (price) return price;
 
   return null;
 }
@@ -1230,9 +1293,9 @@ async function fetchOpenFoodFacts(barcode) {
 }
 async function fetchGradedMarketValue(name, agency, condition) {
   const cleanCond = (condition && condition !== 'Unknown Condition') ? condition : '';
-  const query = `${name} ${agency || ''} ${cleanCond}`.trim().replace(/\s+/g, ' ');
-  const csePrice = await fetchGoogleCustomSearchPrice(query);
-  if (csePrice) return csePrice;
+  const query = `${name} ${agency || ''} ${cleanCond} value price estimate`.trim().replace(/\s+/g, ' ');
+  const price = await fetchSearchEnginePrice(query);
+  if (price) return price;
 
   return null;
 }
@@ -1297,6 +1360,43 @@ async function fetchGradedAssetFromImage(imagePath, isPremium) {
   return { name, description, gradedAgency: agency, gradedCondition: condition, gradedCertNumber: certNumber };
 }
 
+function extractVideoGameGrading(str) {
+  if (!str) return { agency: null, cond: null, cert: null };
+  let agency = null;
+  let cond = null;
+  let cert = null;
+
+  if (/\bWATA\b/i.test(str)) agency = 'WATA';
+  else if (/\bVGA\b/i.test(str)) agency = 'VGA';
+  else if (/\bCGC\b/i.test(str)) agency = 'CGC';
+  else if (/\b(PSA|ESA)\b/i.test(str)) agency = 'PSA';
+
+  if (agency) {
+    // 1. Try matching video game composite grade first (e.g. 9.8 A++ or 9.0 A)
+    const compositeRegex = /\b(\d{1,2}(?:\.\d)?)\s*(A\+\+|A\+|A|B\+|B|C)(?!\w)/i;
+    const compositeMatch = str.match(compositeRegex);
+    if (compositeMatch) {
+      cond = `${compositeMatch[1]} ${compositeMatch[2].toUpperCase()}`;
+    } else {
+      // 2. Fall back to general graded conditions
+      const conditionRegex = /\b(A\+\+|A\+|A|B\+|B|C|MINT|GEM MINT|PRISTINE|NM-MT|NM|EX-MT|EX|VG-EX|VG|GOOD|POOR|GEM|MT|MS-?\d{1,2}|PR-?\d{1,2}|VF|FN)[\s-]+(\d{1,2}(?:\.\d)?\+?)?\b|\b(10(?:\.0)?|[0-9]\.\d|100|[1-9]\d\+?)\b/i;
+      const conditionMatch = str.match(conditionRegex);
+      if (conditionMatch) {
+        if (conditionMatch[1]) {
+           cond = `${conditionMatch[1].toUpperCase()}${conditionMatch[2] ? ' ' + conditionMatch[2] : ''}`;
+        } else if (conditionMatch[3]) {
+           cond = conditionMatch[3];
+        }
+      }
+    }
+
+    const certMatch = str.match(/\b\d{7,14}\b/);
+    if (certMatch) cert = certMatch[0];
+  }
+
+  return { agency, cond, cert };
+}
+
 export async function fetchItemDetails(item, db, options = {}) {
   const barcode = item.barcode;
   let details = null;
@@ -1318,12 +1418,6 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
       if (keys.priceChartingKey) {
         process.env.PRICECHARTING_KEY = keys.priceChartingKey;
-      }
-      if (keys.googleCseKey) {
-        process.env.GOOGLE_CSE_KEY = keys.googleCseKey;
-      }
-      if (keys.googleCseCx) {
-        process.env.GOOGLE_CSE_CX = keys.googleCseCx;
       }
       if (keys.discogsApiKey) {
         process.env.DISCOGS_API_KEY = keys.discogsApiKey;
@@ -1511,13 +1605,14 @@ export async function fetchItemDetails(item, db, options = {}) {
       return { success: false, reason: 'rate_limited' };
     }
 
-    const newStatus = details ? 'success' : 'failed';
     const isCustomName = item.name && 
                          item.name !== 'Analyzing Photo...' && 
                          item.name !== 'Unknown Item' && 
                          item.name !== 'Pending Sync' &&
                          item.name.trim() !== '';
     let name = isCustomName ? item.name : ((details && details.name) ? details.name : 'Unknown Item');
+    const hasIdentifiedName = details && details.name && details.name !== 'Unknown Item' && details.name.trim() !== '';
+    const newStatus = (details && (isCustomName || hasIdentifiedName)) ? 'success' : 'failed';
     let imagePath = (details && details.imageUrl) ? details.imageUrl : item.imagePath;
     const description = (details && details.description) ? details.description : item.description;
     let itemType = (details && details.itemType) ? details.itemType : item.itemType;
@@ -1531,10 +1626,38 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
     }
 
+    // Auto-classify standard items as video game if category or name suggests it
+    if (itemType === 'standard') {
+      let isGame = false;
+      if (details && details.category) {
+        const cat = details.category.toLowerCase();
+        if (cat.includes('video game') || 
+            cat.includes('game console') || 
+            cat.includes('consoles >') || 
+            cat.includes('software > games') ||
+            cat.includes('toys & games > games > video games')) {
+          isGame = true;
+        }
+      }
+      if (!isGame && name) {
+        const lowerName = name.toLowerCase();
+        const platformRegex = /\b(snes|nes|n64|nintendo 64|sega genesis|playstation|ps1|ps2|ps3|ps4|ps5|xbox 360|xbox one|xbox series|nintendo ds|nintendo 3ds|nintendo switch|gameboy|game boy|gamecube)\b/i;
+        if (platformRegex.test(lowerName)) {
+          isGame = true;
+        }
+      }
+      if (isGame) {
+        console.log(`[Worker] Auto-classified item "${name}" as Video Game.`);
+        itemType = 'game';
+      }
+    }
+
     let moviePlot = item.moviePlot || null;
     let movieCast = item.movieCast || null;
     let movieTrailer = item.movieTrailer || null;
+    let movieFormat = item.movieFormat || null;
 
+    let gameSystem = item.gameSystem || null;
     let toyBrand = item.toyBrand || null;
     let toyYear = item.toyYear || null;
     let toyCondition = item.toyCondition || null;
@@ -1594,6 +1717,33 @@ export async function fetchItemDetails(item, db, options = {}) {
     let toolPurchaseDate = item.toolPurchaseDate || null;
 
     if ((itemType === 'video' || options.forceTier === 'video') && name && name !== 'Unknown Item') {
+      // Auto-detect movieFormat from name/description if not set
+      if (!movieFormat && name) {
+        const lowerName = name.toLowerCase();
+        const lowerDesc = (description || '').toLowerCase();
+        const searchStr = lowerName + ' ' + lowerDesc;
+        
+        if (/\b(vhs|videotape|video tape)\b/i.test(searchStr)) {
+          movieFormat = 'VHS';
+        } else if (/\b(dvd)\b/i.test(searchStr)) {
+          movieFormat = 'DVD';
+        } else if (/\b(blu-ray|bluray|blu ray|bd)\b/i.test(searchStr)) {
+          movieFormat = 'Blu-ray';
+        } else if (/\b(4k|uhd|4k ultra hd)\b/i.test(searchStr)) {
+          movieFormat = '4K Ultra HD';
+        } else if (/\b(laserdisc|laser disc|ld)\b/i.test(searchStr)) {
+          movieFormat = 'LaserDisc';
+        } else if (/\b(betamax|beta)\b/i.test(searchStr)) {
+          movieFormat = 'BetaMax';
+        } else if (/\b(vcd|video cd)\b/i.test(searchStr)) {
+          movieFormat = 'VCD';
+        } else if (/\b(hd dvd|hddvd)\b/i.test(searchStr)) {
+          movieFormat = 'HD DVD';
+        } else if (/\b(digital copy)\b/i.test(searchStr)) {
+          movieFormat = 'Digital Copy';
+        }
+      }
+
       let movieData = null;
 
       if (!options.refreshPrices) {
@@ -1655,35 +1805,30 @@ export async function fetchItemDetails(item, db, options = {}) {
       console.log(`[Worker] Item is a Video Game. Extracting grading and market value for: ${name}`);
       
       // Check if it's graded
-      if (!options.refreshPrices && description) {
-        let dtMatch = description.match(/Detected Text:\s*(.+)/i);
-        let textToSearch = dtMatch ? dtMatch[1] : description;
-
-        // Reset so Refetch doesn't carry over old hallucinated values
+      if (!options.refreshPrices) {
+        // Reset so Refetch doesn't carry over old values
         gradedAgency = null;
         gradedCondition = null;
         gradedCertNumber = null;
 
-        if (/\bWATA\b/i.test(textToSearch)) gradedAgency = 'WATA';
-        else if (/\bVGA\b/i.test(textToSearch)) gradedAgency = 'VGA';
-        else if (/\bCGC\b/i.test(textToSearch)) gradedAgency = 'CGC';
-        else if (/\b(PSA|ESA)\b/i.test(textToSearch)) gradedAgency = 'PSA';
-        
-        if (gradedAgency) {
-          const conditionMatch = textToSearch.match(/\b(A\+\+|A\+|A|B\+|B|C|MINT|GEM MINT|PRISTINE|NM-MT|NM|EX-MT|EX|VG-EX|VG|GOOD|POOR|GEM|MT|MS-?\d{1,2}|PR-?\d{1,2}|VF|FN)[\s-]+(\d{1,2}(?:\.\d)?\+?)?\b|\b(10(?:\.0)?|[0-9]\.\d|100|[1-9]\d\+?)\b/i);
-          if (conditionMatch) {
-            if (conditionMatch[1]) {
-               gradedCondition = `${conditionMatch[1].toUpperCase()}${conditionMatch[2] ? ' ' + conditionMatch[2] : ''}`;
-            } else if (conditionMatch[3]) {
-               gradedCondition = conditionMatch[3];
-            }
-          }
-          
-          const certMatch = textToSearch.match(/\b\d{7,14}\b/);
-          if (certMatch) gradedCertNumber = certMatch[0];
+        // 1. Try extracting from name first
+        const fromName = extractVideoGameGrading(name);
+        gradedAgency = fromName.agency;
+        gradedCondition = fromName.cond;
+        gradedCertNumber = fromName.cert;
 
-          // OVERRIDE HALLUCINATED NAMES WITH OCR TITLE
-          if (dtMatch) {
+        // 2. If not fully resolved, check description
+        if ((!gradedAgency || !gradedCondition || !gradedCertNumber) && description) {
+          let dtMatch = description.match(/Detected Text:\s*(.+)/i);
+          let textToSearch = dtMatch ? dtMatch[1] : description;
+          const fromDesc = extractVideoGameGrading(textToSearch);
+
+          if (!gradedAgency) gradedAgency = fromDesc.agency;
+          if (!gradedCondition) gradedCondition = fromDesc.cond;
+          if (!gradedCertNumber) gradedCertNumber = fromDesc.cert;
+
+          // OVERRIDE HALLUCINATED NAMES WITH OCR TITLE (only if description has OCR text)
+          if (dtMatch && gradedAgency) {
             const cleanText = dtMatch[1].split(/Tags:/i)[0].trim();
             const parts = cleanText.split(' - ').map(p => p.trim()).filter(p => p.length > 0);
             let overrideName = null;
@@ -1723,6 +1868,67 @@ export async function fetchItemDetails(item, db, options = {}) {
         }
       }
 
+      // Auto-detect gameSystem from name or description if not set
+      if (!gameSystem && name) {
+        const lowerName = name.toLowerCase();
+        const lowerDesc = (description || '').toLowerCase();
+        const searchStr = lowerName + ' ' + lowerDesc;
+        
+        if (/\b(nes|nintendo entertainment system)\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo Entertainment System (NES)';
+        } else if (/\b(snes|super nintendo|super nes)\b/i.test(searchStr)) {
+          gameSystem = 'Super Nintendo (SNES)';
+        } else if (/\b(n64|nintendo 64)\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo 64 (N64)';
+        } else if (/\b(gamecube|nintendo gamecube)\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo GameCube';
+        } else if (/\b(wii)\b/i.test(searchStr) && !/\bwii u\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo Wii';
+        } else if (/\b(wii u|wiiu)\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo Wii U';
+        } else if (/\b(switch|nintendo switch)\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo Switch';
+        } else if (/\b(gameboy|game boy)\b/i.test(searchStr) && !/\bcolor\b/i.test(searchStr) && !/\badvance\b/i.test(searchStr)) {
+          gameSystem = 'Game Boy';
+        } else if (/\b(game boy color|gbc)\b/i.test(searchStr)) {
+          gameSystem = 'Game Boy Color';
+        } else if (/\b(game boy advance|gba)\b/i.test(searchStr)) {
+          gameSystem = 'Game Boy Advance';
+        } else if (/\b(ds|nintendo ds)\b/i.test(searchStr) && !/\b3ds\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo DS';
+        } else if (/\b(3ds|nintendo 3ds)\b/i.test(searchStr)) {
+          gameSystem = 'Nintendo 3DS';
+        } else if (/\b(genesis|sega genesis|mega drive)\b/i.test(searchStr)) {
+          gameSystem = 'Sega Genesis';
+        } else if (/\b(dreamcast)\b/i.test(searchStr)) {
+          gameSystem = 'Sega Dreamcast';
+        } else if (/\b(saturn|sega saturn)\b/i.test(searchStr)) {
+          gameSystem = 'Sega Saturn';
+        } else if (/\b(playstation|ps1|psx)\b/i.test(searchStr)) {
+          gameSystem = 'PlayStation (PS1)';
+        } else if (/\b(playstation 2|ps2)\b/i.test(searchStr)) {
+          gameSystem = 'PlayStation 2 (PS2)';
+        } else if (/\b(playstation 3|ps3)\b/i.test(searchStr)) {
+          gameSystem = 'PlayStation 3 (PS3)';
+        } else if (/\b(playstation 4|ps4)\b/i.test(searchStr)) {
+          gameSystem = 'PlayStation 4 (PS4)';
+        } else if (/\b(playstation 5|ps5)\b/i.test(searchStr)) {
+          gameSystem = 'PlayStation 5 (PS5)';
+        } else if (/\b(psp|playstation portable)\b/i.test(searchStr)) {
+          gameSystem = 'PlayStation Portable (PSP)';
+        } else if (/\b(ps vita|vita)\b/i.test(searchStr)) {
+          gameSystem = 'PlayStation Vita';
+        } else if (/\bxbox\b/i.test(searchStr) && !/\b360\b/i.test(searchStr) && !/\bone\b/i.test(searchStr) && !/\bseries\b/i.test(searchStr)) {
+          gameSystem = 'Xbox';
+        } else if (/\b(xbox 360|360)\b/i.test(searchStr)) {
+          gameSystem = 'Xbox 360';
+        } else if (/\b(xbox one|one)\b/i.test(searchStr)) {
+          gameSystem = 'Xbox One';
+        } else if (/\b(xbox series|series x|series s)\b/i.test(searchStr)) {
+          gameSystem = 'Xbox Series X/S';
+        }
+      }
+
       // Get Market Value
       if (gradedAgency && gradedCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
@@ -1732,7 +1938,7 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueHigh = marketData.valueHigh;
         }
       } else if (!valueAvg || options.refreshPrices) {
-        const marketData = await fetchVideoMarketValue(name);
+        const marketData = await fetchVideoGameMarketValue(name, gameSystem);
         if (marketData) {
           valueLow = marketData.valueLow;
           valueAvg = marketData.valueAvg;
@@ -1930,7 +2136,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       UPDATE items 
       SET name = ?, imagePath = ?, description = ?, syncStatus = ?, lastSyncAttempt = ?, 
           itemType = ?,
-          moviePlot = ?, movieCast = ?, movieTrailer = ?, 
+          moviePlot = ?, movieCast = ?, movieTrailer = ?, movieFormat = ?,
           toyBrand = ?, toyYear = ?, toyCondition = ?, 
           coinCondition = ?, coinCertNumber = ?, coinGradingAgency = ?, 
           cardCondition = ?, cardCertNumber = ?, cardGradingAgency = ?, 
@@ -1939,7 +2145,8 @@ export async function fetchItemDetails(item, db, options = {}) {
           valueLow = ?, valueAvg = ?, valueHigh = ?,
           musicArtist = ?, musicFormat = ?, musicMatrixRunout = ?, musicPressingYear = ?, musicPressingCountry = ?, musicVinylWeight = ?, musicMediaCondition = ?, musicSleeveCondition = ?, discogsReleaseId = ?,
           hardwareBrand = ?, hardwareModel = ?, hardwareSerial = ?, hardwareType = ?, hardwareFirmware = ?, hardwareCondition = ?, hardwareSpecs = ?, hardwareCompat = ?, hardwareSmartHealth = ?,
-          toolBrand = ?, toolModel = ?, toolSerial = ?, toolWarrantyStatus = ?, toolAssignedLocation = ?, toolPurchaseDate = ?
+          toolBrand = ?, toolModel = ?, toolSerial = ?, toolWarrantyStatus = ?, toolAssignedLocation = ?, toolPurchaseDate = ?,
+          gameSystem = ?
       WHERE id = ?
     `).run(
       name, 
@@ -1951,6 +2158,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       moviePlot,
       movieCast,
       movieTrailer,
+      movieFormat,
       toyBrand,
       toyYear,
       toyCondition,
@@ -1995,6 +2203,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       toolWarrantyStatus,
       toolAssignedLocation,
       toolPurchaseDate,
+      gameSystem,
       item.id
     );
 
