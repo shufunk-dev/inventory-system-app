@@ -302,7 +302,7 @@ async function fetchGoogleVision(imagePath) {
     let webEntityName = null;
     if (response.webDetection?.webEntities?.length > 0) {
       const validEntities = response.webDetection.webEntities.filter(e => 
-        e.description && !isGeneric(e.description)
+        e.description && !isGeneric(e.description, true)
       );
 
       if (validEntities.length > 0) {
@@ -322,7 +322,7 @@ async function fetchGoogleVision(imagePath) {
     let bestGuessName = null;
     if (response.webDetection?.bestGuessLabels?.length > 0 && response.webDetection.bestGuessLabels[0].label) {
       const guess = response.webDetection.bestGuessLabels[0].label;
-      if (!isGeneric(guess)) {
+      if (!isGeneric(guess, true)) {
         bestGuessName = guess.replace(/\b\w/g, l => l.toUpperCase());
       }
     }
