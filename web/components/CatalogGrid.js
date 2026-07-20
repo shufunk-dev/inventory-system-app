@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2, Printer, Edit3, Gamepad2, Film } from 'lucide-react';
+import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2, Printer, Edit3, Gamepad2, Film, Sparkles } from 'lucide-react';
 import { buildCategoryTree } from '@/lib/categories';
 
 export default function CatalogGrid({ items }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isIdentifying, setIsIdentifying] = useState(false);
   
   // Bulk Move State
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
@@ -275,6 +276,30 @@ export default function CatalogGrid({ items }) {
     }
   };
 
+  const handleBulkIdentify = async () => {
+    if (selectedIds.size === 0) return;
+    setIsIdentifying(true);
+    try {
+      const res = await fetch('/api/item/bulk-identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds: Array.from(selectedIds) })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || `Queued ${selectedIds.size} item(s) for full AI identification.`);
+        setSelectedIds(new Set());
+        router.refresh();
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      alert('Failed to trigger bulk identification');
+    } finally {
+      setIsIdentifying(false);
+    }
+  };
+
   return (
     <div>
       {/* Selection Action Bar */}
@@ -283,7 +308,15 @@ export default function CatalogGrid({ items }) {
           <span className="text-blue-200 font-medium">
             {selectedIds.size} item(s) selected
           </span>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={handleBulkIdentify}
+              disabled={isIdentifying}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50 font-semibold shadow-md shadow-purple-500/20"
+            >
+              <Sparkles className="w-4 h-4" />
+              {isIdentifying ? 'Queuing AI...' : 'Re-Identify Selected'}
+            </button>
             <button 
               onClick={handleBulkPrint}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors"

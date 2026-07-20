@@ -1608,10 +1608,14 @@ export async function fetchItemDetails(item, db, options = {}) {
     const isCustomName = item.name && 
                          item.name !== 'Analyzing Photo...' && 
                          item.name !== 'Unknown Item' && 
+                         item.name !== 'Unknown Item (Needs Review)' &&
                          item.name !== 'Pending Sync' &&
                          item.name.trim() !== '';
     let name = isCustomName ? item.name : ((details && details.name) ? details.name : 'Unknown Item');
-    const hasIdentifiedName = details && details.name && details.name !== 'Unknown Item' && details.name.trim() !== '';
+    const hasIdentifiedName = details && details.name && 
+                              details.name !== 'Unknown Item' && 
+                              details.name !== 'Unknown Item (Needs Review)' && 
+                              details.name.trim() !== '';
     const newStatus = (details && (isCustomName || hasIdentifiedName)) ? 'success' : 'failed';
     let imagePath = (details && details.imageUrl) ? details.imageUrl : item.imagePath;
     const description = (details && details.description) ? details.description : item.description;

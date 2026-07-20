@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TrendingUp, Play, CheckCircle2, AlertCircle, Loader2, DollarSign, RotateCcw, FolderOpen } from 'lucide-react';
+import { TrendingUp, Play, CheckCircle2, AlertCircle, Loader2, DollarSign, RotateCcw, FolderOpen, Sparkles } from 'lucide-react';
 import { buildCategoryTree } from '@/lib/categories';
 
 export default function MarketValueRefreshPanel() {
@@ -10,6 +10,7 @@ export default function MarketValueRefreshPanel() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [retryLoading, setRetryLoading] = useState(false);
+  const [identifyLoading, setIdentifyLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -81,6 +82,33 @@ export default function MarketValueRefreshPanel() {
     }
   };
 
+  const handleIdentify = async (unknownOnly = true) => {
+    setIdentifyLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await fetch('/api/admin/identify/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: selectedCategory, unknownOnly, retryOnly: true })
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        setSuccessMsg(data.message || 'Item identification queue started successfully.');
+        await fetchStatus();
+      } else {
+        setErrorMsg(data.error || 'Failed to trigger item identification.');
+      }
+    } catch (err) {
+      setErrorMsg('An unexpected error occurred while queuing the identification job.');
+      console.error(err);
+    } finally {
+      setIdentifyLoading(false);
+    }
+  };
+
   const isQueueActive = status 
     ? (status.pending_price_refresh > 0 || status.pending > 0)
     : false;
@@ -92,10 +120,10 @@ export default function MarketValueRefreshPanel() {
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-blue-400" />
-            Market Value Refresh
+            Market Value & AI Identification Engine
           </h2>
           <p className="text-gray-400 text-sm mt-1">
-            Bulk-refresh estimated market values of items to current online prices via background workers.
+            Re-identify unknown items using Google Vision/Lens AI or bulk-refresh estimated market values.
           </p>
         </div>
 
@@ -158,9 +186,27 @@ export default function MarketValueRefreshPanel() {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
+              onClick={() => handleIdentify(true)}
+              disabled={loading || retryLoading || identifyLoading}
+              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/10 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+            >
+              {identifyLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Queuing AI Scan...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Re-Identify Unknown Items
+                </>
+              )}
+            </button>
+
+            <button
               onClick={() => handleRefresh(false)}
-              disabled={loading || retryLoading}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+              disabled={loading || retryLoading || identifyLoading}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
             >
               {loading ? (
                 <>
@@ -170,15 +216,15 @@ export default function MarketValueRefreshPanel() {
               ) : (
                 <>
                   <Play className="w-4 h-4" />
-                  Queue Refresh Job
+                  Refresh Market Values
                 </>
               )}
             </button>
 
             <button
               onClick={() => handleRefresh(true)}
-              disabled={loading || retryLoading}
-              className="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+              disabled={loading || retryLoading || identifyLoading}
+              className="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
             >
               {retryLoading ? (
                 <>
@@ -220,29 +266,39 @@ export default function MarketValueRefreshPanel() {
             <div className="space-y-4">
               {/* Counts Grid */}
               <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-purple-950/40 border border-purple-800/50 rounded-xl p-3">
+                  <div className="text-purple-300 text-xs font-semibold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-purple-400" />
+                    Needs Identification
+                  </div>
+                  <div className="text-lg font-bold text-purple-400 mt-1">
+                    {status.unknownCount || 0}
+                  </div>
+                </div>
+
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <div className="text-gray-500 text-xs">Pending Refresh</div>
+                  <div className="text-gray-500 text-xs">Full AI Identification Queue</div>
+                  <div className="text-lg font-bold text-indigo-400 mt-1">
+                    {status.pending}
+                  </div>
+                </div>
+
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                  <div className="text-gray-500 text-xs">Pending Market Refresh</div>
                   <div className="text-lg font-bold text-blue-400 mt-1">
                     {status.pending_price_refresh}
                   </div>
                 </div>
 
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <div className="text-gray-500 text-xs">Standard Queue</div>
-                  <div className="text-lg font-bold text-purple-400 mt-1">
-                    {status.pending}
-                  </div>
-                </div>
-
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <div className="text-gray-500 text-xs">Rate Limited</div>
+                  <div className="text-gray-500 text-xs font-medium">Rate Limited</div>
                   <div className="text-lg font-bold text-yellow-500 mt-1">
                     {status.rate_limited}
                   </div>
                 </div>
 
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-3">
-                  <div className="text-gray-500 text-xs">Failed Updates</div>
+                  <div className="text-gray-500 text-xs font-medium">Failed Updates</div>
                   <div className="text-lg font-bold text-red-500 mt-1">
                     {status.failed}
                   </div>

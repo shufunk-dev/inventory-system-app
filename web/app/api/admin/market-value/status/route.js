@@ -40,6 +40,14 @@ export async function GET() {
     const totalRow = db.prepare('SELECT COUNT(*) as total FROM items').get();
     counts.total = totalRow ? totalRow.total : 0;
 
+    // Get count of unknown/unidentified items
+    const unknownRow = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM items 
+      WHERE name IS NULL OR name = '' OR name = 'Unknown Item' OR name = 'Unknown Item (Needs Review)' OR syncStatus IN ('failed', 'rate_limited')
+    `).get();
+    counts.unknownCount = unknownRow ? unknownRow.count : 0;
+
     return NextResponse.json(counts);
   } catch (error) {
     console.error('Market value status API error:', error);
