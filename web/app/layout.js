@@ -129,7 +129,7 @@ export default async function RootLayout({ children }) {
                   </Link>
 
                   <div className="text-sm font-medium text-gray-500 bg-gray-900 px-3 py-1 rounded-full border border-gray-800 hidden md:block">
-                    Beta 1.9.01
+                    Beta 1.9.4
                   </div>
 
                   {user && (() => {
