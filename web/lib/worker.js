@@ -3,6 +3,12 @@ import { getDb, getGlobalDb } from './db.js';
 import fs from 'fs/promises';
 import path from 'path';
 import FormData from 'form-data';
+import dotenv from 'dotenv';
+
+dotenv.config();
+try {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+} catch (e) {}
 
 let isWorking = false;
 
@@ -178,8 +184,9 @@ async function fetchGoogleVision(imagePath) {
           let cleaned = l.trim().replace(/-/g, ' ').replace(/\s+/g, ' ');
           // Remove region codes
           cleaned = cleaned.replace(/\b(ntsc|pal|secam|uc|u\/c|ntsc-u|ntsc-j)\b/ig, '');
-          // Remove ratings
-          cleaned = cleaned.replace(/\b(esrb|pegi|cero|usk|everyone|teen|mature|adults only|rp|content rated by|rated by|evaluadas|evaluadas por|enfants et adultes|enfants|adultes|contert|contert gated by|gated by|das por esrs|das por esrb|online interactions|not rated|online int|contenu evalue|contenu|evalue|rating|ratings|adolescent|adolescents|no re|no rating)\b/ig, '');
+          // Remove ratings and box boilerplate text
+          cleaned = cleaned.replace(/\b(content rated by|content rated in|content rated|rated by esrb|rated by|rated|evaluadas|evaluadas por|enfants et adultes|enfants|adultes|contert|contert gated by|gated by|das por esrs|das por esrb|online interactions|not rated|online int|contenu evalue|contenu|evalue|rating|ratings|adolescent|adolescents|no re|no rating|esrb|pegi|cero|usk|everyone 10\+|everyone|kids to adults|ka|teen|mature|adults only|rp)\b/ig, '');
+          cleaned = cleaned.replace(/\b(official nintendo seal of quality|official nintendo seal|seal of quality|official seal|licensed by nintendo|licensed by sega|licensed by|made in japan|made in usa|printed in usa|printed in japan|all rights reserved)\b/ig, '');
           // Remove serial codes
           cleaned = cleaned.replace(/\b[a-z]{3,4}[- ]?\d{3,5}\b/ig, '');
           cleaned = cleaned.replace(/\b(nes|dmg|cgb|agb)[- ][a-z]{2,4}(?:[- ][a-z]{3})?\b/ig, '');
@@ -320,15 +327,17 @@ async function fetchGoogleVision(imagePath) {
       }
     }
 
-    // Combine using the cleaned candidate resolution order
-    if (ocrName) {
-      bestName = ocrName;
-    } else if (logoName && !isGeneric(logoName, true)) {
-      bestName = logoName;
-    } else if (webEntityName) {
+    // Combine using the cleaned candidate resolution order:
+    // Web Entity & Best Guess labels represent official internet catalog product titles,
+    // so prefer them over raw OCR text lines off physical box artwork!
+    if (webEntityName) {
       bestName = webEntityName;
     } else if (bestGuessName) {
       bestName = bestGuessName;
+    } else if (ocrName) {
+      bestName = ocrName;
+    } else if (logoName && !isGeneric(logoName, true)) {
+      bestName = logoName;
     } else if (logoName) {
       bestName = logoName;
     }
@@ -2263,17 +2272,15 @@ async function processNextItem(userId = null) {
   const result = await fetchItemDetails(item, db, isRefresh ? { refreshPrices: true } : {});
 
   if (result.reason === 'rate_limited') {
-    console.log(`[Worker] RATE LIMIT hit. Marking remaining pending items as rate_limited.`);
-    db.prepare("UPDATE items SET syncStatus = 'rate_limited', lastSyncAttempt = ? WHERE syncStatus = 'pending'").run(Date.now());
-    db.prepare("UPDATE items SET syncStatus = 'rate_limited', lastSyncAttempt = ? WHERE syncStatus = 'pending_price_refresh'").run(Date.now());
-    isWorking = false;
-    return;
+    console.log(`[Worker] RATE LIMIT hit on item ${item.id}. Marking item as rate_limited and continuing queue.`);
+    db.prepare("UPDATE items SET syncStatus = 'rate_limited', lastSyncAttempt = ? WHERE id = ?").run(Date.now(), item.id);
   }
 
-  // Wait 12 seconds to respect the 6 requests/minute limit for UPCItemDB
+  // Wait 12 seconds for barcode lookups (UPCItemDB limit) or 1.5s for photo scans
+  const delayMs = item.barcode ? 12000 : 1500;
   setTimeout(() => {
     processNextItem();
-  }, 12000);
+  }, delayMs);
 }
 
 export function triggerWorker(userId = null) {
