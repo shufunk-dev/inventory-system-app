@@ -145,6 +145,235 @@ export default function ReceiptPage() {
     };
   }, []);
 
+  const handleAddItem = (item) => {
+    setCompletedReceipt(null);
+    const existing = receiptItems.find(r => r.itemNum === item.itemNum);
+    if (existing) {
+      setReceiptItems(receiptItems.map(r => 
+        r.itemNum === item.itemNum ? { ...r, qty: r.qty + 1 } : r
+      ));
+    } else {
+      setReceiptItems([...receiptItems, { ...item, qty: 1 }]);
+    }
+  };
+
+  const handleRemoveItem = (itemNum) => {
+    setCompletedReceipt(null);
+    const existing = receiptItems.find(r => r.itemNum === itemNum);
+    if (existing && existing.qty > 1) {
+      setReceiptItems(receiptItems.map(r => 
+        r.itemNum === itemNum ? { ...r, qty: r.qty - 1 } : r
+      ));
+    } else {
+      setReceiptItems(receiptItems.filter(r => r.itemNum !== itemNum));
+    }
+  };
+
+  const handleAddCustomItem = (e) => {
+    e.preventDefault();
+    if (!customName.trim() || !customPrice) return;
+    
+    const priceNum = parseFloat(customPrice);
+    if (isNaN(priceNum)) return;
+
+    const matchedStore = customStore === 'default' 
+      ? 'Default Catalog' 
+      : customStore === 'unattributed'
+        ? 'Direct Mall Sale'
+        : stores.find(s => s.id === customStore)?.name || 'Direct Mall Sale';
+
+    const customObj = {
+      itemNum: 'custom-' + Date.now(),
+      name: customName.trim(),
+      price: priceNum,
+      storeId: customStore,
+      storeName: matchedStore,
+      catalogName: customName.trim(),
+      qty: 1
+    };
+
+    setCompletedReceipt(null);
+    setReceiptItems([...receiptItems, customObj]);
+    setCustomName('');
+    setCustomPrice('');
+  };
+
+  const filteredItems = catalogItems.filter(item => {
+    if (selectedBoothFilter !== 'all' && item.storeId !== selectedBoothFilter) {
+      return false;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return item.name.toLowerCase().includes(query) || 
+           String(item.itemNum).toLowerCase().includes(query) ||
+           item.storeName.toLowerCase().includes(query);
+  });
+
+  const subtotal = receiptItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const taxAmount = subtotal * (taxRate / 100);
+  const total = subtotal + taxAmount;
+
+  const currentDateStr = new Date().toLocaleDateString('en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
+
+  const activeReceiptData = completedReceipt || {
+    receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
+    items: receiptItems,
+    subtotal,
+    taxRate,
+    taxAmount,
+    total,
+    paymentMethod: lastPaymentMethod,
+    cashTendered: lastCashTendered,
+    changeDue: lastChangeDue,
+    date: currentDateStr,
+    customerName,
+    mallName,
+    mallAddress,
+    mallPhone,
+    receiptFooter
+  };
+
+  const displayItems = activeReceiptData.items || [];
+  const displaySubtotal = activeReceiptData.subtotal !== undefined ? activeReceiptData.subtotal : subtotal;
+  const displayTaxAmount = activeReceiptData.taxAmount !== undefined ? activeReceiptData.taxAmount : taxAmount;
+  const displayTotal = activeReceiptData.total !== undefined ? activeReceiptData.total : total;
+  const displayReceiptNo = activeReceiptData.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
+  const displayPaymentMethod = activeReceiptData.paymentMethod || lastPaymentMethod;
+  const displayCashTendered = activeReceiptData.cashTendered !== undefined ? activeReceiptData.cashTendered : lastCashTendered;
+  const displayChangeDue = activeReceiptData.changeDue !== undefined ? activeReceiptData.changeDue : lastChangeDue;
+  const displayDateStr = activeReceiptData.date || currentDateStr;
+
+  const handlePrint = async (overrideDetails = {}) => {
+    setPrintError('');
+    setPrintSuccess('');
+
+    const targetReceipt = overrideDetails.items ? overrideDetails : (completedReceipt || {
+      receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
+      customerName,
+      items: receiptItems,
+      subtotal,
+      taxRate,
+      taxAmount,
+      total,
+      paymentMethod: overrideDetails.paymentMethod || lastPaymentMethod,
+      cashTendered: overrideDetails.cashTendered !== undefined ? overrideDetails.cashTendered : lastCashTendered,
+      changeDue: overrideDetails.changeDue !== undefined ? overrideDetails.changeDue : lastChangeDue
+    });
+
+    const receiptPayload = {
+      mallName: targetReceipt.mallName || mallName,
+      mallAddress: targetReceipt.mallAddress || mallAddress,
+      mallPhone: targetReceipt.mallPhone || mallPhone,
+      receiptNo: targetReceipt.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
+      customerName: targetReceipt.customerName || customerName,
+      receiptItems: targetReceipt.items || targetReceipt.receiptItems || receiptItems,
+      subtotal: targetReceipt.subtotal !== undefined ? targetReceipt.subtotal : subtotal,
+      taxRate: targetReceipt.taxRate !== undefined ? targetReceipt.taxRate : taxRate,
+      taxAmount: targetReceipt.taxAmount !== undefined ? targetReceipt.taxAmount : taxAmount,
+      total: targetReceipt.total !== undefined ? targetReceipt.total : total,
+      receiptFooter: targetReceipt.receiptFooter || receiptFooter,
+      paymentMethod: targetReceipt.paymentMethod || lastPaymentMethod,
+      cashTendered: targetReceipt.cashTendered !== undefined ? targetReceipt.cashTendered : lastCashTendered,
+      changeDue: targetReceipt.changeDue !== undefined ? targetReceipt.changeDue : lastChangeDue
+    };
+
+    if (printerConfig && printerConfig.connectionType !== 'browser') {
+      setIsPrintingDirect(true);
+      try {
+        const res = await fetch('/api/pos/print', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(receiptPayload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setPrintSuccess(data.message || 'Printed successfully.');
+        } else {
+          setPrintError(data.error || 'Failed to print receipt.');
+        }
+      } catch (err) {
+        setPrintError('Network error occurred attempting to print.');
+      } finally {
+        setIsPrintingDirect(false);
+      }
+    } else {
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    }
+  };
+
+  const pollCheckoutStatus = async (txId) => {
+    if (window.activePollInterval) clearInterval(window.activePollInterval);
+    
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes
+    
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(interval);
+        setCheckoutStatus('failed');
+        setCheckoutError('Payment timed out. Please try again.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/pos/checkout/status?id=${txId}`);
+        const data = await res.json();
+        
+        if (res.ok) {
+          if (data.status === 'completed') {
+            clearInterval(interval);
+            setCheckoutStatus('completed');
+          } else if (data.status === 'canceled') {
+            clearInterval(interval);
+            setCheckoutStatus('canceled');
+          } else if (data.status === 'failed') {
+            clearInterval(interval);
+            setCheckoutStatus('failed');
+            setCheckoutError('Payment was declined or failed on terminal.');
+          }
+        }
+      } catch (e) {
+        console.error('Error polling checkout status:', e);
+      }
+    }, 5000);
+
+    window.activePollInterval = interval;
+  };
+
+  const cancelCardCheckout = async () => {
+    if (window.activePollInterval) {
+      clearInterval(window.activePollInterval);
+    }
+
+    if (!activeTxId) {
+      setCheckoutModalOpen(false);
+      return;
+    }
+
+    setCheckoutStatus('initializing');
+
+    try {
+      await fetch('/api/pos/checkout/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: activeTxId })
+      });
+      setCheckoutStatus('canceled');
+      setTimeout(() => {
+        setCheckoutModalOpen(false);
+      }, 1000);
+    } catch (e) {
+      console.error('Failed to cancel payment:', e);
+      setCheckoutModalOpen(false);
+    }
+  };
+
   const startCardCheckout = async () => {
     setCheckoutError('');
     setCheckoutStatus('initializing');
@@ -267,120 +496,6 @@ export default function ReceiptPage() {
       setCashIsProcessing(false);
       alert(`Error saving cash sale: ${e.message}`);
     }
-  const subtotal = receiptItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
-
-  const activeReceiptData = completedReceipt || {
-    receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
-    items: receiptItems,
-    subtotal,
-    taxRate,
-    taxAmount,
-    total,
-    paymentMethod: lastPaymentMethod,
-    cashTendered: lastCashTendered,
-    changeDue: lastChangeDue,
-    date: currentDateStr,
-    customerName,
-    mallName,
-    mallAddress,
-    mallPhone,
-    receiptFooter
-  };
-
-  const displayItems = activeReceiptData.items || [];
-  const displaySubtotal = activeReceiptData.subtotal !== undefined ? activeReceiptData.subtotal : subtotal;
-  const displayTaxAmount = activeReceiptData.taxAmount !== undefined ? activeReceiptData.taxAmount : taxAmount;
-  const displayTotal = activeReceiptData.total !== undefined ? activeReceiptData.total : total;
-  const displayReceiptNo = activeReceiptData.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
-  const displayPaymentMethod = activeReceiptData.paymentMethod || lastPaymentMethod;
-  const displayCashTendered = activeReceiptData.cashTendered !== undefined ? activeReceiptData.cashTendered : lastCashTendered;
-  const displayChangeDue = activeReceiptData.changeDue !== undefined ? activeReceiptData.changeDue : lastChangeDue;
-  const displayDateStr = activeReceiptData.date || currentDateStr;
-
-  const handlePrint = async (overrideDetails = {}) => {
-    setPrintError('');
-    setPrintSuccess('');
-
-    const targetReceipt = overrideDetails.items ? overrideDetails : (completedReceipt || {
-      receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
-      customerName,
-      items: receiptItems,
-      subtotal,
-      taxRate,
-      taxAmount,
-      total,
-      paymentMethod: overrideDetails.paymentMethod || lastPaymentMethod,
-      cashTendered: overrideDetails.cashTendered !== undefined ? overrideDetails.cashTendered : lastCashTendered,
-      changeDue: overrideDetails.changeDue !== undefined ? overrideDetails.changeDue : lastChangeDue
-    });
-
-    const receiptPayload = {
-      mallName: targetReceipt.mallName || mallName,
-      mallAddress: targetReceipt.mallAddress || mallAddress,
-      mallPhone: targetReceipt.mallPhone || mallPhone,
-      receiptNo: targetReceipt.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
-      customerName: targetReceipt.customerName || customerName,
-      receiptItems: targetReceipt.items || targetReceipt.receiptItems || receiptItems,
-      subtotal: targetReceipt.subtotal !== undefined ? targetReceipt.subtotal : subtotal,
-      taxRate: targetReceipt.taxRate !== undefined ? targetReceipt.taxRate : taxRate,
-      taxAmount: targetReceipt.taxAmount !== undefined ? targetReceipt.taxAmount : taxAmount,
-      total: targetReceipt.total !== undefined ? targetReceipt.total : total,
-      receiptFooter: targetReceipt.receiptFooter || receiptFooter,
-      paymentMethod: targetReceipt.paymentMethod || lastPaymentMethod,
-      cashTendered: targetReceipt.cashTendered !== undefined ? targetReceipt.cashTendered : lastCashTendered,
-      changeDue: targetReceipt.changeDue !== undefined ? targetReceipt.changeDue : lastChangeDue
-    };
-
-    if (printerConfig && printerConfig.connectionType !== 'browser') {
-      setIsPrintingDirect(true);
-      try {
-        const res = await fetch('/api/pos/print', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(receiptPayload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setPrintSuccess(data.message || 'Printed successfully.');
-        } else {
-          setPrintError(data.error || 'Failed to print receipt.');
-        }
-      } catch (err) {
-        setPrintError('Network error occurred attempting to print.');
-      } finally {
-        setIsPrintingDirect(false);
-      }
-    } else {
-      setTimeout(() => {
-        window.print();
-      }, 150);
-    }
-  };
-
-    if (printerConfig && printerConfig.connectionType !== 'browser') {
-      setIsPrintingDirect(true);
-      try {
-        const res = await fetch('/api/pos/print', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(receiptPayload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setPrintSuccess(data.message || 'Printed successfully.');
-        } else {
-          setPrintError(data.error || 'Failed to print receipt.');
-        }
-      } catch (err) {
-        setPrintError('Network error occurred attempting to print.');
-      } finally {
-        setIsPrintingDirect(false);
-      }
-    } else {
-      window.print();
-    }
   };
 
   const handleTaxLookupClick = async () => {
@@ -424,11 +539,6 @@ export default function ReceiptPage() {
       alert(e.message || "Failed to resolve ZIP code tax rate.");
     }
   };
-
-  const currentDateStr = new Date().toLocaleDateString('en-US', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  });
 
   const getQrValue = () => {
     if (!paymentConfig) return '';
