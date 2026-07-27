@@ -50,7 +50,10 @@ export function compileEscposReceipt(receipt, config = {}) {
     taxRate = 7.0,
     taxAmount = 0,
     total = 0,
-    receiptFooter = ''
+    receiptFooter = '',
+    paymentMethod = '',
+    cashTendered = null,
+    changeDue = null
   } = receipt;
 
   const width = config.paperWidth === '58mm' ? 32 : 42; // Standard 42 columns for 80mm, 32 for 58mm
@@ -105,6 +108,17 @@ export function compileEscposReceipt(receipt, config = {}) {
   raw += `SUBTOTAL: $${subtotal.toFixed(2)}\n`;
   raw += `TAX (${taxRate.toFixed(1)}%): $${taxAmount.toFixed(2)}\n`;
   raw += `TOTAL: $${total.toFixed(2)}\n`;
+
+  if (paymentMethod) {
+    raw += `${'-'.repeat(width)}\n`;
+    raw += `PAYMENT METHOD: ${paymentMethod.toUpperCase()}\n`;
+    if (cashTendered !== null && cashTendered !== undefined && cashTendered !== '') {
+      const tenderedNum = typeof cashTendered === 'number' ? cashTendered : parseFloat(cashTendered || 0);
+      const changeNum = typeof changeDue === 'number' ? changeDue : parseFloat(changeDue || 0);
+      raw += `CASH TENDERED : $${tenderedNum.toFixed(2)}\n`;
+      raw += `CHANGE GIVEN  : $${changeNum.toFixed(2)}\n`;
+    }
+  }
 
   // Divider
   raw += COMMANDS.ALIGN_CENTER;

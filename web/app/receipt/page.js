@@ -45,6 +45,11 @@ export default function ReceiptPage() {
   const [cashTendered, setCashTendered] = useState('');
   const [cashIsProcessing, setCashIsProcessing] = useState(false);
 
+  // Active receipt payment details
+  const [lastPaymentMethod, setLastPaymentMethod] = useState('');
+  const [lastCashTendered, setLastCashTendered] = useState(null);
+  const [lastChangeDue, setLastChangeDue] = useState(null);
+
   const [isTabletMode, setIsTabletMode] = useState(false);
   const [configCollapsed, setConfigCollapsed] = useState(true);
   const [printerConfig, setPrinterConfig] = useState(null);
@@ -187,8 +192,13 @@ export default function ReceiptPage() {
       setQrIsMarkingPaid(false);
       setQrModalOpen(false);
       
+      const pMethod = qrProvider.toUpperCase();
+      setLastPaymentMethod(pMethod);
+      setLastCashTendered(null);
+      setLastChangeDue(null);
+
       // Auto trigger print receipt
-      handlePrint();
+      handlePrint({ paymentMethod: pMethod, cashTendered: null, changeDue: null });
 
       setReceiptItems([]);
       fetchNextReceiptNo();
@@ -216,12 +226,19 @@ export default function ReceiptPage() {
         throw new Error(data.error || 'Failed to record cash transaction');
       }
 
+      const tenderedVal = parseFloat(cashTendered) || total;
+      const changeVal = Math.max(0, tenderedVal - total);
+
+      setLastPaymentMethod('Cash');
+      setLastCashTendered(tenderedVal);
+      setLastChangeDue(changeVal);
+
       setCashIsProcessing(false);
       setCashModalOpen(false);
       setCashTendered('');
       
       // Auto trigger print receipt (kicks drawer if hardware is attached)
-      handlePrint();
+      handlePrint({ paymentMethod: 'Cash', cashTendered: tenderedVal, changeDue: changeVal });
 
       setReceiptItems([]);
       fetchNextReceiptNo();
@@ -364,9 +381,13 @@ export default function ReceiptPage() {
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
-  const handlePrint = async () => {
+  const handlePrint = async (overrideDetails = {}) => {
     setPrintError('');
     setPrintSuccess('');
+
+    const currentPaymentMethod = overrideDetails.paymentMethod !== undefined ? overrideDetails.paymentMethod : lastPaymentMethod;
+    const currentCashTendered = overrideDetails.cashTendered !== undefined ? overrideDetails.cashTendered : lastCashTendered;
+    const currentChangeDue = overrideDetails.changeDue !== undefined ? overrideDetails.changeDue : lastChangeDue;
 
     const receiptPayload = {
       mallName,
@@ -379,7 +400,10 @@ export default function ReceiptPage() {
       taxRate,
       taxAmount,
       total,
-      receiptFooter
+      receiptFooter,
+      paymentMethod: currentPaymentMethod,
+      cashTendered: currentCashTendered,
+      changeDue: currentChangeDue
     };
 
     if (printerConfig && printerConfig.connectionType !== 'browser') {
@@ -1099,6 +1123,26 @@ export default function ReceiptPage() {
                       <span>TOTAL:</span>
                       <span>${total.toFixed(2)}</span>
                     </div>
+                    {lastPaymentMethod && (
+                      <div className="pt-2 border-t border-dashed border-gray-600 space-y-1 text-right mt-2">
+                        <div className="flex justify-between font-bold">
+                          <span>PAYMENT:</span>
+                          <span>{lastPaymentMethod.toUpperCase()}</span>
+                        </div>
+                        {lastCashTendered !== null && lastCashTendered !== undefined && (
+                          <>
+                            <div className="flex justify-between">
+                              <span>CASH TENDERED:</span>
+                              <span>${parseFloat(lastCashTendered).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between font-bold">
+                              <span>CHANGE GIVEN:</span>
+                              <span>${parseFloat(lastChangeDue || 0).toFixed(2)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <p className="font-mono text-center my-4 text-gray-600">--------------------------------</p>
@@ -1188,6 +1232,26 @@ export default function ReceiptPage() {
                         <span>Total Amount Paid:</span>
                         <span className="font-mono">${total.toFixed(2)}</span>
                       </div>
+                      {lastPaymentMethod && (
+                        <div className="pt-2 border-t border-gray-200 space-y-1 text-xs text-right mt-2 text-gray-700">
+                          <div className="flex justify-between font-bold">
+                            <span>Payment Method:</span>
+                            <span className="font-mono">{lastPaymentMethod.toUpperCase()}</span>
+                          </div>
+                          {lastCashTendered !== null && lastCashTendered !== undefined && (
+                            <>
+                              <div className="flex justify-between">
+                                <span>Cash Tendered:</span>
+                                <span className="font-mono">${parseFloat(lastCashTendered).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between font-bold text-gray-900">
+                                <span>Change Given:</span>
+                                <span className="font-mono">${parseFloat(lastChangeDue || 0).toFixed(2)}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
