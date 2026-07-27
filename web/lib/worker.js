@@ -2132,6 +2132,14 @@ export async function fetchItemDetails(item, db, options = {}) {
       if (!options.refreshPrices && !toolAssignedLocation) {
         toolAssignedLocation = 'Workshop';
       }
+    } else if ((itemType === 'bottle' || options.forceTier === 'bottle') && name && name !== 'Unknown Item') {
+      console.log(`[Worker] Item is Bottle / Glassware. Extracting details & market value for: ${name}`);
+      const marketData = await fetchGenericMarketValue(`${name} bottle glass antique`);
+      if (marketData) {
+        valueLow = marketData.valueLow;
+        valueAvg = marketData.valueAvg;
+        valueHigh = marketData.valueHigh;
+      }
     }
 
     // Fallback: If no market value was fetched by the type-specific logic, try a generic lookup

@@ -23,6 +23,7 @@ const TYPE_LABELS = {
   game: 'Video Games',
   card: 'Trading Cards',
   video: 'VHS & Movies',
+  bottle: 'Bottles & Glassware',
   graded: 'Graded Assets',
   standard: 'Standard Items'
 };
@@ -34,6 +35,7 @@ const TYPE_COLORS = {
   game: 'bg-purple-500/20 text-purple-400 border-purple-500/30 progress-purple',
   card: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 progress-emerald',
   video: 'bg-rose-500/20 text-rose-400 border-rose-500/30 progress-rose',
+  bottle: 'bg-teal-500/20 text-teal-400 border-teal-500/30 progress-teal',
   graded: 'bg-orange-500/20 text-orange-400 border-orange-500/30 progress-orange',
   standard: 'bg-slate-500/20 text-slate-400 border-slate-500/30 progress-slate'
 };
