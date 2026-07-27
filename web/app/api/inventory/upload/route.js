@@ -34,6 +34,123 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const file = formData.get('file');
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    
+    // Check if zip
+    if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
+      const bytes = await file.arrayBuffer();
+      const loadedZip = await JSZip.loadAsync(bytes);
+      let dataJson = [];
+      const db = await getDb();
+      const categoryId = null;
+
+      if (loadedZip.file('data.json')) {
+        const jsonStr = await loadedZip.file('data.json').async('string');
+        dataJson = JSON.parse(jsonStr);
+      } else {
+        const validImageExts = /\.(jpg|jpeg|png|webp|gif|heic|bmp)$/i;
+        const categoryMap = new Map();
+
+        const getOrCreateCategoryPath = async (folderParts) => {
+          if (!folderParts || folderParts.length === 0) return categoryId;
+          
+          let parentId = categoryId;
+          let currentPathKey = '';
+
+          for (const folderName of folderParts) {
+            currentPathKey += (currentPathKey ? '/' : '') + folderName;
+            
+            if (categoryMap.has(currentPathKey)) {
+              parentId = categoryMap.get(currentPathKey);
+              continue;
+            }
+
+            let catRow;
+            if (parentId) {
+              catRow = db.prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND parentId = ?').get(folderName, parentId);
+            } else {
+              catRow = db.prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND (parentId IS NULL OR parentId = "")').get(folderName);
+            }
+
+            if (catRow) {
+              parentId = catRow.id;
+            } else {
+              const newCatId = crypto.randomUUID();
+              db.prepare('INSERT INTO categories (id, name, parentId, userId, createdAt) VALUES (?, ?, ?, ?, ?)').run(
+                newCatId,
+                folderName,
+                parentId,
+                user.id,
+                Date.now()
+              );
+              parentId = newCatId;
+            }
+
+            categoryMap.set(currentPathKey, parentId);
+          }
+
+          return parentId;
+        };
+
+        const zipFiles = Object.keys(loadedZip.files);
+        let importedCount = 0;
+
+        const insertItem = db.prepare(`
+          INSERT INTO items (id, barcode, name, imagePath, imagePathBack, itemType, categoryId, createdAt, syncStatus, lastSyncAttempt, userId)
+          VALUES (@id, @barcode, @name, @imagePath, @imagePathBack, @itemType, @categoryId, @createdAt, @syncStatus, NULL, @userId)
+        `);
+
+        for (const relativePath of zipFiles) {
+          const zipObj = loadedZip.files[relativePath];
+          if (zipObj.dir) continue;
+
+          if (relativePath.includes('__MACOSX') || relativePath.startsWith('.') || path.basename(relativePath).startsWith('.')) {
+            continue;
+          }
+
+          if (!validImageExts.test(relativePath)) {
+            continue;
+          }
+
+          const normalizedPath = relativePath.replace(/\\/g, '/');
+          const parts = normalizedPath.split('/').filter(Boolean);
+          const filename = parts.pop();
+          const folderParts = parts;
+
+          const ext = path.extname(filename);
+          const nameWithoutExt = path.basename(filename, ext);
+          const itemName = nameWithoutExt.replace(/[-_]+/g, ' ').trim();
+
+          if (!itemName) continue;
+
+          const itemCatId = await getOrCreateCategoryPath(folderParts);
+
+          const fileBuffer = await zipObj.async('nodebuffer');
+          const id = crypto.randomUUID();
+          const finalFilename = `${id}_${filename}`;
+          await fs.writeFile(path.join(uploadsDir, finalFilename), fileBuffer);
+          const imagePath = `/api/file/${finalFilename}`;
+
+          insertItem.run({
+            id,
+            barcode: null,
+            name: itemName,
+            imagePath,
+            imagePathBack: null,
+            itemType: 'standard',
+            categoryId: itemCatId,
+            createdAt: Date.now(),
+            syncStatus: 'completed',
+            userId: user.id
+          });
+
+          importedCount++;
+        }
+
+        return NextResponse.json({ success: true, count: importedCount });
+      }
+    }
+
     const countDate = formData.get('countDate') || new Date().toISOString().split('T')[0];
 
     if (!file) {
