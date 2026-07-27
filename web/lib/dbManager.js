@@ -364,6 +364,17 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.5', date: 'July 27, 2026', title: 'Cash Checkout Modal, Tender Breakdowns, Card Brand Display & Model Upgrades',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Added interactive Cash Register Checkout modal with quick tender buttons (Exact, $20, $50, $100), custom cash amount entry, and live change due calculation.' },
+      { type: 'web', text: 'Implemented completedReceipt snapshot state and 150ms delayed print trigger to ensure React flushes DOM rendering before launching print dialogs.' },
+      { type: 'web', text: 'Added credit card brand and last 4 digits tracking (e.g. VISA ****4242) across terminal status polling, thermal paper previews, letter invoice layouts, and ESC/POS thermal printer output.' },
+      { type: 'web', text: 'Enhanced custom line item entry for checkout impulse buys (snacks, sodas, unbarcoded items) with automatic booth vendor attribution and real-time daily sales reporting.' },
+      { type: 'web', text: 'Upgraded coding AI engine to Gemini 3.6 Flash for enhanced speed and optimized token consumption.' },
+      { type: 'web', text: 'Bumped version numbers to 1.9.5 across Web, Electron desktop app, Mobile Expo config, and top navbar navigation badge.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.4', date: 'July 19, 2026', title: 'Video Game Platforms, Movie Formats, & Bulk Rename Upgrades',
     changes: JSON.stringify([
       { type: 'web', text: 'Added customizable enabled video game systems and movie formats settings registries.' },
