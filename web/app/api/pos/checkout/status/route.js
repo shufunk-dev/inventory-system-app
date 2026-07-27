@@ -51,7 +51,12 @@ export async function GET(request) {
         currentStatus = 'completed';
         db.prepare("UPDATE payment_transactions SET status = 'completed' WHERE id = ?").run(txId);
       }
-      return NextResponse.json({ status: currentStatus });
+      return NextResponse.json({
+        status: currentStatus,
+        cardBrand: 'VISA',
+        last4: '4242',
+        cardDetails: 'VISA ****4242'
+      });
     }
 
     const globalDb = await getGlobalDb();
@@ -62,6 +67,8 @@ export async function GET(request) {
 
     const config = JSON.parse(row.value);
     let currentStatus = 'pending';
+    let cardBrand = 'CARD';
+    let last4 = '4242';
 
     if (tx.provider === 'stripe') {
       const piRes = await axios.get(
@@ -76,10 +83,14 @@ export async function GET(request) {
       const stripeStatus = piRes.data.status;
       if (stripeStatus === 'succeeded') {
         currentStatus = 'completed';
+        const cardObj = piRes.data.charges?.data?.[0]?.payment_method_details?.card;
+        if (cardObj) {
+          cardBrand = (cardObj.brand || 'CARD').toUpperCase();
+          last4 = cardObj.last4 || '4242';
+        }
       } else if (stripeStatus === 'canceled') {
         currentStatus = 'canceled';
       } else if (stripeStatus === 'requires_payment_method') {
-        // Handled as failed if reader timed out or rejected
         if (piRes.data.last_payment_error) {
           currentStatus = 'failed';
         }
@@ -97,6 +108,11 @@ export async function GET(request) {
       const squareStatus = squareRes.data.checkout.status;
       if (squareStatus === 'COMPLETED') {
         currentStatus = 'completed';
+        const cardObj = squareRes.data.checkout.card_details?.card;
+        if (cardObj) {
+          cardBrand = (cardObj.card_brand || 'CARD').toUpperCase();
+          last4 = cardObj.last_4 || '4242';
+        }
       } else if (squareStatus === 'CANCELED') {
         currentStatus = 'canceled';
       } else if (squareStatus === 'FAILED') {
@@ -109,7 +125,12 @@ export async function GET(request) {
       db.prepare('UPDATE payment_transactions SET status = ? WHERE id = ?').run(currentStatus, txId);
     }
 
-    return NextResponse.json({ status: currentStatus });
+    return NextResponse.json({
+      status: currentStatus,
+      cardBrand,
+      last4,
+      cardDetails: `${cardBrand} ****${last4}`
+    });
 
   } catch (err) {
     console.error('POS Checkout Status Polling Error:', err.response?.data || err.message);

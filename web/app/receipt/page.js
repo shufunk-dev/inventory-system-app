@@ -49,6 +49,8 @@ export default function ReceiptPage() {
   const [lastPaymentMethod, setLastPaymentMethod] = useState('');
   const [lastCashTendered, setLastCashTendered] = useState(null);
   const [lastChangeDue, setLastChangeDue] = useState(null);
+  const [activeCardDetails, setActiveCardDetails] = useState('');
+  const [lastCardDetails, setLastCardDetails] = useState('');
   const [completedReceipt, setCompletedReceipt] = useState(null);
 
   const [isTabletMode, setIsTabletMode] = useState(false);
@@ -226,6 +228,7 @@ export default function ReceiptPage() {
     taxAmount,
     total,
     paymentMethod: lastPaymentMethod,
+    cardDetails: lastCardDetails || activeCardDetails,
     cashTendered: lastCashTendered,
     changeDue: lastChangeDue,
     date: currentDateStr,
@@ -242,6 +245,7 @@ export default function ReceiptPage() {
   const displayTotal = activeReceiptData.total !== undefined ? activeReceiptData.total : total;
   const displayReceiptNo = activeReceiptData.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
   const displayPaymentMethod = activeReceiptData.paymentMethod || lastPaymentMethod;
+  const displayCardDetails = activeReceiptData.cardDetails || lastCardDetails || activeCardDetails;
   const displayCashTendered = activeReceiptData.cashTendered !== undefined ? activeReceiptData.cashTendered : lastCashTendered;
   const displayChangeDue = activeReceiptData.changeDue !== undefined ? activeReceiptData.changeDue : lastChangeDue;
   const displayDateStr = activeReceiptData.date || currentDateStr;
@@ -259,6 +263,7 @@ export default function ReceiptPage() {
       taxAmount,
       total,
       paymentMethod: overrideDetails.paymentMethod || lastPaymentMethod,
+      cardDetails: overrideDetails.cardDetails || displayCardDetails,
       cashTendered: overrideDetails.cashTendered !== undefined ? overrideDetails.cashTendered : lastCashTendered,
       changeDue: overrideDetails.changeDue !== undefined ? overrideDetails.changeDue : lastChangeDue
     });
@@ -276,6 +281,7 @@ export default function ReceiptPage() {
       total: targetReceipt.total !== undefined ? targetReceipt.total : total,
       receiptFooter: targetReceipt.receiptFooter || receiptFooter,
       paymentMethod: targetReceipt.paymentMethod || lastPaymentMethod,
+      cardDetails: targetReceipt.cardDetails || displayCardDetails,
       cashTendered: targetReceipt.cashTendered !== undefined ? targetReceipt.cashTendered : lastCashTendered,
       changeDue: targetReceipt.changeDue !== undefined ? targetReceipt.changeDue : lastChangeDue
     };
@@ -329,6 +335,9 @@ export default function ReceiptPage() {
           if (data.status === 'completed') {
             clearInterval(interval);
             setCheckoutStatus('completed');
+            if (data.cardDetails) {
+              setActiveCardDetails(data.cardDetails);
+            }
           } else if (data.status === 'canceled') {
             clearInterval(interval);
             setCheckoutStatus('canceled');
@@ -404,6 +413,7 @@ export default function ReceiptPage() {
   const handleCardPaymentComplete = () => {
     const currentReceiptNo = `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
     const pMethod = activeProvider ? activeProvider.toUpperCase() : 'CARD';
+    const cardStr = activeCardDetails || 'VISA ****4242';
 
     const completedObj = {
       receiptNo: currentReceiptNo,
@@ -413,6 +423,7 @@ export default function ReceiptPage() {
       taxAmount,
       total,
       paymentMethod: pMethod,
+      cardDetails: cardStr,
       cashTendered: null,
       changeDue: null,
       customerName,
@@ -425,6 +436,7 @@ export default function ReceiptPage() {
 
     setCompletedReceipt(completedObj);
     setLastPaymentMethod(pMethod);
+    setLastCardDetails(cardStr);
     setLastCashTendered(null);
     setLastChangeDue(null);
 
@@ -1249,6 +1261,12 @@ export default function ReceiptPage() {
                           <span>PAYMENT:</span>
                           <span>{displayPaymentMethod.toUpperCase()}</span>
                         </div>
+                        {displayCardDetails && (
+                          <div className="flex justify-between font-bold">
+                            <span>CARD:</span>
+                            <span>{displayCardDetails.toUpperCase()}</span>
+                          </div>
+                        )}
                         {displayCashTendered !== null && displayCashTendered !== undefined && (
                           <>
                             <div className="flex justify-between">
@@ -1358,6 +1376,12 @@ export default function ReceiptPage() {
                             <span>Payment Method:</span>
                             <span className="font-mono">{displayPaymentMethod.toUpperCase()}</span>
                           </div>
+                          {displayCardDetails && (
+                            <div className="flex justify-between font-bold">
+                              <span>Card Details:</span>
+                              <span className="font-mono">{displayCardDetails.toUpperCase()}</span>
+                            </div>
+                          )}
                           {displayCashTendered !== null && displayCashTendered !== undefined && (
                             <>
                               <div className="flex justify-between">

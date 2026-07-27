@@ -52,6 +52,7 @@ export function compileEscposReceipt(receipt, config = {}) {
     total = 0,
     receiptFooter = '',
     paymentMethod = '',
+    cardDetails = '',
     cashTendered = null,
     changeDue = null
   } = receipt;
@@ -112,6 +113,9 @@ export function compileEscposReceipt(receipt, config = {}) {
   if (paymentMethod) {
     raw += `${'-'.repeat(width)}\n`;
     raw += `PAYMENT METHOD: ${paymentMethod.toUpperCase()}\n`;
+    if (cardDetails) {
+      raw += `CARD DETAILS  : ${cardDetails.toUpperCase()}\n`;
+    }
     if (cashTendered !== null && cashTendered !== undefined && cashTendered !== '') {
       const tenderedNum = typeof cashTendered === 'number' ? cashTendered : parseFloat(cashTendered || 0);
       const changeNum = typeof changeDue === 'number' ? changeDue : parseFloat(changeDue || 0);
