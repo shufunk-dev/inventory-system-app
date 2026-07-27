@@ -401,6 +401,42 @@ export default function ReceiptPage() {
     }
   };
 
+  const handleCardPaymentComplete = () => {
+    const currentReceiptNo = `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
+    const pMethod = activeProvider ? activeProvider.toUpperCase() : 'CARD';
+
+    const completedObj = {
+      receiptNo: currentReceiptNo,
+      items: [...receiptItems],
+      subtotal,
+      taxRate,
+      taxAmount,
+      total,
+      paymentMethod: pMethod,
+      cashTendered: null,
+      changeDue: null,
+      customerName,
+      mallName,
+      mallAddress,
+      mallPhone,
+      receiptFooter,
+      date: currentDateStr
+    };
+
+    setCompletedReceipt(completedObj);
+    setLastPaymentMethod(pMethod);
+    setLastCashTendered(null);
+    setLastChangeDue(null);
+
+    setCheckoutModalOpen(false);
+    
+    // Auto trigger print receipt
+    handlePrint(completedObj);
+
+    setReceiptItems([]);
+    fetchNextReceiptNo();
+  };
+
   const handleQrPaymentComplete = async () => {
     setQrIsMarkingPaid(true);
     try {
@@ -423,12 +459,33 @@ export default function ReceiptPage() {
       setQrModalOpen(false);
       
       const pMethod = qrProvider.toUpperCase();
+      const currentReceiptNo = `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
+
+      const completedObj = {
+        receiptNo: currentReceiptNo,
+        items: [...receiptItems],
+        subtotal,
+        taxRate,
+        taxAmount,
+        total,
+        paymentMethod: pMethod,
+        cashTendered: null,
+        changeDue: null,
+        customerName,
+        mallName,
+        mallAddress,
+        mallPhone,
+        receiptFooter,
+        date: currentDateStr
+      };
+
+      setCompletedReceipt(completedObj);
       setLastPaymentMethod(pMethod);
       setLastCashTendered(null);
       setLastChangeDue(null);
 
       // Auto trigger print receipt
-      handlePrint({ paymentMethod: pMethod, cashTendered: null, changeDue: null });
+      handlePrint(completedObj);
 
       setReceiptItems([]);
       fetchNextReceiptNo();
@@ -1380,12 +1437,7 @@ export default function ReceiptPage() {
                   <p className="text-sm font-bold text-green-450">Payment Approved!</p>
                   <p className="text-xs text-gray-400">Transaction completed successfully.</p>
                   <button
-                    onClick={() => {
-                      setCheckoutModalOpen(false);
-                      handlePrint(); // Auto-open print layout
-                      setReceiptItems([]);
-                      fetchNextReceiptNo();
-                    }}
+                    onClick={handleCardPaymentComplete}
                     className="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-xl text-xs transition-colors cursor-pointer"
                   >
                     Print Receipt
