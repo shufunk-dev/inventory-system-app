@@ -37,9 +37,10 @@ export async function POST(request) {
 
     const db = await getDb();
 
-    if (provider === 'venmo' || provider === 'paypal') {
+    if (provider === 'venmo' || provider === 'paypal' || provider === 'cash') {
       const txId = crypto.randomUUID();
-      const refId = 'qr_' + crypto.randomBytes(4).toString('hex');
+      const prefix = provider === 'cash' ? 'cash_' : 'qr_';
+      const refId = prefix + crypto.randomBytes(4).toString('hex');
       
       db.prepare(`
         INSERT INTO payment_transactions (id, receiptNo, provider, providerCheckoutId, amount, status, isTraining, createdAt)

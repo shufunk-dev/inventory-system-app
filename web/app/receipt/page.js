@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Printer, ArrowLeft, Search, Plus, Minus, Trash2, FileText, Check, ShoppingCart, Info, CreditCard, Loader2, QrCode, Settings } from 'lucide-react';
+import { Printer, ArrowLeft, Search, Plus, Minus, Trash2, FileText, Check, ShoppingCart, Info, CreditCard, Loader2, QrCode, Settings, Banknote } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 
@@ -39,6 +39,11 @@ export default function ReceiptPage() {
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrProvider, setQrProvider] = useState('venmo'); // 'venmo' | 'paypal'
   const [qrIsMarkingPaid, setQrIsMarkingPaid] = useState(false);
+
+  // Cash payment states
+  const [cashModalOpen, setCashModalOpen] = useState(false);
+  const [cashTendered, setCashTendered] = useState('');
+  const [cashIsProcessing, setCashIsProcessing] = useState(false);
 
   const [isTabletMode, setIsTabletMode] = useState(false);
   const [configCollapsed, setConfigCollapsed] = useState(true);
@@ -190,6 +195,39 @@ export default function ReceiptPage() {
     } catch (e) {
       setQrIsMarkingPaid(false);
       alert(`Error saving payment: ${e.message}`);
+    }
+  };
+
+  const handleCashPaymentComplete = async () => {
+    setCashIsProcessing(true);
+    try {
+      const res = await fetch('/api/pos/checkout/card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: total,
+          receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
+          isTraining: isTrainingMode,
+          provider: 'cash'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to record cash transaction');
+      }
+
+      setCashIsProcessing(false);
+      setCashModalOpen(false);
+      setCashTendered('');
+      
+      // Auto trigger print receipt (kicks drawer if hardware is attached)
+      handlePrint();
+
+      setReceiptItems([]);
+      fetchNextReceiptNo();
+    } catch (e) {
+      setCashIsProcessing(false);
+      alert(`Error saving cash sale: ${e.message}`);
     }
   };
 
@@ -508,6 +546,17 @@ export default function ReceiptPage() {
                 />
               </button>
             </div>
+
+            <button 
+              onClick={() => {
+                setCashTendered(total.toFixed(2));
+                setCashModalOpen(true);
+              }}
+              disabled={receiptItems.length === 0}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all text-sm cursor-pointer"
+            >
+              <Banknote className="w-4 h-4" /> Pay via Cash
+            </button>
 
             <button 
               onClick={startCardCheckout}
@@ -920,32 +969,44 @@ export default function ReceiptPage() {
               </div>
 
               {/* Bold Touch Payment Action Buttons Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCashTendered(total.toFixed(2));
+                    setCashModalOpen(true);
+                  }}
+                  disabled={receiptItems.length === 0}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold py-3.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/15 text-xs transition-colors cursor-pointer active:scale-95"
+                >
+                  <Banknote className="w-4 h-4" /> Pay Cash
+                </button>
+
                 <button
                   type="button"
                   onClick={startCardCheckout}
                   disabled={receiptItems.length === 0}
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-extrabold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/15 text-xs transition-colors cursor-pointer active:scale-95"
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-extrabold py-3.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15 text-xs transition-colors cursor-pointer active:scale-95"
                 >
-                  <CreditCard className="w-4 h-4" /> Pay via Card
+                  <CreditCard className="w-4 h-4" /> Pay Card
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setQrModalOpen(true)}
                   disabled={receiptItems.length === 0}
-                  className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-extrabold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-600/15 text-xs transition-colors cursor-pointer active:scale-95"
+                  className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-extrabold py-3.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-amber-600/15 text-xs transition-colors cursor-pointer active:scale-95"
                 >
-                  <QrCode className="w-4 h-4" /> Pay via QR
+                  <QrCode className="w-4 h-4" /> Pay QR
                 </button>
 
                 <button
                   type="button"
                   onClick={handlePrint}
                   disabled={receiptItems.length === 0}
-                  className="col-span-1 sm:col-span-2 bg-gray-850 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 disabled:opacity-50 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-colors cursor-pointer active:scale-95"
+                  className="col-span-1 sm:col-span-3 bg-gray-850 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-colors cursor-pointer active:scale-95"
                 >
-                  <Printer className="w-4 h-4 text-blue-400" /> Print Customer Receipt
+                  <Printer className="w-4 h-4 text-blue-400" /> Print Customer Receipt Preview
                 </button>
               </div>
               {isPrintingDirect && (
@@ -1326,6 +1387,106 @@ export default function ReceiptPage() {
                 className="text-gray-400 hover:text-white text-xs font-bold transition-colors hover:underline cursor-pointer"
               >
                 Cancel Checkout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cashModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in no-print">
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl relative overflow-hidden text-center">
+            {/* Background design glow */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
+
+            <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 mx-auto mb-3">
+              <Banknote className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-1">Cash Register Checkout</h3>
+            {isTrainingMode && (
+              <span className="inline-block bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold mb-3">
+                Training Mode
+              </span>
+            )}
+            
+            <div className="bg-gray-950 p-4 rounded-2xl border border-gray-850 my-4 text-left space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 font-semibold uppercase">Total Due</span>
+                <span className="text-xl font-black font-mono text-emerald-400">${total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-850">
+                <span className="text-xs text-gray-400 font-semibold uppercase">Cash Tendered</span>
+                <div className="relative w-32">
+                  <span className="absolute left-2.5 top-2 text-gray-400 text-sm font-mono">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={cashTendered}
+                    onChange={(e) => setCashTendered(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-750 text-white font-mono font-bold text-sm rounded-xl pl-6 pr-2 py-1.5 focus:outline-none focus:border-emerald-500 text-right"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              
+              {/* Change due calculation */}
+              <div className="flex justify-between items-center pt-2 border-t border-gray-850">
+                <span className="text-xs text-gray-400 font-semibold uppercase">Change Due</span>
+                <span className={`text-base font-extrabold font-mono ${(parseFloat(cashTendered || 0) - total) >= 0 ? 'text-blue-400' : 'text-gray-500'}`}>
+                  ${Math.max(0, parseFloat(cashTendered || 0) - total).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Tender Buttons */}
+            <div className="grid grid-cols-4 gap-2 mb-6">
+              <button
+                type="button"
+                onClick={() => setCashTendered(total.toFixed(2))}
+                className="bg-gray-850 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-750 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+              >
+                Exact
+              </button>
+              <button
+                type="button"
+                onClick={() => setCashTendered('20')}
+                className="bg-gray-850 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-750 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+              >
+                $20
+              </button>
+              <button
+                type="button"
+                onClick={() => setCashTendered('50')}
+                className="bg-gray-850 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-750 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+              >
+                $50
+              </button>
+              <button
+                type="button"
+                onClick={() => setCashTendered('100')}
+                className="bg-gray-850 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-750 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+              >
+                $100
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleCashPaymentComplete}
+                disabled={cashIsProcessing || parseFloat(cashTendered || 0) < total}
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-6 rounded-xl text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-600/20"
+              >
+                {cashIsProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Complete Cash Sale & Print
+              </button>
+              
+              <button
+                onClick={() => setCashModalOpen(false)}
+                className="text-gray-400 hover:text-white text-xs font-bold transition-colors hover:underline cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>
