@@ -146,11 +146,15 @@ export async function POST(request) {
             itemType: requestItemType,
             categoryId: itemCatId,
             createdAt: Date.now(),
-            syncStatus: 'completed',
+            syncStatus: 'pending',
             userId: user.id
           });
 
           importedCount++;
+        }
+
+        if (importedCount > 0) {
+          setTimeout(() => triggerWorker(user.id), 100);
         }
 
         return NextResponse.json({ success: true, count: importedCount });
