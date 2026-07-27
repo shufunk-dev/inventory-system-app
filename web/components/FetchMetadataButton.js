@@ -57,6 +57,7 @@ export default function FetchMetadataButton({ itemId, isAdmin, userTier }) {
           {isPremium && <option value="premium">Premium Image Lens</option>}
           <option disabled>──────────</option>
           <option value="coin">⚡ Coin AI Engine</option>
+          <option value="bottle">⚡ Bottles & Cans Engine</option>
           <option value="toy">⚡ Action Figure Engine</option>
           <option value="video">⚡ VHS & Movie Engine</option>
           <option value="game">⚡ Video Game Engine</option>

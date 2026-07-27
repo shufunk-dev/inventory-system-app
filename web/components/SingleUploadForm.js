@@ -180,7 +180,7 @@ export default function SingleUploadForm() {
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 appearance-none"
               >
                 <option value="standard">📷 Standard Photo</option>
-                <option value="bottle">🍾 Bottle & Glassware</option>
+                <option value="bottle">🍾 Bottles, Cans & Glassware</option>
                 <option value="graded">🏆 Universal Graded Item</option>
                 <option value="coin">🪙 Graded Coin</option>
                 <option value="card">🃏 Trading Card</option>

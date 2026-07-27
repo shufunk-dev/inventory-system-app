@@ -2133,8 +2133,8 @@ export async function fetchItemDetails(item, db, options = {}) {
         toolAssignedLocation = 'Workshop';
       }
     } else if ((itemType === 'bottle' || options.forceTier === 'bottle') && name && name !== 'Unknown Item') {
-      console.log(`[Worker] Item is Bottle / Glassware. Extracting details & market value for: ${name}`);
-      const marketData = await fetchGenericMarketValue(`${name} bottle glass antique`);
+      console.log(`[Worker] Item is Bottle / Can / Glassware. Extracting details & market value for: ${name}`);
+      const marketData = await fetchGenericMarketValue(`${name} bottle can vintage collectible`);
       if (marketData) {
         valueLow = marketData.valueLow;
         valueAvg = marketData.valueAvg;

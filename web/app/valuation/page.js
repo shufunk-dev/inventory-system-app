@@ -23,7 +23,7 @@ const TYPE_LABELS = {
   game: 'Video Games',
   card: 'Trading Cards',
   video: 'VHS & Movies',
-  bottle: 'Bottles & Glassware',
+  bottle: 'Bottles, Cans & Glassware',
   graded: 'Graded Assets',
   standard: 'Standard Items'
 };
