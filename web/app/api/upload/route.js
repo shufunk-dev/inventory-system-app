@@ -98,6 +98,8 @@ export async function POST(request) {
       const zipFiles = Object.keys(loadedZip.files);
       let importedCount = 0;
 
+      const requestItemType = formData.get('itemType') || 'standard';
+
       const insertItem = db.prepare(`
         INSERT INTO items (id, barcode, name, imagePath, imagePathBack, itemType, categoryId, createdAt, syncStatus, lastSyncAttempt, userId)
         VALUES (@id, @barcode, @name, @imagePath, @imagePathBack, @itemType, @categoryId, @createdAt, @syncStatus, NULL, @userId)
@@ -140,7 +142,7 @@ export async function POST(request) {
           name: itemName,
           imagePath,
           imagePathBack: null,
-          itemType: 'standard',
+          itemType: requestItemType,
           categoryId: itemCatId,
           createdAt: Date.now(),
           syncStatus: 'completed',

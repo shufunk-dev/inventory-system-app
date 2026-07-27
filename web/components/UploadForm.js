@@ -30,6 +30,7 @@ export default function UploadForm() {
     // Initialize config state for each file
     const initialConfigs = files.map(() => ({
       categoryId: '',
+      itemType: 'standard',
       isCreatingNew: false,
       newCategoryName: ''
     }));
@@ -91,6 +92,7 @@ export default function UploadForm() {
       // 2. Upload the file
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('itemType', config.itemType || 'standard');
       if (finalCategoryId) {
         formData.append('categoryId', finalCategoryId);
       }
@@ -146,49 +148,74 @@ export default function UploadForm() {
 
             <div className="overflow-y-auto pr-2 space-y-6 flex-1 min-h-0 custom-scrollbar">
               {selectedFiles.map((file, i) => (
-                <div key={i} className="bg-gray-800/50 border border-gray-800 p-4 rounded-2xl">
-                  <p className="text-white font-medium mb-3 truncate flex items-center gap-2">
+                <div key={i} className="bg-gray-800/50 border border-gray-800 p-4 rounded-2xl space-y-4">
+                  <p className="text-white font-medium truncate flex items-center gap-2">
                     <span className="bg-gray-800 text-gray-400 text-xs px-2 py-1 rounded-md">Batch {i+1}</span>
                     {file.name}
                   </p>
                   
-                  {!fileConfigs[i].isCreatingNew ? (
-                    <div>
-                      <select 
-                        value={fileConfigs[i].categoryId}
-                        onChange={(e) => updateFileConfig(i, 'categoryId', e.target.value)}
-                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 appearance-none"
-                      >
-                        <option value="">-- Uncategorized --</option>
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>{c.displayName}</option>
-                        ))}
-                      </select>
-                      <button 
-                        onClick={() => updateFileConfig(i, 'isCreatingNew', true)}
-                        className="mt-3 text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 font-medium"
-                      >
-                        <Plus className="w-4 h-4" /> Create New Category
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <input 
-                        type="text"
-                        value={fileConfigs[i].newCategoryName}
-                        onChange={(e) => updateFileConfig(i, 'newCategoryName', e.target.value)}
-                        placeholder="e.g. Action Figures, Rare Coins..."
-                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                        autoFocus
-                      />
-                      <button 
-                        onClick={() => updateFileConfig(i, 'isCreatingNew', false)}
-                        className="mt-3 text-gray-400 text-sm hover:text-gray-300 font-medium"
-                      >
-                        Cancel / Choose Existing
-                      </button>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Item Type</label>
+                    <select 
+                      value={fileConfigs[i]?.itemType || 'standard'}
+                      onChange={(e) => updateFileConfig(i, 'itemType', e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 appearance-none"
+                    >
+                      <option value="standard">📷 Standard / Collectibles</option>
+                      <option value="bottle">🍾 Bottles, Cans & Glassware</option>
+                      <option value="graded">🏆 Universal Graded Item</option>
+                      <option value="coin">🪙 Graded Coin</option>
+                      <option value="card">🃏 Trading Card</option>
+                      <option value="comic">🦸‍♂️ Comic Book</option>
+                      <option value="toy">🧸 Vintage Toy</option>
+                      <option value="game">🎮 Video Game</option>
+                      <option value="video">🎬 Movies and TV Shows</option>
+                      <option value="music">🎵 Music</option>
+                      <option value="hardware">🖥️ Retro Tech</option>
+                      <option value="tool">🔧 Tools & Workshop</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
+                    {!fileConfigs[i]?.isCreatingNew ? (
+                      <div>
+                        <select 
+                          value={fileConfigs[i]?.categoryId || ''}
+                          onChange={(e) => updateFileConfig(i, 'categoryId', e.target.value)}
+                          className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 appearance-none"
+                        >
+                          <option value="">-- Uncategorized / Auto-Folder Tree --</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>{c.displayName}</option>
+                          ))}
+                        </select>
+                        <button 
+                          onClick={() => updateFileConfig(i, 'isCreatingNew', true)}
+                          className="mt-3 text-blue-400 text-sm hover:text-blue-300 flex items-center gap-1 font-medium"
+                        >
+                          <Plus className="w-4 h-4" /> Create New Category
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input 
+                          type="text"
+                          value={fileConfigs[i]?.newCategoryName || ''}
+                          onChange={(e) => updateFileConfig(i, 'newCategoryName', e.target.value)}
+                          placeholder="e.g. Action Figures, Rare Coins..."
+                          className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                          autoFocus
+                        />
+                        <button 
+                          onClick={() => updateFileConfig(i, 'isCreatingNew', false)}
+                          className="mt-3 text-gray-400 text-sm hover:text-gray-300 font-medium"
+                        >
+                          Cancel / Choose Existing
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
