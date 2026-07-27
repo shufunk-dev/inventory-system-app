@@ -8,6 +8,8 @@ import { getDb } from '@/lib/db';
 import { triggerWorker } from '@/lib/worker';
 import { getUser } from '@/lib/auth';
 
+export const maxDuration = 300;
+
 export async function POST(request) {
   try {
     const user = await getUser();

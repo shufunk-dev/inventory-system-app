@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Increase global body limit for API routes
+  // Increase global body limit for API routes to 1GB for large ZIP imports
   experimental: {
     serverActions: {
-      bodySizeLimit: '50mb',
+      bodySizeLimit: '1000mb',
     },
-    proxyClientMaxBodySize: '50mb',
+    proxyClientMaxBodySize: '1000mb',
   },
   serverExternalPackages: ['tesseract.js', 'pdf-parse', '@napi-rs/canvas', 'better-sqlite3'],
   output: 'standalone',
