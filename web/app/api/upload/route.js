@@ -51,44 +51,48 @@ export async function POST(request) {
       const categoryMap = new Map();
 
       const getOrCreateCategoryPath = async (folderParts) => {
-        if (!folderParts || folderParts.length === 0) return categoryId;
+        let currentParentId = (categoryId && categoryId !== 'null' && categoryId.trim() !== '') ? categoryId.trim() : null;
         
-        let parentId = categoryId;
+        if (!folderParts || folderParts.length === 0) return currentParentId;
+        
         let currentPathKey = '';
 
-        for (const folderName of folderParts) {
+        for (const rawFolderName of folderParts) {
+          const folderName = rawFolderName.trim();
+          if (!folderName) continue;
+
           currentPathKey += (currentPathKey ? '/' : '') + folderName;
           
           if (categoryMap.has(currentPathKey)) {
-            parentId = categoryMap.get(currentPathKey);
+            currentParentId = categoryMap.get(currentPathKey);
             continue;
           }
 
           let catRow;
-          if (parentId) {
-            catRow = db.prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND parentId = ?').get(folderName, parentId);
+          if (currentParentId) {
+            catRow = db.prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND parentId = ?').get(folderName, currentParentId);
           } else {
-            catRow = db.prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND (parentId IS NULL OR parentId = "")').get(folderName);
+            catRow = db.prepare("SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND (parentId IS NULL OR parentId = '')").get(folderName);
           }
 
           if (catRow) {
-            parentId = catRow.id;
+            currentParentId = catRow.id;
           } else {
             const newCatId = crypto.randomUUID();
             db.prepare('INSERT INTO categories (id, name, parentId, userId, createdAt) VALUES (?, ?, ?, ?, ?)').run(
               newCatId,
               folderName,
-              parentId,
+              currentParentId || null,
               user.id,
               Date.now()
             );
-            parentId = newCatId;
+            currentParentId = newCatId;
           }
 
-          categoryMap.set(currentPathKey, parentId);
+          categoryMap.set(currentPathKey, currentParentId);
         }
 
-        return parentId;
+        return currentParentId || null;
       };
 
       const zipFiles = Object.keys(loadedZip.files);
