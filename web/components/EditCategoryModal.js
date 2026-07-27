@@ -44,7 +44,7 @@ export default function EditCategoryModal({ category, onClose }) {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete the category "${category.name}"? All items in this category will become uncategorized.`)) {
+    if (!confirm(`Are you sure you want to delete "${category.name}" and ALL subcategories linked to it? Items in these categories will become uncategorized.`)) {
       return;
     }
     setIsDeleting(true);

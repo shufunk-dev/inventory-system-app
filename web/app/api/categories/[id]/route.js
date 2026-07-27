@@ -35,13 +35,30 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
     const db = await getDb();
     
-    // Remove category from all items
-    db.prepare('UPDATE items SET categoryId = NULL WHERE categoryId = ?').run(id);
-    
-    // Delete the category
-    db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+    // Recursively collect target category ID and all subcategory IDs descendant from it
+    const getAllCategoryIds = (targetId) => {
+      const ids = [targetId];
+      const getChildren = (parentId) => {
+        const children = db.prepare('SELECT id FROM categories WHERE parentId = ?').all(parentId);
+        for (const child of children) {
+          ids.push(child.id);
+          getChildren(child.id);
+        }
+      };
+      getChildren(targetId);
+      return ids;
+    };
 
-    return NextResponse.json({ success: true });
+    const allIds = getAllCategoryIds(id);
+    const placeholders = allIds.map(() => '?').join(',');
+
+    // Remove category association from all items in these categories
+    db.prepare(`UPDATE items SET categoryId = NULL WHERE categoryId IN (${placeholders})`).run(...allIds);
+    
+    // Delete target category and all descendant subcategories
+    db.prepare(`DELETE FROM categories WHERE id IN (${placeholders})`).run(...allIds);
+
+    return NextResponse.json({ success: true, deletedCount: allIds.length });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
