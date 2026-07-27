@@ -49,6 +49,7 @@ export default function ReceiptPage() {
   const [lastPaymentMethod, setLastPaymentMethod] = useState('');
   const [lastCashTendered, setLastCashTendered] = useState(null);
   const [lastChangeDue, setLastChangeDue] = useState(null);
+  const [completedReceipt, setCompletedReceipt] = useState(null);
 
   const [isTabletMode, setIsTabletMode] = useState(false);
   const [configCollapsed, setConfigCollapsed] = useState(true);
@@ -228,7 +229,27 @@ export default function ReceiptPage() {
 
       const tenderedVal = parseFloat(cashTendered) || total;
       const changeVal = Math.max(0, tenderedVal - total);
+      const currentReceiptNo = `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
 
+      const completedObj = {
+        receiptNo: currentReceiptNo,
+        items: [...receiptItems],
+        subtotal,
+        taxRate,
+        taxAmount,
+        total,
+        paymentMethod: 'Cash',
+        cashTendered: tenderedVal,
+        changeDue: changeVal,
+        customerName,
+        mallName,
+        mallAddress,
+        mallPhone,
+        receiptFooter,
+        date: currentDateStr
+      };
+
+      setCompletedReceipt(completedObj);
       setLastPaymentMethod('Cash');
       setLastCashTendered(tenderedVal);
       setLastChangeDue(changeVal);
@@ -238,7 +259,7 @@ export default function ReceiptPage() {
       setCashTendered('');
       
       // Auto trigger print receipt (kicks drawer if hardware is attached)
-      handlePrint({ paymentMethod: 'Cash', cashTendered: tenderedVal, changeDue: changeVal });
+      handlePrint(completedObj);
 
       setReceiptItems([]);
       fetchNextReceiptNo();
@@ -246,165 +267,97 @@ export default function ReceiptPage() {
       setCashIsProcessing(false);
       alert(`Error saving cash sale: ${e.message}`);
     }
-  };
-
-  const pollCheckoutStatus = async (txId) => {
-    if (window.activePollInterval) clearInterval(window.activePollInterval);
-    
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes
-    
-    const interval = setInterval(async () => {
-      attempts++;
-      if (attempts > maxAttempts) {
-        clearInterval(interval);
-        setCheckoutStatus('failed');
-        setCheckoutError('Payment timed out. Please try again.');
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/pos/checkout/status?id=${txId}`);
-        const data = await res.json();
-        
-        if (res.ok) {
-          if (data.status === 'completed') {
-            clearInterval(interval);
-            setCheckoutStatus('completed');
-          } else if (data.status === 'canceled') {
-            clearInterval(interval);
-            setCheckoutStatus('canceled');
-          } else if (data.status === 'failed') {
-            clearInterval(interval);
-            setCheckoutStatus('failed');
-            setCheckoutError('Payment was declined or failed on terminal.');
-          }
-        }
-      } catch (e) {
-        console.error('Error polling checkout status:', e);
-      }
-    }, 5000);
-
-    window.activePollInterval = interval;
-  };
-
-  const cancelCardCheckout = async () => {
-    if (window.activePollInterval) {
-      clearInterval(window.activePollInterval);
-    }
-
-    if (!activeTxId) {
-      setCheckoutModalOpen(false);
-      return;
-    }
-
-    setCheckoutStatus('initializing');
-
-    try {
-      await fetch('/api/pos/checkout/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: activeTxId })
-      });
-      setCheckoutStatus('canceled');
-      setTimeout(() => {
-        setCheckoutModalOpen(false);
-      }, 1000);
-    } catch (e) {
-      console.error('Failed to cancel payment:', e);
-      setCheckoutModalOpen(false);
-    }
-  };
-
-  const handleAddItem = (item) => {
-    const existing = receiptItems.find(r => r.itemNum === item.itemNum);
-    if (existing) {
-      setReceiptItems(receiptItems.map(r => 
-        r.itemNum === item.itemNum ? { ...r, qty: r.qty + 1 } : r
-      ));
-    } else {
-      setReceiptItems([...receiptItems, { ...item, qty: 1 }]);
-    }
-  };
-
-  const handleRemoveItem = (itemNum) => {
-    const existing = receiptItems.find(r => r.itemNum === itemNum);
-    if (existing && existing.qty > 1) {
-      setReceiptItems(receiptItems.map(r => 
-        r.itemNum === itemNum ? { ...r, qty: r.qty - 1 } : r
-      ));
-    } else {
-      setReceiptItems(receiptItems.filter(r => r.itemNum !== itemNum));
-    }
-  };
-
-  const handleAddCustomItem = (e) => {
-    e.preventDefault();
-    if (!customName.trim() || !customPrice) return;
-    
-    const priceNum = parseFloat(customPrice);
-    if (isNaN(priceNum)) return;
-
-    const matchedStore = customStore === 'default' 
-      ? 'Default Catalog' 
-      : customStore === 'unattributed'
-        ? 'Direct Mall Sale'
-        : stores.find(s => s.id === customStore)?.name || 'Direct Mall Sale';
-
-    const customObj = {
-      itemNum: 'custom-' + Date.now(),
-      name: customName.trim(),
-      price: priceNum,
-      storeId: customStore,
-      storeName: matchedStore,
-      catalogName: customName.trim(),
-      qty: 1
-    };
-
-    setReceiptItems([...receiptItems, customObj]);
-    setCustomName('');
-    setCustomPrice('');
-  };
-
-  const filteredItems = catalogItems.filter(item => {
-    if (selectedBoothFilter !== 'all' && item.storeId !== selectedBoothFilter) {
-      return false;
-    }
-    const query = searchQuery.toLowerCase().trim();
-    if (!query) return true;
-    return item.name.toLowerCase().includes(query) || 
-           String(item.itemNum).toLowerCase().includes(query) ||
-           item.storeName.toLowerCase().includes(query);
-  });
-
   const subtotal = receiptItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
+
+  const activeReceiptData = completedReceipt || {
+    receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
+    items: receiptItems,
+    subtotal,
+    taxRate,
+    taxAmount,
+    total,
+    paymentMethod: lastPaymentMethod,
+    cashTendered: lastCashTendered,
+    changeDue: lastChangeDue,
+    date: currentDateStr,
+    customerName,
+    mallName,
+    mallAddress,
+    mallPhone,
+    receiptFooter
+  };
+
+  const displayItems = activeReceiptData.items || [];
+  const displaySubtotal = activeReceiptData.subtotal !== undefined ? activeReceiptData.subtotal : subtotal;
+  const displayTaxAmount = activeReceiptData.taxAmount !== undefined ? activeReceiptData.taxAmount : taxAmount;
+  const displayTotal = activeReceiptData.total !== undefined ? activeReceiptData.total : total;
+  const displayReceiptNo = activeReceiptData.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
+  const displayPaymentMethod = activeReceiptData.paymentMethod || lastPaymentMethod;
+  const displayCashTendered = activeReceiptData.cashTendered !== undefined ? activeReceiptData.cashTendered : lastCashTendered;
+  const displayChangeDue = activeReceiptData.changeDue !== undefined ? activeReceiptData.changeDue : lastChangeDue;
+  const displayDateStr = activeReceiptData.date || currentDateStr;
 
   const handlePrint = async (overrideDetails = {}) => {
     setPrintError('');
     setPrintSuccess('');
 
-    const currentPaymentMethod = overrideDetails.paymentMethod !== undefined ? overrideDetails.paymentMethod : lastPaymentMethod;
-    const currentCashTendered = overrideDetails.cashTendered !== undefined ? overrideDetails.cashTendered : lastCashTendered;
-    const currentChangeDue = overrideDetails.changeDue !== undefined ? overrideDetails.changeDue : lastChangeDue;
-
-    const receiptPayload = {
-      mallName,
-      mallAddress,
-      mallPhone,
+    const targetReceipt = overrideDetails.items ? overrideDetails : (completedReceipt || {
       receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
       customerName,
-      receiptItems,
+      items: receiptItems,
       subtotal,
       taxRate,
       taxAmount,
       total,
-      receiptFooter,
-      paymentMethod: currentPaymentMethod,
-      cashTendered: currentCashTendered,
-      changeDue: currentChangeDue
+      paymentMethod: overrideDetails.paymentMethod || lastPaymentMethod,
+      cashTendered: overrideDetails.cashTendered !== undefined ? overrideDetails.cashTendered : lastCashTendered,
+      changeDue: overrideDetails.changeDue !== undefined ? overrideDetails.changeDue : lastChangeDue
+    });
+
+    const receiptPayload = {
+      mallName: targetReceipt.mallName || mallName,
+      mallAddress: targetReceipt.mallAddress || mallAddress,
+      mallPhone: targetReceipt.mallPhone || mallPhone,
+      receiptNo: targetReceipt.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
+      customerName: targetReceipt.customerName || customerName,
+      receiptItems: targetReceipt.items || targetReceipt.receiptItems || receiptItems,
+      subtotal: targetReceipt.subtotal !== undefined ? targetReceipt.subtotal : subtotal,
+      taxRate: targetReceipt.taxRate !== undefined ? targetReceipt.taxRate : taxRate,
+      taxAmount: targetReceipt.taxAmount !== undefined ? targetReceipt.taxAmount : taxAmount,
+      total: targetReceipt.total !== undefined ? targetReceipt.total : total,
+      receiptFooter: targetReceipt.receiptFooter || receiptFooter,
+      paymentMethod: targetReceipt.paymentMethod || lastPaymentMethod,
+      cashTendered: targetReceipt.cashTendered !== undefined ? targetReceipt.cashTendered : lastCashTendered,
+      changeDue: targetReceipt.changeDue !== undefined ? targetReceipt.changeDue : lastChangeDue
     };
+
+    if (printerConfig && printerConfig.connectionType !== 'browser') {
+      setIsPrintingDirect(true);
+      try {
+        const res = await fetch('/api/pos/print', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(receiptPayload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setPrintSuccess(data.message || 'Printed successfully.');
+        } else {
+          setPrintError(data.error || 'Failed to print receipt.');
+        }
+      } catch (err) {
+        setPrintError('Network error occurred attempting to print.');
+      } finally {
+        setIsPrintingDirect(false);
+      }
+    } else {
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    }
+  };
 
     if (printerConfig && printerConfig.connectionType !== 'browser') {
       setIsPrintingDirect(true);
@@ -1083,8 +1036,8 @@ export default function ReceiptPage() {
 
                   {/* Metadata */}
                   <div className="font-mono text-[11px] space-y-1 text-gray-700">
-                    <p>RECEIPT: R{registerId}-{receiptNo.replace(/^R-/, '')}</p>
-                    <p>DATE   : {currentDateStr}</p>
+                    <p>RECEIPT: {displayReceiptNo}</p>
+                    <p>DATE   : {displayDateStr}</p>
                     {customerName && <p>CLIENT : {customerName.toUpperCase()}</p>}
                   </div>
 
@@ -1092,7 +1045,7 @@ export default function ReceiptPage() {
 
                   {/* Line Items */}
                   <div className="font-mono text-xs space-y-3">
-                    {receiptItems.map((item, idx) => (
+                    {displayItems.map((item, idx) => (
                       <div key={idx}>
                         <div className="flex justify-between font-bold">
                           <span>{item.qty}x {item.name.slice(0, 18)}</span>
@@ -1113,31 +1066,31 @@ export default function ReceiptPage() {
                   <div className="font-mono text-xs space-y-1 text-right">
                     <div className="flex justify-between">
                       <span>SUBTOTAL:</span>
-                      <span>${subtotal.toFixed(2)}</span>
+                      <span>${displaySubtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>TAX ({taxRate.toFixed(1)}%):</span>
-                      <span>${taxAmount.toFixed(2)}</span>
+                      <span>${displayTaxAmount.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-sm border-t border-dashed border-gray-600 pt-1.5">
                       <span>TOTAL:</span>
-                      <span>${total.toFixed(2)}</span>
+                      <span>${displayTotal.toFixed(2)}</span>
                     </div>
-                    {lastPaymentMethod && (
+                    {displayPaymentMethod && (
                       <div className="pt-2 border-t border-dashed border-gray-600 space-y-1 text-right mt-2">
                         <div className="flex justify-between font-bold">
                           <span>PAYMENT:</span>
-                          <span>{lastPaymentMethod.toUpperCase()}</span>
+                          <span>{displayPaymentMethod.toUpperCase()}</span>
                         </div>
-                        {lastCashTendered !== null && lastCashTendered !== undefined && (
+                        {displayCashTendered !== null && displayCashTendered !== undefined && (
                           <>
                             <div className="flex justify-between">
                               <span>CASH TENDERED:</span>
-                              <span>${parseFloat(lastCashTendered).toFixed(2)}</span>
+                              <span>${parseFloat(displayCashTendered).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between font-bold">
                               <span>CHANGE GIVEN:</span>
-                              <span>${parseFloat(lastChangeDue || 0).toFixed(2)}</span>
+                              <span>${parseFloat(displayChangeDue || 0).toFixed(2)}</span>
                             </div>
                           </>
                         )}
@@ -1179,8 +1132,8 @@ export default function ReceiptPage() {
                     </div>
                     <div className="text-right">
                       <h3 className="text-2xl font-bold text-gray-400 uppercase tracking-widest">Receipt</h3>
-                      <p className="text-xs text-gray-600 mt-1 font-mono">Invoice #: R{registerId}-{receiptNo.replace(/^R-/, '')}</p>
-                      <p className="text-xs text-gray-600 font-mono">Date: {currentDateStr}</p>
+                      <p className="text-xs text-gray-600 mt-1 font-mono">Invoice #: {displayReceiptNo}</p>
+                      <p className="text-xs text-gray-600 font-mono">Date: {displayDateStr}</p>
                     </div>
                   </div>
 
@@ -1203,7 +1156,7 @@ export default function ReceiptPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-gray-700">
-                      {receiptItems.map((item, idx) => (
+                      {displayItems.map((item, idx) => (
                         <tr key={idx}>
                           <td className="py-3 px-3">
                             <p className="font-semibold text-gray-900">{item.name}</p>
@@ -1222,31 +1175,31 @@ export default function ReceiptPage() {
                     <div className="w-64 space-y-2 text-xs text-right">
                       <div className="flex justify-between text-gray-600">
                         <span>Subtotal:</span>
-                        <span className="font-mono">${subtotal.toFixed(2)}</span>
+                        <span className="font-mono">${displaySubtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-gray-600">
                         <span>Sales Tax ({taxRate.toFixed(1)}%):</span>
-                        <span className="font-mono">${taxAmount.toFixed(2)}</span>
+                        <span className="font-mono">${displayTaxAmount.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between font-bold text-sm text-gray-900 border-t border-gray-200 pt-2">
                         <span>Total Amount Paid:</span>
-                        <span className="font-mono">${total.toFixed(2)}</span>
+                        <span className="font-mono">${displayTotal.toFixed(2)}</span>
                       </div>
-                      {lastPaymentMethod && (
+                      {displayPaymentMethod && (
                         <div className="pt-2 border-t border-gray-200 space-y-1 text-xs text-right mt-2 text-gray-700">
                           <div className="flex justify-between font-bold">
                             <span>Payment Method:</span>
-                            <span className="font-mono">{lastPaymentMethod.toUpperCase()}</span>
+                            <span className="font-mono">{displayPaymentMethod.toUpperCase()}</span>
                           </div>
-                          {lastCashTendered !== null && lastCashTendered !== undefined && (
+                          {displayCashTendered !== null && displayCashTendered !== undefined && (
                             <>
                               <div className="flex justify-between">
                                 <span>Cash Tendered:</span>
-                                <span className="font-mono">${parseFloat(lastCashTendered).toFixed(2)}</span>
+                                <span className="font-mono">${parseFloat(displayCashTendered).toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between font-bold text-gray-900">
                                 <span>Change Given:</span>
-                                <span className="font-mono">${parseFloat(lastChangeDue || 0).toFixed(2)}</span>
+                                <span className="font-mono">${parseFloat(displayChangeDue || 0).toFixed(2)}</span>
                               </div>
                             </>
                           )}
