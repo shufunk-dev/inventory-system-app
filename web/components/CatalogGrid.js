@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2, Printer, Edit3, Gamepad2, Film, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2, Printer, Edit3, Gamepad2, Film, Sparkles, Coins } from 'lucide-react';
 import { buildCategoryTree } from '@/lib/categories';
 
 export default function CatalogGrid({ items }) {
@@ -34,6 +34,13 @@ export default function CatalogGrid({ items }) {
   const [enabledMovieFormats, setEnabledMovieFormats] = useState([]);
   const [selectedMovieFormat, setSelectedMovieFormat] = useState('');
   const [isSettingMovieFormat, setIsSettingMovieFormat] = useState(false);
+  
+  // Bulk Pricing State
+  const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
+  const [priceItems, setPriceItems] = useState([]);
+  const [isPricing, setIsPricing] = useState(false);
+  const [bulkRetailPrice, setBulkRetailPrice] = useState('');
+  const [bulkPurchasePrice, setBulkPurchasePrice] = useState('');
   
   const router = useRouter();
 
@@ -276,6 +283,64 @@ export default function CatalogGrid({ items }) {
     }
   };
 
+  const handlePriceClick = () => {
+    const selectedItemsList = items
+      .filter(item => selectedIds.has(item.id))
+      .map(item => ({
+        id: item.id,
+        name: item.name || '',
+        imagePath: item.imagePath || '',
+        retailPrice: item.retailPrice !== null && item.retailPrice !== undefined ? String(item.retailPrice) : '',
+        purchasePrice: item.purchasePrice !== null && item.purchasePrice !== undefined ? String(item.purchasePrice) : ''
+      }));
+    setPriceItems(selectedItemsList);
+    setBulkRetailPrice('');
+    setBulkPurchasePrice('');
+    setIsPriceModalOpen(true);
+  };
+
+  const handleItemPriceChange = (id, field, value) => {
+    setPriceItems(prev =>
+      prev.map(item => item.id === id ? { ...item, [field]: value } : item)
+    );
+  };
+
+  const handleApplyBulkPrices = () => {
+    setPriceItems(prev =>
+      prev.map(item => ({
+        ...item,
+        retailPrice: bulkRetailPrice !== '' ? bulkRetailPrice : item.retailPrice,
+        purchasePrice: bulkPurchasePrice !== '' ? bulkPurchasePrice : item.purchasePrice
+      }))
+    );
+  };
+
+  const handleBulkPriceSave = async () => {
+    if (priceItems.length === 0) return;
+    setIsPricing(true);
+    try {
+      const res = await fetch('/api/item/bulk-price', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: priceItems })
+      });
+      
+      if (res.ok) {
+        setSelectedIds(new Set());
+        setIsPriceModalOpen(false);
+        setPriceItems([]);
+        router.refresh();
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      alert('Failed to update prices');
+    } finally {
+      setIsPricing(false);
+    }
+  };
+
   const handleBulkIdentify = async () => {
     if (selectedIds.size === 0) return;
     setIsIdentifying(true);
@@ -337,6 +402,13 @@ export default function CatalogGrid({ items }) {
             >
               <Edit3 className="w-4 h-4" />
               Rename Selected
+            </button>
+            <button 
+              onClick={handlePriceClick}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors"
+            >
+              <Coins className="w-4 h-4" />
+              Set Prices
             </button>
             <button 
               onClick={() => setIsSystemModalOpen(true)}
@@ -471,6 +543,118 @@ export default function CatalogGrid({ items }) {
               >
                 {isRenaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit3 className="w-4 h-4" />}
                 {isRenaming ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set Prices Modal */}
+      {isPriceModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-3xl p-8 max-w-2xl w-full border border-gray-700 shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col max-h-[85vh]">
+            <h2 className="text-2xl font-bold text-white mb-2">Set Prices for {priceItems.length} Items</h2>
+            <p className="text-gray-400 text-sm mb-4">Edit retail and purchase prices in bulk or individually.</p>
+            
+            {/* Quick Bulk Settings */}
+            <div className="bg-gray-800/40 border border-gray-800 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-end gap-3">
+              <div className="flex-1 w-full">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Bulk Retail Price ($)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="e.g. 19.99"
+                  value={bulkRetailPrice}
+                  onChange={(e) => setBulkRetailPrice(e.target.value)}
+                  className="w-full bg-gray-850 border border-gray-750 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="flex-1 w-full">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Bulk Purchase Cost ($)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="e.g. 5.00"
+                  value={bulkPurchasePrice}
+                  onChange={(e) => setBulkPurchasePrice(e.target.value)}
+                  className="w-full bg-gray-850 border border-gray-750 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleApplyBulkPrices}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-sm transition-all h-[38px] w-full sm:w-auto cursor-pointer"
+              >
+                Apply to All
+              </button>
+            </div>
+
+            {/* List of items */}
+            <div className="flex-1 overflow-y-auto pr-2 mb-6 space-y-3 max-h-[40vh] scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+              {priceItems.map((item) => (
+                <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-800/20 p-3 rounded-2xl border border-gray-800 hover:border-gray-700 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-800 flex-shrink-0 border border-gray-800/50">
+                      {item.imagePath ? (
+                        <img 
+                          src={item.imagePath} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600">
+                          <ImageIcon className="w-5 h-5 opacity-40" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-white truncate">{item.name}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="w-full sm:w-28">
+                      <label className="block sm:hidden text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Retail ($)</label>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        placeholder="Retail"
+                        value={item.retailPrice}
+                        onChange={(e) => handleItemPriceChange(item.id, 'retailPrice', e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm font-semibold focus:outline-none focus:border-emerald-500 transition-all font-mono"
+                      />
+                    </div>
+                    <div className="w-full sm:w-28">
+                      <label className="block sm:hidden text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Cost ($)</label>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        placeholder="Cost"
+                        value={item.purchasePrice}
+                        onChange={(e) => handleItemPriceChange(item.id, 'purchasePrice', e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm font-semibold focus:outline-none focus:border-emerald-500 transition-all font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 justify-end pt-4 border-t border-gray-800">
+              <button 
+                onClick={() => setIsPriceModalOpen(false)}
+                disabled={isPricing}
+                className="px-4 py-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium cursor-pointer"
+              >
+                <X className="w-4 h-4" /> Cancel
+              </button>
+              <button 
+                onClick={handleBulkPriceSave}
+                disabled={isPricing}
+                className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 flex items-center gap-2 text-sm cursor-pointer"
+              >
+                {isPricing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Coins className="w-4 h-4" />}
+                {isPricing ? 'Saving...' : 'Save Prices'}
               </button>
             </div>
           </div>

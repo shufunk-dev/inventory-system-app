@@ -13,6 +13,7 @@ export default function CatalogFilters({ initialCategories }) {
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [advanced, setAdvanced] = useState(searchParams.get('advanced') === 'true');
   const [category, setCategory] = useState(searchParams.get('category') || '');
+  const [priceFilter, setPriceFilter] = useState(searchParams.get('price') || 'all');
   const [isEditCatModalOpen, setIsEditCatModalOpen] = useState(false);
   const [isCreateCatModalOpen, setIsCreateCatModalOpen] = useState(false);
 
@@ -29,13 +30,16 @@ export default function CatalogFilters({ initialCategories }) {
       if (category) params.set('category', category);
       else params.delete('category');
 
+      if (priceFilter && priceFilter !== 'all') params.set('price', priceFilter);
+      else params.delete('price');
+
       params.set('page', '1'); // reset page on filter change
       
       router.push(`/?${params.toString()}`);
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [query, advanced, category, router]);
+  }, [query, advanced, category, priceFilter, router]);
 
   const selectedCatObj = initialCategories.find(c => c.id === category);
 
@@ -87,6 +91,19 @@ export default function CatalogFilters({ initialCategories }) {
           >
             <Plus className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Price Filter Dropdown */}
+        <div className="relative md:w-48">
+          <select
+            value={priceFilter}
+            onChange={(e) => setPriceFilter(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-800 rounded-2xl px-4 py-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none shadow-lg cursor-pointer font-semibold text-blue-400"
+          >
+            <option value="all">All Prices</option>
+            <option value="priced">Priced Only</option>
+            <option value="unpriced">Unpriced Only</option>
+          </select>
         </div>
       </div>
 

@@ -81,14 +81,22 @@ export async function GET() {
 
   if (!(user.isAdmin || user.isRoot)) {
     const db = await getGlobalDb();
-    const rows = db.prepare("SELECT key, value FROM system_settings WHERE key IN ('mall_name', 'enabled_game_systems', 'enabled_movie_formats')").all();
+    const rows = db.prepare("SELECT key, value FROM system_settings WHERE key IN ('mall_name', 'mall_address', 'mall_phone', 'receipt_footer', 'receipt_logo', 'enabled_game_systems', 'enabled_movie_formats')").all();
     let settings = {
       mallName: 'Antique Mall',
+      mallAddress: '123 Main Street, Suite A',
+      mallPhone: '(555) 019-2834',
+      receiptFooter: 'THANK YOU FOR SHOPPING!\nALL SALES FINAL ON ANTIQUES',
+      receiptLogo: '',
       enabledGameSystems: DEFAULT_GAME_SYSTEMS,
       enabledMovieFormats: DEFAULT_MOVIE_FORMATS
     };
     rows.forEach(row => {
       if (row.key === 'mall_name') settings.mallName = row.value;
+      if (row.key === 'mall_address') settings.mallAddress = row.value;
+      if (row.key === 'mall_phone') settings.mallPhone = row.value;
+      if (row.key === 'receipt_footer') settings.receiptFooter = row.value;
+      if (row.key === 'receipt_logo') settings.receiptLogo = row.value;
       if (row.key === 'enabled_game_systems') {
         try {
           const parsed = JSON.parse(row.value);
@@ -114,11 +122,15 @@ export async function GET() {
   }
 
   const db = await getGlobalDb();
-  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const rows = stmt.all('api_keys', 'active_tier', 'smtp_config', 'mall_name', 'payment_config', 'tunnel_config', 'printer_config', 'enabled_game_systems', 'enabled_movie_formats');
+  const stmt = db.prepare('SELECT key, value FROM system_settings WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const rows = stmt.all('api_keys', 'active_tier', 'smtp_config', 'mall_name', 'mall_address', 'mall_phone', 'receipt_footer', 'receipt_logo', 'payment_config', 'tunnel_config', 'printer_config', 'enabled_game_systems', 'enabled_movie_formats');
   
   let settings = {
     mallName: 'Antique Mall',
+    mallAddress: '123 Main Street, Suite A',
+    mallPhone: '(555) 019-2834',
+    receiptFooter: 'THANK YOU FOR SHOPPING!\nALL SALES FINAL ON ANTIQUES',
+    receiptLogo: '',
     apiKeys: {
       googleVisionKey: '',
       serpApiKey: '',
@@ -168,6 +180,10 @@ export async function GET() {
   rows.forEach(row => {
     try {
       if (row.key === 'mall_name') settings.mallName = row.value;
+      if (row.key === 'mall_address') settings.mallAddress = row.value;
+      if (row.key === 'mall_phone') settings.mallPhone = row.value;
+      if (row.key === 'receipt_footer') settings.receiptFooter = row.value;
+      if (row.key === 'receipt_logo') settings.receiptLogo = row.value;
       if (row.key === 'api_keys') {
         const parsed = JSON.parse(row.value);
         settings.apiKeys = { ...settings.apiKeys, ...parsed };
@@ -231,6 +247,18 @@ export async function PUT(request) {
     const runUpdate = db.transaction(() => {
       if (data.mallName) {
         updateStmt.run('mall_name', data.mallName.trim());
+      }
+      if (data.mallAddress !== undefined) {
+        updateStmt.run('mall_address', (data.mallAddress || '').trim());
+      }
+      if (data.mallPhone !== undefined) {
+        updateStmt.run('mall_phone', (data.mallPhone || '').trim());
+      }
+      if (data.receiptFooter !== undefined) {
+        updateStmt.run('receipt_footer', (data.receiptFooter || '').trim());
+      }
+      if (data.receiptLogo !== undefined) {
+        updateStmt.run('receipt_logo', (data.receiptLogo || '').trim());
       }
       if (data.apiKeys) {
         updateStmt.run('api_keys', JSON.stringify(data.apiKeys));

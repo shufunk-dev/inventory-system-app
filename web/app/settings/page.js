@@ -10,6 +10,10 @@ export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [mallName, setMallName] = useState('Antique Mall');
+  const [mallAddress, setMallAddress] = useState('123 Main Street, Suite A');
+  const [mallPhone, setMallPhone] = useState('(555) 019-2834');
+  const [receiptFooter, setReceiptFooter] = useState('THANK YOU FOR SHOPPING!\nALL SALES FINAL ON ANTIQUES');
+  const [receiptLogo, setReceiptLogo] = useState('');
   const [activeTier, setActiveTier] = useState('basic');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -70,6 +74,33 @@ export default function SettingsPage() {
   const [searxngActionLoading, setSearxngActionLoading] = useState(false);
   const [searxngMessage, setSearxngMessage] = useState('');
   const [searxngError, setSearxngError] = useState('');
+
+  const [logoUploading, setLogoUploading] = useState(false);
+  const handleLogoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setLogoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+      
+      const res = await fetch('/api/settings/logo', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.imagePath) {
+        setReceiptLogo(data.imagePath);
+      } else {
+        alert(data.error || 'Failed to upload logo.');
+      }
+    } catch (err) {
+      alert('Network error uploading logo.');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
 
   const fetchSearxngStatus = async () => {
     try {
@@ -232,6 +263,10 @@ export default function SettingsPage() {
                 if (settings.activeTier) setActiveTier(settings.activeTier);
                 if (settings.smtpConfig) setSmtpConfig(settings.smtpConfig);
                 if (settings.mallName) setMallName(settings.mallName);
+                if (settings.mallAddress !== undefined) setMallAddress(settings.mallAddress);
+                if (settings.mallPhone !== undefined) setMallPhone(settings.mallPhone);
+                if (settings.receiptFooter !== undefined) setReceiptFooter(settings.receiptFooter);
+                if (settings.receiptLogo !== undefined) setReceiptLogo(settings.receiptLogo);
                 if (settings.paymentConfig) setPaymentConfig(settings.paymentConfig);
                 if (settings.tunnelConfig) setTunnelConfig(settings.tunnelConfig);
                 if (settings.printerConfig) setPrinterConfig(settings.printerConfig);
@@ -258,10 +293,11 @@ export default function SettingsPage() {
         const res = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ activeTier, apiKeys, smtpConfig, mallName, paymentConfig, tunnelConfig, printerConfig, enabledGameSystems, enabledMovieFormats })
+          body: JSON.stringify({ activeTier, apiKeys, smtpConfig, mallName, mallAddress, mallPhone, receiptFooter, receiptLogo, paymentConfig, tunnelConfig, printerConfig, enabledGameSystems, enabledMovieFormats })
         });
         if (res.ok) {
           setMessage('Global Settings saved successfully!');
+          fetchSearxngStatus();
         } else {
           setMessage('Failed to save settings.');
         }
@@ -736,16 +772,89 @@ export default function SettingsPage() {
             <p className="text-gray-400 mb-6 text-sm">
               Configure the name of the central register system. This name will appear on printed customer receipts and item price tag barcode labels.
             </p>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Central Mall / Store Name</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Central Mall / Store Name</label>
+                <input 
+                  type="text"
+                  value={mallName}
+                  onChange={(e) => setMallName(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. Antique Mall & Cooperatives"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Store Phone Number</label>
+                <input 
+                  type="text"
+                  value={mallPhone}
+                  onChange={(e) => setMallPhone(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. (555) 019-2834"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Store Street Address</label>
               <input 
                 type="text"
-                value={mallName}
-                onChange={(e) => setMallName(e.target.value)}
+                value={mallAddress}
+                onChange={(e) => setMallAddress(e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="e.g. Antique Mall & Cooperatives"
-                required
+                placeholder="e.g. 123 Main Street, Suite A"
               />
+            </div>
+
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Receipt Footer Message</label>
+              <textarea 
+                value={receiptFooter}
+                onChange={(e) => setReceiptFooter(e.target.value)}
+                rows={3}
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
+                placeholder="e.g. THANK YOU FOR SHOPPING!&#10;ALL SALES FINAL ON ANTIQUES"
+              />
+            </div>
+
+            <div className="mt-6 bg-gray-950 border border-gray-850 p-5 rounded-2xl">
+              <label className="block text-sm font-bold text-gray-300 mb-2 uppercase tracking-wider text-xs">Receipt Header Company Logo</label>
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                {receiptLogo ? (
+                  <div className="relative w-24 h-24 bg-white border border-gray-700 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                    <img src={receiptLogo} alt="Receipt Logo" className="object-contain w-full h-full p-1" />
+                    <button
+                      type="button"
+                      onClick={() => setReceiptLogo('')}
+                      className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex items-center justify-center text-red-400 font-bold transition-opacity text-xs"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 bg-gray-800 border-2 border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center text-gray-500 text-xs shrink-0">
+                    No Logo
+                  </div>
+                )}
+                
+                <div className="flex-1 space-y-2">
+                  <p className="text-gray-400 text-xs">
+                    Upload a square or wide logo (JPEG or PNG). This logo will appear at the top of printed and digital customer receipts.
+                  </p>
+                  <label className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-md shadow-blue-500/10">
+                    {logoUploading ? 'Uploading Logo...' : 'Choose Logo Image'}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleLogoChange} 
+                      className="hidden" 
+                      disabled={logoUploading}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -807,19 +916,28 @@ export default function SettingsPage() {
           </div>
 
           <div className="bg-gray-950 border border-gray-850 rounded-2xl p-4 sm:p-5 mt-4 space-y-4">
-            <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-              <span className="flex h-2 w-2 relative">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                  searxngStatus.endpointActive ? 'bg-green-400' :
-                  searxngStatus.containerStatus === 'running' ? 'bg-yellow-400' : 'bg-red-400'
-                }`}></span>
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                  searxngStatus.endpointActive ? 'bg-green-500' :
-                  searxngStatus.containerStatus === 'running' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}></span>
-              </span>
-              SearXNG Self-Hosting Assistant
-            </h4>
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    searxngStatus.endpointActive ? 'bg-green-400' :
+                    searxngStatus.containerStatus === 'running' ? 'bg-yellow-400' : 'bg-red-400'
+                  }`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                    searxngStatus.endpointActive ? 'bg-green-500' :
+                    searxngStatus.containerStatus === 'running' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}></span>
+                </span>
+                SearXNG Self-Hosting Assistant
+              </h4>
+              <button
+                type="button"
+                onClick={fetchSearxngStatus}
+                className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-bold focus:outline-none cursor-pointer"
+              >
+                Re-check Status
+              </button>
+            </div>
 
             {searxngStatus.loading ? (
               <div className="flex items-center gap-2 text-sm text-gray-400">

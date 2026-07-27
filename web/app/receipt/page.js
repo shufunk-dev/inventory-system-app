@@ -12,10 +12,13 @@ export default function ReceiptPage() {
   const [printMode, setPrintMode] = useState('thermal'); // 'thermal' or 'letter'
   const [taxRate, setTaxRate] = useState(7.0); // 7.0%
   const [receiptNo, setReceiptNo] = useState('');
+  const [registerId, setRegisterId] = useState('1');
   const [customerName, setCustomerName] = useState('');
   const [mallName, setMallName] = useState('Antique Mall & Cooperatives');
   const [mallAddress, setMallAddress] = useState('123 Main Street, Suite A');
   const [mallPhone, setMallPhone] = useState('(555) 019-2834');
+  const [receiptFooter, setReceiptFooter] = useState('THANK YOU FOR SHOPPING!\nALL SALES FINAL ON ANTIQUES');
+  const [receiptLogo, setReceiptLogo] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Custom ad-hoc item states
@@ -50,14 +53,39 @@ export default function ReceiptPage() {
       if (saved === 'true') {
         setIsTabletMode(true);
       }
+      const savedReg = localStorage.getItem('pos_register_id');
+      if (savedReg) {
+        setRegisterId(savedReg);
+      }
     }
   }, []);
+
+  const handleRegisterIdChange = (val) => {
+    setRegisterId(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pos_register_id', val);
+    }
+  };
 
   const toggleTabletMode = () => {
     const nextVal = !isTabletMode;
     setIsTabletMode(nextVal);
     if (typeof window !== 'undefined') {
       localStorage.setItem('pos_tablet_mode', String(nextVal));
+    }
+  };
+
+  const fetchNextReceiptNo = async () => {
+    try {
+      const res = await fetch('/api/receipt-items');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.nextReceiptNo) {
+          setReceiptNo(data.nextReceiptNo);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching next receipt number:', e);
     }
   };
 
@@ -68,6 +96,9 @@ export default function ReceiptPage() {
         if (itemRes.ok) {
           const itemData = await itemRes.json();
           setCatalogItems(itemData.items || []);
+          if (itemData.nextReceiptNo) {
+            setReceiptNo(itemData.nextReceiptNo);
+          }
         }
 
         const storeRes = await fetch('/api/admin/stores');
@@ -81,6 +112,11 @@ export default function ReceiptPage() {
           const settingsData = await settingsRes.json();
           setPaymentConfig(settingsData.paymentConfig || null);
           setPrinterConfig(settingsData.printerConfig || null);
+          if (settingsData.mallName) setMallName(settingsData.mallName);
+          if (settingsData.mallAddress) setMallAddress(settingsData.mallAddress);
+          if (settingsData.mallPhone) setMallPhone(settingsData.mallPhone);
+          if (settingsData.receiptFooter) setReceiptFooter(settingsData.receiptFooter);
+          if (settingsData.receiptLogo) setReceiptLogo(settingsData.receiptLogo);
         }
       } catch (e) {
         console.error('Error seeding receipt page:', e);
@@ -89,9 +125,6 @@ export default function ReceiptPage() {
       }
     }
 
-    // Set a random receipt number on load
-    const randNo = 'R-' + Math.floor(100000 + Math.random() * 900000);
-    setReceiptNo(randNo);
     loadData();
 
     return () => {
@@ -110,7 +143,7 @@ export default function ReceiptPage() {
       const res = await fetch('/api/pos/checkout/card', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: total, receiptNo, isTraining: isTrainingMode })
+        body: JSON.stringify({ amount: total, receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`, isTraining: isTrainingMode })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -136,7 +169,7 @@ export default function ReceiptPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: total,
-          receiptNo,
+          receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
           isTraining: isTrainingMode,
           provider: qrProvider
         })
@@ -151,6 +184,9 @@ export default function ReceiptPage() {
       
       // Auto trigger print receipt
       handlePrint();
+
+      setReceiptItems([]);
+      fetchNextReceiptNo();
     } catch (e) {
       setQrIsMarkingPaid(false);
       alert(`Error saving payment: ${e.message}`);
@@ -298,13 +334,14 @@ export default function ReceiptPage() {
       mallName,
       mallAddress,
       mallPhone,
-      receiptNo,
+      receiptNo: `R${registerId}-${receiptNo.replace(/^R-/, '')}`,
       customerName,
       receiptItems,
       subtotal,
       taxRate,
       taxAmount,
-      total
+      total,
+      receiptFooter
     };
 
     if (printerConfig && printerConfig.connectionType !== 'browser') {
@@ -328,6 +365,48 @@ export default function ReceiptPage() {
       }
     } else {
       window.print();
+    }
+  };
+
+  const handleTaxLookupClick = async () => {
+    const zip = prompt("Enter US ZIP Code to lookup tax rate:");
+    if (!zip) return;
+    const cleanZip = zip.trim();
+    if (!/^\d{5}$/.test(cleanZip)) {
+      alert("Please enter a valid 5-digit US ZIP Code.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://api.zippopotam.us/us/${cleanZip}`);
+      if (!response.ok) {
+        throw new Error("Invalid ZIP code or lookup failed.");
+      }
+      const data = await response.json();
+      const stateAbbr = data.places?.[0]?.['state abbreviation'];
+      if (!stateAbbr) {
+        throw new Error("Could not resolve state from ZIP code.");
+      }
+
+      const rates = {
+        AL: 9.29, AK: 1.82, AZ: 8.38, AR: 9.44, CA: 8.85, CO: 7.81, CT: 6.35, DE: 0.0,
+        FL: 7.02, GA: 7.40, HI: 4.50, ID: 6.03, IL: 8.85, IN: 7.00, IA: 6.94, KS: 8.75,
+        KY: 6.00, LA: 9.56, ME: 5.50, MD: 6.00, MA: 6.25, MI: 6.00, MN: 7.50, MS: 7.07,
+        MO: 8.38, MT: 0.0, NE: 6.97, NV: 8.24, NH: 0.0, NJ: 6.60, NM: 7.60, NY: 8.53,
+        NC: 7.00, ND: 6.98, OH: 7.24, OK: 8.99, OR: 0.0, PA: 6.34, RI: 7.00, SC: 7.50,
+        SD: 6.12, TN: 9.55, TX: 8.20, UT: 7.25, VT: 6.30, VA: 5.77, WA: 9.40, WV: 6.57,
+        WI: 5.43, WY: 5.44, DC: 6.00
+      };
+
+      const matchedRate = rates[stateAbbr.toUpperCase()];
+      if (matchedRate !== undefined) {
+        setTaxRate(matchedRate);
+        alert(`Resolved State: ${data.places[0]['place name']}, ${stateAbbr}\nApplied Average combined Sales Tax Rate: ${matchedRate}%`);
+      } else {
+        alert(`Resolved State: ${stateAbbr}, but no average rate was found. Please set manually.`);
+      }
+    } catch (e) {
+      alert(e.message || "Failed to resolve ZIP code tax rate.");
     }
   };
 
@@ -495,14 +574,24 @@ export default function ReceiptPage() {
 
             {!configCollapsed && (
               <div className="space-y-4 pt-4 border-t border-gray-800/60 animate-fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Receipt Number</label>
                     <input 
                       type="text" 
                       value={receiptNo}
                       onChange={(e) => setReceiptNo(e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Register ID</label>
+                    <input 
+                      type="text" 
+                      value={registerId}
+                      onChange={(e) => handleRegisterIdChange(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 font-mono font-bold text-blue-400 text-center"
+                      placeholder="e.g. 1, 2, A"
                     />
                   </div>
                   <div>
@@ -511,18 +600,27 @@ export default function ReceiptPage() {
                       type="text" 
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Cash Customer"
+                      placeholder="Walk-in Cash Customer"
                       className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Tax Rate (%)</label>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider flex justify-between items-center">
+                      <span>Tax Rate (%)</span>
+                      <button
+                        type="button"
+                        onClick={handleTaxLookupClick}
+                        className="text-[10px] text-blue-400 hover:text-blue-300 hover:underline font-bold focus:outline-none cursor-pointer"
+                      >
+                        Auto-Lookup
+                      </button>
+                    </label>
                     <input 
                       type="number" 
                       step="0.01"
                       value={taxRate}
                       onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 font-mono font-bold"
                     />
                   </div>
                 </div>
@@ -885,6 +983,11 @@ export default function ReceiptPage() {
 
                   {/* Mall Header */}
                   <div className="text-center font-mono space-y-1">
+                    {receiptLogo && (
+                      <div className="flex justify-center mb-3">
+                        <img src={receiptLogo} alt="Logo" className="w-16 h-16 object-contain filter grayscale contrast-125" />
+                      </div>
+                    )}
                     <h4 className="font-extrabold text-sm uppercase tracking-wide">{mallName}</h4>
                     <p className="text-[11px] text-gray-600">{mallAddress}</p>
                     <p className="text-[11px] text-gray-600">{mallPhone}</p>
@@ -895,7 +998,7 @@ export default function ReceiptPage() {
 
                   {/* Metadata */}
                   <div className="font-mono text-[11px] space-y-1 text-gray-700">
-                    <p>RECEIPT: {receiptNo}</p>
+                    <p>RECEIPT: R{registerId}-{receiptNo.replace(/^R-/, '')}</p>
                     <p>DATE   : {currentDateStr}</p>
                     {customerName && <p>CLIENT : {customerName.toUpperCase()}</p>}
                   </div>
@@ -940,9 +1043,13 @@ export default function ReceiptPage() {
                   <p className="font-mono text-center my-4 text-gray-600">--------------------------------</p>
 
                   {/* Footer */}
-                  <div className="text-center font-mono text-[11px] text-gray-600 space-y-1 pb-4">
-                    <p>THANK YOU FOR SHOPPING!</p>
-                    <p>ALL SALES FINAL ON ANTIQUES</p>
+                  <div className="text-center font-mono text-[11px] text-gray-600 space-y-1 pb-4 whitespace-pre-line">
+                    {receiptFooter ? receiptFooter : (
+                      <>
+                        <p>THANK YOU FOR SHOPPING!</p>
+                        <p>ALL SALES FINAL ON ANTIQUES</p>
+                      </>
+                    )}
                     <p className="text-[9px] mt-2">SYS v1.5.1</p>
                   </div>
 
@@ -953,14 +1060,21 @@ export default function ReceiptPage() {
                   
                   {/* Logo / Header */}
                   <div className="flex justify-between items-start border-b border-gray-200 pb-6 mb-6">
-                    <div>
-                      <h2 className="text-xl font-extrabold uppercase text-gray-900 tracking-wider">{mallName}</h2>
-                      <p className="text-xs text-gray-500 mt-1">{mallAddress}</p>
-                      <p className="text-xs text-gray-500">{mallPhone}</p>
+                    <div className="flex gap-4 items-center">
+                      {receiptLogo && (
+                        <div className="w-16 h-16 bg-white border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                          <img src={receiptLogo} alt="Logo" className="object-contain w-full h-full p-1" />
+                        </div>
+                      )}
+                      <div>
+                        <h2 className="text-xl font-extrabold uppercase text-gray-900 tracking-wider">{mallName}</h2>
+                        <p className="text-xs text-gray-500 mt-1">{mallAddress}</p>
+                        <p className="text-xs text-gray-500">{mallPhone}</p>
+                      </div>
                     </div>
                     <div className="text-right">
                       <h3 className="text-2xl font-bold text-gray-400 uppercase tracking-widest">Receipt</h3>
-                      <p className="text-xs text-gray-600 mt-1 font-mono">Invoice #: {receiptNo}</p>
+                      <p className="text-xs text-gray-600 mt-1 font-mono">Invoice #: R{registerId}-{receiptNo.replace(/^R-/, '')}</p>
                       <p className="text-xs text-gray-600 font-mono">Date: {currentDateStr}</p>
                     </div>
                   </div>
@@ -1017,10 +1131,14 @@ export default function ReceiptPage() {
                   </div>
 
                   {/* Terms / Thank you */}
-                  <div className="mt-16 text-center border-t border-gray-100 pt-6 text-[10px] text-gray-500 space-y-1">
-                    <p className="font-semibold">Thank you for your business!</p>
-                    <p>Return policy: Exchanges only within 7 days with original tag attached.</p>
-                    <p>Mall operator payout records updated. Scans compiled on server.</p>
+                  <div className="mt-16 text-center border-t border-gray-100 pt-6 text-[10px] text-gray-500 space-y-1 whitespace-pre-line">
+                    {receiptFooter ? receiptFooter : (
+                      <>
+                        <p className="font-semibold">Thank you for your business!</p>
+                        <p>Return policy: Exchanges only within 7 days with original tag attached.</p>
+                      </>
+                    )}
+                    <p className="text-gray-400 mt-2">Mall operator payout records updated. Scans compiled on server.</p>
                   </div>
 
                 </div>
@@ -1077,6 +1195,8 @@ export default function ReceiptPage() {
                     onClick={() => {
                       setCheckoutModalOpen(false);
                       handlePrint(); // Auto-open print layout
+                      setReceiptItems([]);
+                      fetchNextReceiptNo();
                     }}
                     className="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-xl text-xs transition-colors cursor-pointer"
                   >

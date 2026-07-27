@@ -49,7 +49,8 @@ export function compileEscposReceipt(receipt, config = {}) {
     subtotal = 0,
     taxRate = 7.0,
     taxAmount = 0,
-    total = 0
+    total = 0,
+    receiptFooter = ''
   } = receipt;
 
   const width = config.paperWidth === '58mm' ? 32 : 42; // Standard 42 columns for 80mm, 32 for 58mm
@@ -110,8 +111,13 @@ export function compileEscposReceipt(receipt, config = {}) {
   raw += `${'-'.repeat(width)}\n`;
 
   // 6. Thank you footer
-  raw += 'THANK YOU FOR SHOPPING WITH US!\n';
-  raw += 'ALL SALES FINAL ON ANTIQUES\n';
+  if (receiptFooter) {
+    // Replace CRLF/LF with simple newlines and append
+    raw += `${receiptFooter.replace(/\r\n/g, '\n')}\n`;
+  } else {
+    raw += 'THANK YOU FOR SHOPPING WITH US!\n';
+    raw += 'ALL SALES FINAL ON ANTIQUES\n';
+  }
   
   // Feed lines
   raw += '\n\n\n';

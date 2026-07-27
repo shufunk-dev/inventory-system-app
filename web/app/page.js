@@ -45,6 +45,7 @@ export default async function Home({ searchParams }) {
   const query = params.q || '';
   const advanced = params.advanced === 'true';
   const categoryId = params.category || '';
+  const priceFilter = params.price || 'all';
 
   const db = await getDb();
 
@@ -98,6 +99,12 @@ export default async function Home({ searchParams }) {
     }
   }
 
+  if (priceFilter === 'priced') {
+    sqlConditions.push("(retailPrice IS NOT NULL AND retailPrice != '')");
+  } else if (priceFilter === 'unpriced') {
+    sqlConditions.push("(retailPrice IS NULL OR retailPrice = '')");
+  }
+
   const whereClause = sqlConditions.length > 0 ? 'WHERE ' + sqlConditions.join(' AND ') : '';
 
   // Count totals
@@ -113,6 +120,7 @@ export default async function Home({ searchParams }) {
   if (query) urlParams.set('q', query);
   if (advanced) urlParams.set('advanced', 'true');
   if (categoryId) urlParams.set('category', categoryId);
+  if (priceFilter && priceFilter !== 'all') urlParams.set('price', priceFilter);
   const baseQueryString = urlParams.toString();
   const buildPageUrl = (p) => `/?page=${p}${baseQueryString ? '&' + baseQueryString : ''}`;
 
