@@ -39,6 +39,12 @@
       "main.js",
       "icon.ico",
       "next-server/**/*",
+      "!next-server/uploads/**/*",
+      "!next-server/public/uploads/**/*",
+      "!next-server/scratch/**/*",
+      "!next-server/tests/**/*",
+      "!next-server/inventory.db",
+      "!next-server/database.sqlite",
       {
         "from": "next-server/node_modules",
         "to": "next-server/node_modules",

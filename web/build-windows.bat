@@ -10,17 +10,32 @@ echo [2/5] Cleaning old Electron build files...
 if exist electron\next-server rmdir /s /q electron\next-server
 mkdir electron\next-server
 
-echo [2.5/5] Cleaning duplicate build files from Next.js standalone...
+echo [2.5/5] Cleaning duplicate build files and local uploads from Next.js standalone...
 if exist .next\standalone\electron rmdir /s /q .next\standalone\electron
 if exist .next\standalone\dist rmdir /s /q .next\standalone\dist
 if exist .next\standalone\Archive rmdir /s /q .next\standalone\Archive
+if exist .next\standalone\uploads rmdir /s /q .next\standalone\uploads
+if exist .next\standalone\public\uploads rmdir /s /q .next\standalone\public\uploads
+if exist .next\standalone\scratch rmdir /s /q .next\standalone\scratch
+if exist .next\standalone\tests rmdir /s /q .next\standalone\tests
+if exist .next\standalone\inventory.db del /f /q .next\standalone\inventory.db
+if exist .next\standalone\database.sqlite del /f /q .next\standalone\database.sqlite
 
 echo [3/5] Copying standalone server files...
 xcopy /E /I /Q /Y .next\standalone electron\next-server
 xcopy /E /I /Q /Y .next\static electron\next-server\.next\static
 xcopy /E /I /Q /Y public electron\next-server\public
 if exist .env.local copy /Y .env.local electron\next-server\.env.local
-echo [3.5/5] Patching Next.js runtime dependencies...
+
+echo [3.8/5] Removing runtime user files from server staging...
+if exist electron\next-server\uploads rmdir /s /q electron\next-server\uploads
+if exist electron\next-server\public\uploads rmdir /s /q electron\next-server\public\uploads
+if exist electron\next-server\scratch rmdir /s /q electron\next-server\scratch
+if exist electron\next-server\tests rmdir /s /q electron\next-server\tests
+if exist electron\next-server\inventory.db del /f /q electron\next-server\inventory.db
+if exist electron\next-server\database.sqlite del /f /q electron\next-server\database.sqlite
+
+echo [3.9/5] Patching Next.js runtime dependencies...
 xcopy /E /I /Q /Y node_modules\next electron\next-server\node_modules\next
 
 echo [4/5] Installing Electron dependencies...

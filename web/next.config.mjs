@@ -14,6 +14,12 @@ const nextConfig = {
       'electron/**/*',
       'dist/**/*',
       'Archive/**/*',
+      'uploads/**/*',
+      'public/uploads/**/*',
+      'scratch/**/*',
+      'inventory.db',
+      'database.sqlite',
+      'tests/**/*',
     ],
   },
   allowedDevOrigins: [
