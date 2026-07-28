@@ -364,6 +364,19 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.6', date: 'July 28, 2026', title: 'Bottles & Cans Engine, Custom Folder ZIP Imports, & Recursive Category Deletion',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Added custom directory-structured ZIP importer automatically turning folder hierarchies into Categories & Subcategories and filenames into clean Item Names.' },
+      { type: 'web', text: 'Increased maximum ZIP upload body limit to 1GB (1000MB) with 5-minute request processing timeouts for large photo archives.' },
+      { type: 'web', text: 'Added dedicated Bottles, Cans & Glassware (bottle) item type across upload forms, valuation reports, and background AI market pricing engines.' },
+      { type: 'mobile', text: 'Added Bottles & Cans Mode to handheld mobile scanner app with itemType metadata tagging.' },
+      { type: 'web', text: 'Implemented Item Type selector in bulk ZIP import modal allowing batch designation before import.' },
+      { type: 'web', text: 'Fixed custom ZIP import background worker queueing so market value estimation and vision OCR trigger automatically upon import completion.' },
+      { type: 'web', text: 'Added recursive category deletion removing top-level categories and all descendant subcategories in a single operation while preserving items as Uncategorized.' },
+      { type: 'web', text: 'Bumped system version to Beta 1.9.6 across Web navbar, POS receipts, Mobile app, and Electron configurations.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.5', date: 'July 27, 2026', title: 'Cash Checkout Modal, Tender Breakdowns, Card Brand Display & Model Upgrades',
     changes: JSON.stringify([
       { type: 'web', text: 'Added interactive Cash Register Checkout modal with quick tender buttons (Exact, $20, $50, $100), custom cash amount entry, and live change due calculation.' },
