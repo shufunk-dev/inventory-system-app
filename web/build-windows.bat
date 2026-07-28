@@ -18,8 +18,11 @@ if exist .next\standalone\uploads rmdir /s /q .next\standalone\uploads
 if exist .next\standalone\public\uploads rmdir /s /q .next\standalone\public\uploads
 if exist .next\standalone\scratch rmdir /s /q .next\standalone\scratch
 if exist .next\standalone\tests rmdir /s /q .next\standalone\tests
+if exist .next\standalone\scripts rmdir /s /q .next\standalone\scripts
 if exist .next\standalone\inventory.db del /f /q .next\standalone\inventory.db
 if exist .next\standalone\database.sqlite del /f /q .next\standalone\database.sqlite
+for %%f in (.next\standalone\*.sqlite*) do del /f /q "%%f"
+for %%f in (.next\standalone\*.db*) do del /f /q "%%f"
 
 echo [3/5] Copying standalone server files...
 xcopy /E /I /Q /Y .next\standalone electron\next-server
@@ -32,8 +35,12 @@ if exist electron\next-server\uploads rmdir /s /q electron\next-server\uploads
 if exist electron\next-server\public\uploads rmdir /s /q electron\next-server\public\uploads
 if exist electron\next-server\scratch rmdir /s /q electron\next-server\scratch
 if exist electron\next-server\tests rmdir /s /q electron\next-server\tests
+if exist electron\next-server\scripts rmdir /s /q electron\next-server\scripts
+if exist electron\next-server\Archive rmdir /s /q electron\next-server\Archive
 if exist electron\next-server\inventory.db del /f /q electron\next-server\inventory.db
 if exist electron\next-server\database.sqlite del /f /q electron\next-server\database.sqlite
+for %%f in (electron\next-server\*.sqlite*) do del /f /q "%%f"
+for %%f in (electron\next-server\*.db*) do del /f /q "%%f"
 
 echo [3.9/5] Patching Next.js runtime dependencies...
 xcopy /E /I /Q /Y node_modules\next electron\next-server\node_modules\next

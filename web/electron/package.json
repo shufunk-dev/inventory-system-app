@@ -43,8 +43,12 @@
       "!next-server/public/uploads/**/*",
       "!next-server/scratch/**/*",
       "!next-server/tests/**/*",
+      "!next-server/scripts/**/*",
+      "!next-server/Archive/**/*",
       "!next-server/inventory.db",
       "!next-server/database.sqlite",
+      "!next-server/*.sqlite*",
+      "!next-server/*.db*",
       {
         "from": "next-server/node_modules",
         "to": "next-server/node_modules",
