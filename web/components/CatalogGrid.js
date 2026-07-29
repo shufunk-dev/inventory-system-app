@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2, Printer, Edit3, Gamepad2, Film, Sparkles, Coins } from 'lucide-react';
+import { Image as ImageIcon, Trash2, CheckSquare, Square, FolderInput, X, Loader2, Printer, Edit3, Gamepad2, Film, Sparkles, Coins, Replace, RotateCcw } from 'lucide-react';
 import { buildCategoryTree } from '@/lib/categories';
 
 export default function CatalogGrid({ items }) {
@@ -21,7 +21,15 @@ export default function CatalogGrid({ items }) {
   // Bulk Rename State
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameItems, setRenameItems] = useState([]);
+  const [originalRenameItems, setOriginalRenameItems] = useState([]);
   const [isRenaming, setIsRenaming] = useState(false);
+  
+  // Find & Replace State
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [matchCase, setMatchCase] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
+  const [replaceStats, setReplaceStats] = useState(null);
 
   // Bulk System State
   const [isSystemModalOpen, setIsSystemModalOpen] = useState(false);
@@ -190,6 +198,10 @@ export default function CatalogGrid({ items }) {
         imagePath: item.imagePath || ''
       }));
     setRenameItems(selectedItemsList);
+    setOriginalRenameItems(selectedItemsList);
+    setFindText('');
+    setReplaceText('');
+    setReplaceStats(null);
     setIsRenameModalOpen(true);
   };
 
@@ -197,6 +209,37 @@ export default function CatalogGrid({ items }) {
     setRenameItems(prev =>
       prev.map(item => item.id === id ? { ...item, name: newName } : item)
     );
+  };
+
+  const handleApplyFindReplace = () => {
+    if (!findText.trim()) return;
+
+    let matchCount = 0;
+    let itemCount = 0;
+
+    const regexFlags = matchCase ? 'g' : 'gi';
+    const escapedFind = findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = wholeWord ? `\\b${escapedFind}\\b` : escapedFind;
+    const regex = new RegExp(pattern, regexFlags);
+
+    const updated = renameItems.map(item => {
+      if (regex.test(item.name)) {
+        const matches = item.name.match(regex);
+        matchCount += matches ? matches.length : 0;
+        itemCount++;
+        const newName = item.name.replace(regex, replaceText);
+        return { ...item, name: newName };
+      }
+      return item;
+    });
+
+    setRenameItems(updated);
+    setReplaceStats({ matches: matchCount, items: itemCount });
+  };
+
+  const handleResetNames = () => {
+    setRenameItems(originalRenameItems);
+    setReplaceStats(null);
   };
 
   const handleBulkRename = async () => {
@@ -496,8 +539,84 @@ export default function CatalogGrid({ items }) {
       {isRenameModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 rounded-3xl p-8 max-w-xl w-full border border-gray-700 shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col max-h-[85vh]">
-            <h2 className="text-2xl font-bold text-white mb-2">Rename {renameItems.length} Items</h2>
-            <p className="text-gray-400 text-sm mb-6">Edit the names below to update your inventory items in bulk.</p>
+            <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+              <Edit3 className="w-6 h-6 text-purple-400" /> Rename {renameItems.length} Items
+            </h2>
+            <p className="text-gray-400 text-sm mb-4">Edit individual names below or use Find &amp; Replace to update matching words across all selected items.</p>
+            
+            {/* Find & Replace Controls */}
+            <div className="bg-gray-800/60 border border-gray-700/60 rounded-2xl p-4 mb-4 space-y-3 shadow-inner">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">Find word / phrase</label>
+                  <input 
+                    type="text"
+                    value={findText}
+                    onChange={(e) => setFindText(e.target.value)}
+                    placeholder="e.g. coke"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">Replace with</label>
+                  <input 
+                    type="text"
+                    value={replaceText}
+                    onChange={(e) => setReplaceText(e.target.value)}
+                    placeholder="e.g. coca-cola"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-gray-700/40">
+                <div className="flex items-center gap-4 text-xs text-gray-300">
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={matchCase}
+                      onChange={(e) => setMatchCase(e.target.checked)}
+                      className="rounded border-gray-700 text-purple-600 focus:ring-purple-500 bg-gray-900"
+                    />
+                    Match Case
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={wholeWord}
+                      onChange={(e) => setWholeWord(e.target.checked)}
+                      className="rounded border-gray-700 text-purple-600 focus:ring-purple-500 bg-gray-900"
+                    />
+                    Whole Word Only
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {replaceStats && (
+                    <span className="text-xs text-emerald-400 font-medium mr-1">
+                      Replaced {replaceStats.matches} match{replaceStats.matches !== 1 ? 'es' : ''} in {replaceStats.items} item{replaceStats.items !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {replaceStats && (
+                    <button
+                      type="button"
+                      onClick={handleResetNames}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white bg-gray-900 hover:bg-gray-700 border border-gray-700 transition-colors flex items-center gap-1"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" /> Reset
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleApplyFindReplace}
+                    disabled={!findText.trim()}
+                    className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-all shadow-md shadow-purple-600/20 flex items-center gap-1.5"
+                  >
+                    <Replace className="w-3.5 h-3.5" /> Apply Replace
+                  </button>
+                </div>
+              </div>
+            </div>
             
             <div className="flex-1 overflow-y-auto pr-2 mb-6 space-y-4 max-h-[50vh] scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
               {renameItems.map((item) => (
