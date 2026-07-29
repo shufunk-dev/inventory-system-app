@@ -11,6 +11,7 @@ export default function UploadForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [categories, setCategories] = useState([]);
+  const [isLocal, setIsLocal] = useState(true);
   
   const router = useRouter();
 
@@ -19,6 +20,19 @@ export default function UploadForm() {
       .then(r => r.json())
       .then(data => setCategories(buildCategoryTree(data)))
       .catch(console.error);
+
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const local = (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.endsWith('.local') ||
+        /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+        /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)
+      );
+      setIsLocal(local);
+    }
   }, []);
 
   const handleFileChange = (e) => {
@@ -56,6 +70,7 @@ export default function UploadForm() {
 
     setIsUploading(true);
     let successCount = 0;
+    const maxSizeBytes = isLocal ? 500 * 1024 * 1024 : 95 * 1024 * 1024;
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
@@ -63,6 +78,17 @@ export default function UploadForm() {
       let finalCategoryId = config.categoryId;
 
       setUploadProgress(`Processing ${i + 1} of ${selectedFiles.length}...`);
+
+      // Check file size based on connection type
+      if (file.size > maxSizeBytes) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        if (!isLocal) {
+          alert(`File "${file.name}" is ${sizeMB} MB.\n\nWhen accessing remotely over Cloudflare/Tunnel, uploads are limited to 95 MB.\n\nTip: Connect locally on your home network to upload files up to 500 MB.`);
+        } else {
+          alert(`File "${file.name}" is ${sizeMB} MB, which exceeds the local 500 MB upload limit.\n\nPlease split this ZIP into smaller files.`);
+        }
+        continue;
+      }
 
       // 1. Create new category if needed for this specific file
       if (config.isCreatingNew && config.newCategoryName.trim()) {
@@ -102,6 +128,12 @@ export default function UploadForm() {
           method: 'POST',
           body: formData,
         });
+
+        if (res.status === 413) {
+          alert(`Error uploading ${file.name}: File is too large for the server/tunnel limit (413 Payload Too Large).`);
+          continue;
+        }
+
         const data = await res.json();
         if (res.ok) {
           successCount += data.count;
@@ -109,7 +141,7 @@ export default function UploadForm() {
           alert(`Error uploading ${file.name}: ${data.error}`);
         }
       } catch (error) {
-        alert(`Upload failed for ${file.name}`);
+        alert(`Upload failed for ${file.name}. The server or tunnel connection timed out or dropped.`);
       }
     }
 
@@ -137,6 +169,9 @@ export default function UploadForm() {
           <Upload className="w-5 h-5" />
           Import ZIP(s)
         </label>
+        <span className="text-[11px] text-gray-400 block mt-1.5 font-medium">
+          {isLocal ? '⚡ Local Network (Max 500 MB/file)' : '🌐 Remote Tunnel (Max 95 MB/file)'}
+        </span>
       </div>
 
       {/* Category Selection Modal */}

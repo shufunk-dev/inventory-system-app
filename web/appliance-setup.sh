@@ -78,7 +78,7 @@ server {
 
     server_name _;
 
-    client_max_body_size 100M; # Allow large ZIP uploads
+    client_max_body_size 500M; # Allow large ZIP uploads on local network
 
     location / {
         proxy_pass http://localhost:3000;
