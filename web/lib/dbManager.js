@@ -364,6 +364,16 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.7', date: 'July 29, 2026', title: 'Find & Replace Bulk Renaming Engine & Partial Substring Replacements',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented Find & Replace panel within the inventory Bulk Rename modal supporting partial word and phrase replacements across selected catalog items.' },
+      { type: 'web', text: 'Added Match Case and Whole Word Only toggle options for precise string matching.' },
+      { type: 'web', text: 'Added live preview statistics counter displaying matches replaced and affected items before committing to database.' },
+      { type: 'web', text: 'Added one-click Reset button to restore items to original names prior to batch renaming.' },
+      { type: 'web', text: 'Bumped system version to Beta 1.9.7 across Web navbar, POS receipts, Mobile app, and Electron configurations.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.6', date: 'July 28, 2026', title: 'Bottles & Cans Engine, Custom Folder ZIP Imports, & Recursive Category Deletion',
     changes: JSON.stringify([
       { type: 'web', text: 'Added custom directory-structured ZIP importer automatically turning folder hierarchies into Categories & Subcategories and filenames into clean Item Names.' },
