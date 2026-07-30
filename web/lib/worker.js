@@ -467,6 +467,11 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
   const searxngUrl = process.env.SEARXNG_URL;
   if (!searxngUrl || !name) return null;
 
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/html;q=0.9, */*;q=0.8'
+  };
+
   try {
     // Clean up Google-specific OR and parentheses syntax for SearXNG
     const cleanExtra = extraKeywords
@@ -479,9 +484,55 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
     const query = encodeURIComponent(q);
     const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
     console.log(`[Worker] Querying SearXNG API for prices: "${q}"`);
-    const res = await axios.get(url, { timeout: 10000 });
 
-    if (res.data && res.data.results && res.data.results.length > 0) {
+    let res = null;
+    try {
+      res = await axios.get(url, { headers, timeout: 10000 });
+    } catch (err) {
+      console.log(`[Worker] SearXNG JSON API endpoint error (${err.message}). Trying SearXNG HTML search fallback...`);
+      // HTML Endpoint Fallback if JSON format is disabled in SearXNG settings.yml
+      const htmlUrl = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}`;
+      try {
+        const htmlRes = await axios.get(htmlUrl, { headers, timeout: 10000 });
+        if (htmlRes.data && typeof htmlRes.data === 'string') {
+          const cleanText = htmlRes.data
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ');
+          const priceMatches = cleanText.match(/\$\s*[0-9,]+(?:\.[0-9]{2})?/g);
+          if (priceMatches && priceMatches.length > 0) {
+            let prices = [];
+            for (const match of priceMatches) {
+              const val = parseFloat(match.replace(/[^0-9.]/g, ''));
+              if (!isNaN(val) && val > 0 && val < 50000) prices.push(val);
+            }
+            prices = [...new Set(prices)].sort((a, b) => a - b);
+            if (prices.length > 0) {
+              if (prices.length > 2) {
+                const filtered = prices.filter(p => p >= 0.50);
+                if (filtered.length > 0) prices = filtered;
+              }
+              if (prices.length >= 4) {
+                const trimCount = Math.max(1, Math.floor(prices.length * 0.15));
+                prices = prices.slice(trimCount, prices.length - trimCount);
+              }
+              const sum = prices.reduce((acc, p) => acc + p, 0);
+              const avg = sum / prices.length;
+              return {
+                valueLow: parseFloat(prices[0].toFixed(2)),
+                valueAvg: parseFloat(avg.toFixed(2)),
+                valueHigh: parseFloat(prices[prices.length - 1].toFixed(2))
+              };
+            }
+          }
+        }
+      } catch (htmlErr) {
+        console.log(`[Worker] SearXNG HTML fallback also failed: ${htmlErr.message}`);
+      }
+      return null;
+    }
+
+    if (res && res.data && res.data.results && res.data.results.length > 0) {
       let prices = [];
 
       for (const item of res.data.results) {
@@ -525,12 +576,7 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
       }
     }
   } catch (e) {
-    console.error('[Worker] SearXNG Search Price error:', e.message);
-    const isRateOrAuthError = (e.response && (e.response.status === 403 || e.response.status === 429)) ||
-                              (e.message && (e.message.includes('403') || e.message.includes('429')));
-    if (isRateOrAuthError) {
-      console.warn('[Worker] SearXNG is rate limited or unauthorized. Skipping price lookup.');
-    }
+    console.log('[Worker] SearXNG Search Price error:', e.message);
   }
   return null;
 }
