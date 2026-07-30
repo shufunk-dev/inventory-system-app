@@ -477,15 +477,9 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
 
     const q = `${name} ${cleanExtra}`.replace(/\s+/g, ' ').trim();
     const query = encodeURIComponent(q);
-    const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json&engines=google,bing,duckduckgo,ebay`;
+    const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
     console.log(`[Worker] Querying SearXNG API for prices: "${q}"`);
-    let res;
-    try {
-      res = await axios.get(url, { timeout: 10000 });
-    } catch (err) {
-      const fallbackUrl = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
-      res = await axios.get(fallbackUrl, { timeout: 10000 });
-    }
+    const res = await axios.get(url, { timeout: 10000 });
 
     if (res.data && res.data.results && res.data.results.length > 0) {
       let prices = [];
@@ -553,7 +547,7 @@ async function fetchToyMarketValue(name, condition) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
-  const price = await fetchSearchEnginePrice(cleanName, `${cleanCond} toy value price ebay`);
+  const price = await fetchSearchEnginePrice(cleanName, `${cleanCond} ebay`.trim());
   if (price) return price;
 
   return await fetchGenericMarketValue(cleanName);
@@ -563,11 +557,11 @@ async function fetchGenericMarketValue(name) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
 
-  // Try queries in order from specific high-intent e-commerce to broader fallbacks
+  // Optimized query sequence: start with clean title + ebay, then clean title + price, then bare clean title
   const queries = [
-    `${cleanName} price value ebay`,
-    `${cleanName} price value`,
-    `${cleanName} price`
+    `${cleanName} ebay`,
+    `${cleanName} price`,
+    cleanName
   ];
 
   for (const q of queries) {
@@ -582,7 +576,10 @@ async function fetchBottleMarketValue(name) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
 
-  const price = await fetchSearchEnginePrice(cleanName, 'bottle price value ebay');
+  const hasBottleKeyword = /\bbottle\b/i.test(cleanName);
+  const extraKw = hasBottleKeyword ? 'ebay' : 'bottle ebay';
+
+  const price = await fetchSearchEnginePrice(cleanName, extraKw);
   if (price) return price;
 
   return await fetchGenericMarketValue(cleanName);
