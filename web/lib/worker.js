@@ -477,9 +477,15 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
 
     const q = `${name} ${cleanExtra}`.replace(/\s+/g, ' ').trim();
     const query = encodeURIComponent(q);
-    const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
+    const url = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json&engines=google,bing,duckduckgo,ebay`;
     console.log(`[Worker] Querying SearXNG API for prices: "${q}"`);
-    const res = await axios.get(url, { timeout: 10000 });
+    let res;
+    try {
+      res = await axios.get(url, { timeout: 10000 });
+    } catch (err) {
+      const fallbackUrl = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}&format=json`;
+      res = await axios.get(fallbackUrl, { timeout: 10000 });
+    }
 
     if (res.data && res.data.results && res.data.results.length > 0) {
       let prices = [];
