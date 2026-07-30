@@ -449,6 +449,20 @@ async function fetchSerpApiGoogleLens(imagePath) {
   return await fetchGoogleVision(imagePath);
 }
 
+function sanitizeTitleForSearch(name) {
+  if (!name || name === 'Unknown Item' || name === 'Unknown Item (Needs Review)') return '';
+  let clean = name;
+  // Strip trailing file extension suffixes (e.g. .MP, .MP4, .JPG, .PNG, .WEBP, .GIF)
+  clean = clean.replace(/\.(mp|mp4|jpg|jpeg|png|webp|gif|mov|avi|mkv)$/i, '');
+  // Strip bracketed noise like [Pre ...] or unclosed [Pre ...
+  clean = clean.replace(/\[\s*pre\b.*$/gi, '');
+  // Normalize symbols/slashes/parentheses to spaces
+  clean = clean.replace(/[-|_/\\()]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // Strip trailing dots/ellipses
+  clean = clean.replace(/[\.\s]+$/g, '').trim();
+  return clean;
+}
+
 async function fetchSearxngPrice(name, extraKeywords = '') {
   const searxngUrl = process.env.SEARXNG_URL;
   if (!searxngUrl || !name) return null;
@@ -471,9 +485,9 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
       let prices = [];
 
       for (const item of res.data.results) {
-        // Parse snippet/title text for "$XX.XX" patterns
+        // Parse snippet/title text for "$XX.XX" patterns (accounting for optional space after $)
         const text = `${item.title || ''} ${item.snippet || ''} ${item.content || ''}`;
-        const priceMatches = text.match(/\$[0-9,]+(?:\.[0-9]{2})?/g);
+        const priceMatches = text.match(/\$\s*[0-9,]+(?:\.[0-9]{2})?/g);
         if (priceMatches) {
           for (const match of priceMatches) {
             const val = parseFloat(match.replace(/[^0-9.]/g, ''));
@@ -488,6 +502,12 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
       prices = [...new Set(prices)].sort((a, b) => a - b);
 
       if (prices.length > 0) {
+        // Filter out extreme low noise (< $0.50) if higher valid prices exist
+        if (prices.length > 2) {
+          const filtered = prices.filter(p => p >= 0.50);
+          if (filtered.length > 0) prices = filtered;
+        }
+
         // Trim outliers if we have enough data points
         if (prices.length >= 4) {
           const trimCount = Math.max(1, Math.floor(prices.length * 0.15));
@@ -524,18 +544,42 @@ async function fetchSearchEnginePrice(name, extraKeywords = '') {
 }
 
 async function fetchToyMarketValue(name, condition) {
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
-  const price = await fetchSearchEnginePrice(name, `${cleanCond} toy value`);
+  const price = await fetchSearchEnginePrice(cleanName, `${cleanCond} toy value price ebay`);
   if (price) return price;
+
+  return await fetchGenericMarketValue(cleanName);
+}
+
+async function fetchGenericMarketValue(name) {
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
+
+  // Try queries in order from specific high-intent e-commerce to broader fallbacks
+  const queries = [
+    `${cleanName} price value ebay`,
+    `${cleanName} price value`,
+    `${cleanName} price`
+  ];
+
+  for (const q of queries) {
+    const price = await fetchSearchEnginePrice(q);
+    if (price) return price;
+  }
 
   return null;
 }
 
-async function fetchGenericMarketValue(name) {
-  const price = await fetchSearchEnginePrice(name);
+async function fetchBottleMarketValue(name) {
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
+
+  const price = await fetchSearchEnginePrice(cleanName, 'bottle price value ebay');
   if (price) return price;
 
-  return null;
+  return await fetchGenericMarketValue(cleanName);
 }
 
 export async function fetchWikipediaMovieMetadata(name) {
@@ -737,27 +781,33 @@ async function fetchOrganicSearch(q) {
 }
 
 async function fetchVideoMarketValue(name) {
-  const price = await fetchSearchEnginePrice(name, '(video game OR movie OR dvd OR vhs)');
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
+  const price = await fetchSearchEnginePrice(cleanName, 'movie price value ebay');
   if (price) return price;
 
-  return null;
+  return await fetchGenericMarketValue(cleanName);
 }
 
 async function fetchVideoGameMarketValue(name, gameSystem = null) {
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
   const sysTag = gameSystem ? gameSystem : '';
-  const query = `${name} ${sysTag} video game price value pricecharting`.replace(/\s+/g, ' ').trim();
+  const query = `${cleanName} ${sysTag} video game price value`.replace(/\s+/g, ' ').trim();
   const price = await fetchSearchEnginePrice(query);
   if (price) return price;
 
-  return null;
+  return await fetchGenericMarketValue(cleanName);
 }
 
 async function fetchCoinMarketValue(name, condition) {
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Ungraded' && condition !== 'Unknown Condition') ? condition : '';
-  const price = await fetchSearchEnginePrice(name, `${cleanCond} value price estimate`);
+  const price = await fetchSearchEnginePrice(cleanName, `${cleanCond} coin value price ebay`);
   if (price) return price;
 
-  return null;
+  return await fetchGenericMarketValue(cleanName);
 }
 
 async function fetchGradingAgencyBarcode(barcode) {
@@ -805,21 +855,25 @@ async function fetchGradingAgencyBarcode(barcode) {
 }
 
 async function fetchComicMarketValue(name, condition) {
-  const cleanCond = (condition && condition !== 'Unknown Condition' && condition !== 'Raw / Ungraded') ? `${condition} CGC CBCS` : 'loose raw comic';
-  const query = `${name} ${cleanCond} value price estimate`;
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
+  const cleanCond = (condition && condition !== 'Unknown Condition' && condition !== 'Raw / Ungraded') ? `${condition}` : '';
+  const query = `${cleanName} ${cleanCond} comic value price ebay`;
   const price = await fetchSearchEnginePrice(query);
   if (price) return price;
 
-  return null;
+  return await fetchGenericMarketValue(cleanName);
 }
 
 async function fetchCardMarketValue(name, condition) {
+  const cleanName = sanitizeTitleForSearch(name);
+  if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Raw (Ungraded)' && condition !== 'Unknown Condition') ? condition : '';
-  const query = `${name} ${cleanCond} value price estimate PSA BGS SGC`.replace(/\s+/g, ' ').trim();
+  const query = `${cleanName} ${cleanCond} card value price ebay`;
   const price = await fetchSearchEnginePrice(query);
   if (price) return price;
 
-  return null;
+  return await fetchGenericMarketValue(cleanName);
 }
 
 async function fetchCardGradingAgencyBarcode(barcode) {
@@ -2134,7 +2188,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
     } else if ((itemType === 'bottle' || options.forceTier === 'bottle') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is Bottle / Can / Glassware. Extracting details & market value for: ${name}`);
-      const marketData = await fetchGenericMarketValue(`${name} bottle can vintage collectible`);
+      const marketData = await fetchBottleMarketValue(name);
       if (marketData) {
         valueLow = marketData.valueLow;
         valueAvg = marketData.valueAvg;
