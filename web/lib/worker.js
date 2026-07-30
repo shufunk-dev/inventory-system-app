@@ -564,19 +564,15 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
       prices = [...new Set(prices)].sort((a, b) => a - b);
 
       if (prices.length > 0) {
-        // Filter out extreme high outliers relative to the median if multiple prices exist
+        // Filter out extreme sub-dollar noise (< $0.50) if higher prices exist
         if (prices.length > 2) {
-          const midIdx = Math.floor(prices.length / 2);
-          const median = prices[midIdx];
-          if (median > 0 && median < 500) {
-            const reasonable = prices.filter(p => p <= median * 4);
-            if (reasonable.length > 0) prices = reasonable;
-          }
+          const filtered = prices.filter(p => p >= 0.50);
+          if (filtered.length > 0) prices = filtered;
         }
 
-        // Trim top/bottom percentile outliers if we have 4+ data points
-        if (prices.length >= 4) {
-          const trimCount = Math.max(1, Math.floor(prices.length * 0.15));
+        // Trim top/bottom outliers only when we have a large sample (6+ data points)
+        if (prices.length >= 6) {
+          const trimCount = Math.max(1, Math.floor(prices.length * 0.10));
           prices = prices.slice(trimCount, prices.length - trimCount);
         }
 
