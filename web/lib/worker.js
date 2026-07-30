@@ -593,10 +593,7 @@ async function fetchToyMarketValue(name, condition) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
-  const price = await fetchSearchEnginePrice(cleanName, `${cleanCond} ebay`.trim());
-  if (price) return price;
-
-  return await fetchGenericMarketValue(cleanName);
+  return await fetchSearchEnginePrice(cleanName, `${cleanCond} toy ebay`.trim());
 }
 
 async function fetchGenericMarketValue(name) {
@@ -625,10 +622,7 @@ async function fetchBottleMarketValue(name) {
   const hasBottleKeyword = /\bbottle\b/i.test(cleanName);
   const extraKw = hasBottleKeyword ? 'ebay' : 'bottle ebay';
 
-  const price = await fetchSearchEnginePrice(cleanName, extraKw);
-  if (price) return price;
-
-  return await fetchGenericMarketValue(cleanName);
+  return await fetchSearchEnginePrice(cleanName, extraKw);
 }
 
 export async function fetchWikipediaMovieMetadata(name) {
@@ -832,31 +826,22 @@ async function fetchOrganicSearch(q) {
 async function fetchVideoMarketValue(name) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
-  const price = await fetchSearchEnginePrice(cleanName, 'movie price value ebay');
-  if (price) return price;
-
-  return await fetchGenericMarketValue(cleanName);
+  return await fetchSearchEnginePrice(cleanName, 'movie ebay');
 }
 
 async function fetchVideoGameMarketValue(name, gameSystem = null) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
   const sysTag = gameSystem ? gameSystem : '';
-  const query = `${cleanName} ${sysTag} video game price value`.replace(/\s+/g, ' ').trim();
-  const price = await fetchSearchEnginePrice(query);
-  if (price) return price;
-
-  return await fetchGenericMarketValue(cleanName);
+  const query = `${cleanName} ${sysTag} video game ebay`.replace(/\s+/g, ' ').trim();
+  return await fetchSearchEnginePrice(query);
 }
 
 async function fetchCoinMarketValue(name, condition) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Ungraded' && condition !== 'Unknown Condition') ? condition : '';
-  const price = await fetchSearchEnginePrice(cleanName, `${cleanCond} coin value price ebay`);
-  if (price) return price;
-
-  return await fetchGenericMarketValue(cleanName);
+  return await fetchSearchEnginePrice(cleanName, `${cleanCond} coin ebay`.trim());
 }
 
 async function fetchGradingAgencyBarcode(barcode) {
@@ -907,22 +892,16 @@ async function fetchComicMarketValue(name, condition) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Unknown Condition' && condition !== 'Raw / Ungraded') ? `${condition}` : '';
-  const query = `${cleanName} ${cleanCond} comic value price ebay`;
-  const price = await fetchSearchEnginePrice(query);
-  if (price) return price;
-
-  return await fetchGenericMarketValue(cleanName);
+  const query = `${cleanName} ${cleanCond} comic ebay`.replace(/\s+/g, ' ').trim();
+  return await fetchSearchEnginePrice(query);
 }
 
 async function fetchCardMarketValue(name, condition) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Raw (Ungraded)' && condition !== 'Unknown Condition') ? condition : '';
-  const query = `${cleanName} ${cleanCond} card value price ebay`;
-  const price = await fetchSearchEnginePrice(query);
-  if (price) return price;
-
-  return await fetchGenericMarketValue(cleanName);
+  const query = `${cleanName} ${cleanCond} card ebay`.replace(/\s+/g, ' ').trim();
+  return await fetchSearchEnginePrice(query);
 }
 
 async function fetchCardGradingAgencyBarcode(barcode) {
