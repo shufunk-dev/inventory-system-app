@@ -132,9 +132,15 @@ server:
   secret_key: "inventorysystemsearxngsecretkey"
 
 search:
+  safe_search: 0
+  request_timeout: 8.0
   formats:
     - html
     - json
+
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 10.0
 `;
       fs.writeFileSync(settingsYamlPath, settingsContent.trim());
 

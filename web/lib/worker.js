@@ -473,6 +473,9 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
   };
 
   try {
+    // 600ms pace delay between SearXNG requests to prevent engine CAPTCHA suspensions
+    await new Promise(r => setTimeout(r, 600));
+
     // Clean up Google-specific OR and parentheses syntax for SearXNG
     const cleanExtra = extraKeywords
       .replace(/[()]/g, '')     // remove parentheses
