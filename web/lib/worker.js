@@ -489,6 +489,10 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
     try {
       res = await axios.get(url, { headers, timeout: 10000 });
     } catch (err) {
+      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('ECONNREFUSED'))) {
+        console.log(`[Worker WARNING] SearXNG instance at "${searxngUrl}" is DOWN / Connection Refused. Please start SearXNG Docker container in Settings (or run 'docker start searxng' on Pi).`);
+        return null;
+      }
       console.log(`[Worker] SearXNG JSON API endpoint error (${err.message}). Trying SearXNG HTML search fallback...`);
       // HTML Endpoint Fallback if JSON format is disabled in SearXNG settings.yml
       const htmlUrl = `${searxngUrl.replace(/\/$/, '')}/search?q=${query}`;
