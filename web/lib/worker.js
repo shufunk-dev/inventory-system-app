@@ -543,13 +543,17 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
       let prices = [];
 
       for (const item of res.data.results) {
-        // Parse snippet/title text for "$XX.XX" patterns (accounting for optional space after $)
+        // Parse snippet/title text for explicit "$XX.XX" patterns
         const text = `${item.title || ''} ${item.snippet || ''} ${item.content || ''}`;
         const priceMatches = text.match(/\$\s*[0-9,]+(?:\.[0-9]{2})?/g);
         if (priceMatches) {
           for (const match of priceMatches) {
             const val = parseFloat(match.replace(/[^0-9.]/g, ''));
-            if (!isNaN(val) && val > 0 && val < 50000) {
+            // Skip invalid numbers, sub-50 cent noise, or year numbers (1900-2035 integers)
+            if (!isNaN(val) && val >= 0.50 && val < 50000) {
+              if (val >= 1900 && val <= 2035 && Number.isInteger(val)) {
+                continue; // Ignore release/manufacturing years
+              }
               prices.push(val);
             }
           }
@@ -560,13 +564,17 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
       prices = [...new Set(prices)].sort((a, b) => a - b);
 
       if (prices.length > 0) {
-        // Filter out extreme low noise (< $0.50) if higher valid prices exist
+        // Filter out extreme high outliers relative to the median if multiple prices exist
         if (prices.length > 2) {
-          const filtered = prices.filter(p => p >= 0.50);
-          if (filtered.length > 0) prices = filtered;
+          const midIdx = Math.floor(prices.length / 2);
+          const median = prices[midIdx];
+          if (median > 0 && median < 500) {
+            const reasonable = prices.filter(p => p <= median * 4);
+            if (reasonable.length > 0) prices = reasonable;
+          }
         }
 
-        // Trim outliers if we have enough data points
+        // Trim top/bottom percentile outliers if we have 4+ data points
         if (prices.length >= 4) {
           const trimCount = Math.max(1, Math.floor(prices.length * 0.15));
           prices = prices.slice(trimCount, prices.length - trimCount);
