@@ -364,12 +364,14 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
-    version: 'Beta 1.9.7', date: 'July 29, 2026', title: 'Find & Replace Bulk Renaming Engine & Partial Substring Replacements',
+    version: 'Beta 1.9.7', date: 'July 30, 2026', title: 'SearXNG Engine Pacing, 10s Timeouts, Year-Number Price Filters & Bulk Renaming Engine',
     changes: JSON.stringify([
-      { type: 'web', text: 'Implemented Find & Replace panel within the inventory Bulk Rename modal supporting partial word and phrase replacements across selected catalog items.' },
-      { type: 'web', text: 'Added Match Case and Whole Word Only toggle options for precise string matching.' },
-      { type: 'web', text: 'Added live preview statistics counter displaying matches replaced and affected items before committing to database.' },
-      { type: 'web', text: 'Added one-click Reset button to restore items to original names prior to batch renaming.' },
+      { type: 'web', text: 'Implemented 1000ms worker request pacing delay and 10.0s SearXNG engine timeouts in settings.yml to resolve CAPTCHA suspensions and DuckDuckGo connection timeouts.' },
+      { type: 'web', text: 'Added intelligent year-number filtering to ignore release years (1900-2035) during price extraction, preventing fake $1,999 price inflations.' },
+      { type: 'web', text: 'Preserved genuine high-end market values (e.g., $12,000 for PSA-graded cards or rare antiques) in valueHigh without artificial caps.' },
+      { type: 'web', text: 'Added title sanitizer automatically stripping media extensions (.MP, .MP4, .JPG) and metadata noise before search query execution.' },
+      { type: 'web', text: 'Streamlined bottle, toy, video game, coin, comic, and card market value helpers to eliminate duplicate fallback query loops.' },
+      { type: 'web', text: 'Implemented Find & Replace panel within the inventory Bulk Rename modal supporting partial word and phrase replacements with live match counters and reset controls.' },
       { type: 'web', text: 'Bumped system version to Beta 1.9.7 across Web navbar, POS receipts, Mobile app, and Electron configurations.' }
     ])
   },
