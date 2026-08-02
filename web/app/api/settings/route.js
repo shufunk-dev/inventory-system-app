@@ -133,6 +133,7 @@ export async function GET() {
     receiptLogo: '',
     apiKeys: {
       googleVisionKey: '',
+      googleBooksKey: '',
       serpApiKey: '',
       priceChartingKey: '',
       searxngUrl: '',

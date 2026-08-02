@@ -15,7 +15,9 @@ let isWorking = false;
 // Helpers to fetch from various APIs
 async function fetchGoogleBooks(isbn) {
   try {
-    const res = await axios.get(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`, { timeout: 4000 });
+    const apiKey = process.env.GOOGLE_BOOKS_API_KEY || process.env.GOOGLE_VISION_API_KEY || '';
+    const keyParam = apiKey ? `&key=${apiKey}` : '';
+    const res = await axios.get(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}${keyParam}`, { timeout: 4000 });
     if (res.data && res.data.items && res.data.items.length > 0) {
       // Find the exact ISBN match if possible, otherwise fallback to the first item
       let bestItem = res.data.items[0];
@@ -41,10 +43,23 @@ async function fetchGoogleBooks(isbn) {
       };
     }
   } catch (e) {
-    if (e.response && e.response.status === 429) {
-      throw new Error('RATE_LIMIT');
+    console.warn('[Worker] Google Books API call failed:', e.message);
+  }
+  return null;
+}
+
+async function fetchOpenLibrary(isbn) {
+  try {
+    const res = await axios.get(`https://openlibrary.org/isbn/${isbn}.json`, { timeout: 4000 });
+    if (res.data && res.data.title) {
+      return {
+        name: cleanTitle(res.data.title) || null,
+        imageUrl: res.data.covers && res.data.covers.length > 0 ? `https://covers.openlibrary.org/b/id/${res.data.covers[0]}-L.jpg` : null,
+        description: res.data.notes?.value || (typeof res.data.notes === 'string' ? res.data.notes : null) || null
+      };
     }
-    console.error('Google Books API error:', e.message);
+  } catch (e) {
+    console.warn('[Worker] OpenLibrary API call failed:', e.message);
   }
   return null;
 }
@@ -1515,6 +1530,9 @@ export async function fetchItemDetails(item, db, options = {}) {
         process.env.GOOGLE_VISION_API_KEY = keys.googleVisionKey;
         process.env.GOOGLE_VISION_KEY = keys.googleVisionKey;
       }
+      if (keys.googleBooksKey) {
+        process.env.GOOGLE_BOOKS_API_KEY = keys.googleBooksKey;
+      }
       if (keys.serpApiKey) {
         process.env.SERPAPI_KEY = keys.serpApiKey;
       }
@@ -1652,10 +1670,17 @@ export async function fetchItemDetails(item, db, options = {}) {
             try {
               details = await fetchGoogleBooks(barcode);
             } catch (err) {
-              if (err.message === 'RATE_LIMIT') rateLimited = true;
+              console.warn(`[Worker] fetchGoogleBooks failed for barcode ${barcode}: ${err.message}`);
+            }
+            if (!details) {
+              try {
+                details = await fetchOpenLibrary(barcode);
+              } catch (err) {
+                console.warn(`[Worker] fetchOpenLibrary failed for barcode ${barcode}: ${err.message}`);
+              }
             }
           }
-          if (!details && !rateLimited) {
+          if (!details) {
             try {
               details = await fetchUPCItemDB(barcode);
               

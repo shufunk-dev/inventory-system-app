@@ -22,7 +22,7 @@ export default function SettingsPage() {
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', serpApiKey: '', priceChartingKey: '', searxngUrl: '' });
+  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', googleBooksKey: '', serpApiKey: '', priceChartingKey: '', searxngUrl: '' });
   const [paymentConfig, setPaymentConfig] = useState({
     provider: 'none',
     stripeApiKey: '',
@@ -870,13 +870,23 @@ export default function SettingsPage() {
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Google Cloud Vision API Key</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Google Cloud Vision API Key (AI Image Scan)</label>
             <input 
               type="password"
-              value={apiKeys.googleVisionKey}
+              value={apiKeys.googleVisionKey || ''}
               onChange={(e) => setApiKeys({...apiKeys, googleVisionKey: e.target.value})}
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="AIzaSy..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Google Books API Key (Optional)</label>
+            <input 
+              type="password"
+              value={apiKeys.googleBooksKey || ''}
+              onChange={(e) => setApiKeys({...apiKeys, googleBooksKey: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="AIzaSy... (Falls back to Vision Key or OpenLibrary if blank)"
             />
           </div>
           <div>
