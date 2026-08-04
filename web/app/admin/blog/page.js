@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import fs from 'fs';
 import path from 'path';
 import { marked } from 'marked';
-import { FileText, Rss } from 'lucide-react';
+import { FileText, Rss, Printer } from 'lucide-react';
 import PublishButton from './PublishButton';
 
 export default async function AdminBlogPage() {
@@ -19,7 +19,7 @@ export default async function AdminBlogPage() {
   
   try {
     if (fs.existsSync(blogDir)) {
-      const files = fs.readdirSync(blogDir).filter(f => f.endsWith('.md') || f.endsWith('.published.md'));
+      const files = fs.readdirSync(blogDir).filter(f => (f.endsWith('.md') || f.endsWith('.published.md')) && f !== 'COMPLETE_PRINTABLE_BLOG.md');
       
       posts = files.map(file => {
         const filePath = path.join(blogDir, file);
@@ -66,6 +66,15 @@ export default async function AdminBlogPage() {
             )}
           </p>
         </div>
+
+        <a 
+          href="/admin/blog/print"
+          target="_blank"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all"
+        >
+          <Printer className="w-5 h-5" />
+          <span>Printable View (All Notes)</span>
+        </a>
       </div>
 
       {posts.length === 0 ? (

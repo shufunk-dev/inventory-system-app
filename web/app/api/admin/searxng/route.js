@@ -133,14 +133,36 @@ server:
 
 search:
   safe_search: 0
-  request_timeout: 8.0
+  request_timeout: 4.0
   formats:
     - html
     - json
 
 outgoing:
-  request_timeout: 8.0
-  max_request_timeout: 10.0
+  request_timeout: 3.0
+  max_request_timeout: 5.0
+  pool_connections: 100
+  pool_maxsize: 100
+
+engines:
+  - name: google
+    timeout: 3.0
+    disabled: false
+  - name: bing
+    timeout: 3.0
+    disabled: false
+  - name: qwant
+    timeout: 3.0
+    disabled: false
+  - name: startpage
+    timeout: 3.0
+    disabled: false
+  - name: duckduckgo
+    timeout: 3.0
+    disabled: true
+  - name: yahoo
+    timeout: 3.0
+    disabled: true
 `;
       fs.writeFileSync(settingsYamlPath, settingsContent.trim());
 
