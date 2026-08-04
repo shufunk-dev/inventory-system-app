@@ -22,7 +22,17 @@ export default function SettingsPage() {
   
 
 
-  const [apiKeys, setApiKeys] = useState({ googleVisionKey: '', googleBooksKey: '', serpApiKey: '', priceChartingKey: '', searxngUrl: '' });
+  const [apiKeys, setApiKeys] = useState({
+    googleVisionKey: '',
+    googleBooksKey: '',
+    serpApiKey: '',
+    priceChartingKey: '',
+    searxngUrl: '',
+    ebayClientId: '',
+    ebayClientSecret: '',
+    ebayMarketplaceId: 'EBAY_US',
+    marketValuationProvider: 'searxng'
+  });
   const [paymentConfig, setPaymentConfig] = useState({
     provider: 'none',
     stripeApiKey: '',
@@ -910,6 +920,110 @@ export default function SettingsPage() {
             />
           </div>
 
+          <div className="border-t border-gray-800 pt-6 mt-6">
+            <h3 className="text-md font-semibold text-white mb-2">Market Valuation Source</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Select which backend engine retrieves item market prices during scans and valuation lookups.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <label 
+                className={`relative flex items-start p-4 rounded-2xl border cursor-pointer transition-all ${
+                  (apiKeys.marketValuationProvider || 'searxng') === 'searxng'
+                    ? 'bg-blue-950/40 border-blue-500 text-white'
+                    : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600'
+                }`}
+              >
+                <input 
+                  type="radio" 
+                  name="marketValuationProvider"
+                  value="searxng"
+                  checked={(apiKeys.marketValuationProvider || 'searxng') === 'searxng'}
+                  onChange={(e) => setApiKeys({...apiKeys, marketValuationProvider: e.target.value})}
+                  className="mt-1 mr-3 text-blue-500 focus:ring-blue-500"
+                />
+                <div>
+                  <div className="font-semibold text-white flex items-center gap-2">
+                    SearXNG (Default)
+                    <span className="text-[10px] bg-green-900/60 text-green-300 px-2 py-0.5 rounded-full font-mono">100% FREE</span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Self-hosted search engine querying live web listings across eBay, Walmart, and Google.
+                  </div>
+                </div>
+              </label>
+
+              <label 
+                className={`relative flex items-start p-4 rounded-2xl border transition-all ${
+                  (apiKeys.ebayClientId && apiKeys.ebayClientSecret)
+                    ? (apiKeys.marketValuationProvider === 'ebay'
+                        ? 'bg-blue-950/40 border-blue-500 text-white cursor-pointer'
+                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600 cursor-pointer')
+                    : 'bg-gray-900/50 border-gray-800 text-gray-500 cursor-not-allowed opacity-75'
+                }`}
+              >
+                <input 
+                  type="radio" 
+                  name="marketValuationProvider"
+                  value="ebay"
+                  disabled={!apiKeys.ebayClientId || !apiKeys.ebayClientSecret}
+                  checked={apiKeys.marketValuationProvider === 'ebay' && Boolean(apiKeys.ebayClientId && apiKeys.ebayClientSecret)}
+                  onChange={(e) => setApiKeys({...apiKeys, marketValuationProvider: e.target.value})}
+                  className="mt-1 mr-3 text-blue-500 focus:ring-blue-500 disabled:opacity-50"
+                />
+                <div>
+                  <div className="font-semibold text-white flex items-center gap-2">
+                    eBay REST API
+                    {(!apiKeys.ebayClientId || !apiKeys.ebayClientSecret) ? (
+                      <span className="text-[10px] bg-yellow-900/60 text-yellow-300 px-2 py-0.5 rounded-full font-mono">Requires eBay Keys Below</span>
+                    ) : (
+                      <span className="text-[10px] bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded-full font-mono">Official API</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Direct eBay REST API integration for high-accuracy barcode GTIN/UPC and keyword market values.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800 pt-4 mt-4">
+            <h3 className="text-md font-semibold text-white mb-1">eBay API Configuration (Free Developer Account)</h3>
+            <p className="text-xs text-gray-400 mb-3">
+              Obtain your free Client ID (App ID) and Client Secret (Cert ID) at <a href="https://developer.ebay.com" target="_blank" rel="noreferrer" className="text-blue-400 underline hover:text-blue-300">developer.ebay.com</a>.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">eBay App ID (Client ID)</label>
+            <input 
+              type="text"
+              value={apiKeys.ebayClientId || ''}
+              onChange={(e) => setApiKeys({...apiKeys, ebayClientId: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. YourName-Inventory-PRD-123456789-abcdef"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">eBay Cert ID (Client Secret)</label>
+            <input 
+              type="password"
+              value={apiKeys.ebayClientSecret || ''}
+              onChange={(e) => setApiKeys({...apiKeys, ebayClientSecret: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="PRD-123456789abc-def0-1234-5678-9abc"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">eBay Marketplace ID (Optional)</label>
+            <input 
+              type="text"
+              value={apiKeys.ebayMarketplaceId || 'EBAY_US'}
+              onChange={(e) => setApiKeys({...apiKeys, ebayMarketplaceId: e.target.value})}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="EBAY_US (Default), EBAY_GB, EBAY_CA, etc."
+            />
+          </div>
 
           <div className="border-t border-gray-800 pt-4 mt-4">
             <h3 className="text-md font-semibold text-white mb-3">SearXNG Search Configuration (Free Self-Hosted Alternative)</h3>

@@ -137,7 +137,11 @@ export async function GET() {
       serpApiKey: '',
       priceChartingKey: '',
       searxngUrl: '',
-      discogsApiKey: ''
+      discogsApiKey: '',
+      ebayClientId: '',
+      ebayClientSecret: '',
+      ebayMarketplaceId: 'EBAY_US',
+      marketValuationProvider: 'searxng'
     },
     activeTier: 'basic',
     smtpConfig: {
@@ -188,6 +192,9 @@ export async function GET() {
       if (row.key === 'api_keys') {
         const parsed = JSON.parse(row.value);
         settings.apiKeys = { ...settings.apiKeys, ...parsed };
+        if (settings.apiKeys.ebayClientSecret) {
+          settings.apiKeys.ebayClientSecret = '••••••••';
+        }
       }
       if (row.key === 'active_tier') settings.activeTier = row.value;
       if (row.key === 'smtp_config') {
@@ -262,7 +269,17 @@ export async function PUT(request) {
         updateStmt.run('receipt_logo', (data.receiptLogo || '').trim());
       }
       if (data.apiKeys) {
-        updateStmt.run('api_keys', JSON.stringify(data.apiKeys));
+        let keysToSave = { ...data.apiKeys };
+        if (keysToSave.ebayClientSecret === '••••••••') {
+          try {
+            const existingRow = db.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
+            if (existingRow && existingRow.value) {
+              const prev = JSON.parse(existingRow.value);
+              keysToSave.ebayClientSecret = prev.ebayClientSecret || '';
+            }
+          } catch (e) {}
+        }
+        updateStmt.run('api_keys', JSON.stringify(keysToSave));
       }
       if (data.activeTier) {
         updateStmt.run('active_tier', data.activeTier);

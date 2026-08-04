@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import FormData from 'form-data';
 import dotenv from 'dotenv';
+import { fetchEbayMarketPrice } from './ebay.js';
 
 dotenv.config();
 try {
@@ -607,8 +608,46 @@ async function fetchSearxngPrice(name, extraKeywords = '') {
   return null;
 }
 
-async function fetchSearchEnginePrice(name, extraKeywords = '') {
-  console.log(`[Worker Debug] fetchSearchEnginePrice called. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
+async function fetchSearchEnginePrice(name, extraKeywords = '', barcode = null) {
+  try {
+    if (!process.env.MARKET_VALUATION_PROVIDER) {
+      const globalDb = await getGlobalDb();
+      const keysRow = globalDb.prepare("SELECT value FROM system_settings WHERE key = 'api_keys'").get();
+      if (keysRow && keysRow.value) {
+        const keys = JSON.parse(keysRow.value);
+        if (keys.ebayClientId) process.env.EBAY_CLIENT_ID = keys.ebayClientId;
+        if (keys.ebayClientSecret) process.env.EBAY_CLIENT_SECRET = keys.ebayClientSecret;
+        if (keys.ebayMarketplaceId) process.env.EBAY_MARKETPLACE_ID = keys.ebayMarketplaceId;
+        process.env.MARKET_VALUATION_PROVIDER = keys.marketValuationProvider || 'searxng';
+        if (keys.searxngUrl) process.env.SEARXNG_URL = keys.searxngUrl;
+      }
+    }
+  } catch (e) {}
+
+  const provider = process.env.MARKET_VALUATION_PROVIDER || 'searxng';
+  const ebayClientId = process.env.EBAY_CLIENT_ID;
+  const ebayClientSecret = process.env.EBAY_CLIENT_SECRET;
+
+  if (provider === 'ebay' && ebayClientId && ebayClientSecret) {
+    const cleanKw = extraKeywords ? extraKeywords.replace(/\b(ebay|bottle ebay|toy ebay|movie ebay|coin ebay|comic ebay|card ebay)\b/gi, '').trim() : '';
+    const fullQuery = `${name} ${cleanKw}`.trim();
+    
+    console.log(`[Worker] Executing eBay API market lookup for "${fullQuery}"...`);
+    const ebayResult = await fetchEbayMarketPrice(fullQuery, {
+      barcode,
+      ebayClientId,
+      ebayClientSecret,
+      marketplaceId: process.env.EBAY_MARKETPLACE_ID || 'EBAY_US'
+    });
+
+    if (ebayResult && ebayResult.price) {
+      console.log(`[Worker] eBay API market price found: $${ebayResult.price} (from ${ebayResult.count} listings)`);
+      return ebayResult.price;
+    }
+    console.log(`[Worker] eBay API returned no result. Falling back to SearXNG...`);
+  }
+
+  console.log(`[Worker Debug] fetchSearchEnginePrice using SearXNG. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
   if (process.env.SEARXNG_URL) {
     return await fetchSearxngPrice(name, extraKeywords);
   }
@@ -1546,6 +1585,16 @@ export async function fetchItemDetails(item, db, options = {}) {
       if (keys.searxngUrl) {
         process.env.SEARXNG_URL = keys.searxngUrl;
       }
+      if (keys.ebayClientId) {
+        process.env.EBAY_CLIENT_ID = keys.ebayClientId;
+      }
+      if (keys.ebayClientSecret) {
+        process.env.EBAY_CLIENT_SECRET = keys.ebayClientSecret;
+      }
+      if (keys.ebayMarketplaceId) {
+        process.env.EBAY_MARKETPLACE_ID = keys.ebayMarketplaceId;
+      }
+      process.env.MARKET_VALUATION_PROVIDER = keys.marketValuationProvider || 'searxng';
     }
   } catch (e) {
     console.error('Error injecting global API keys:', e);
