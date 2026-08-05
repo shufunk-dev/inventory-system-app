@@ -364,6 +364,16 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.8', date: 'August 5, 2026', title: 'Direct eBay REST API Integration & Universal Category Valuation Engine',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented direct eBay REST API integration for high-precision live active listing market pricing.' },
+      { type: 'web', text: 'Added universal category price parser for low, average, and high market values across all 12 item categories.' },
+      { type: 'web', text: 'Optimized eBay query cleaning by stripping web-search modifiers (ebay/price) to prevent 0-result listing rejections.' },
+      { type: 'web', text: 'Added eBay Marketplace Deletion Notification challenge GET route with x-forwarded header support for ngrok/reverse proxies.' },
+      { type: 'web', text: 'Bumped system version to Beta 1.9.8 across Web navbar, POS receipts, Mobile app, and Electron configurations.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.7', date: 'July 30, 2026', title: 'SearXNG Engine Pacing, 10s Timeouts, Year-Number Price Filters & Bulk Renaming Engine',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented 1000ms worker request pacing delay and 10.0s SearXNG engine timeouts in settings.yml to resolve CAPTCHA suspensions and DuckDuckGo connection timeouts.' },

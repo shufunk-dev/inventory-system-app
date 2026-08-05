@@ -1,6 +1,6 @@
 {
   "name": "inventory-system-electron",
-  "version": "1.9.7",
+  "version": "1.9.8",
   "description": "Inventory System Native App",
   "author": "Shufelt Designs llc",
   "main": "main.js",
