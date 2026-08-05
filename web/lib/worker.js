@@ -1984,24 +1984,42 @@ export async function fetchItemDetails(item, db, options = {}) {
       }
 
       // Get Market Value
+      const applyMarketPrices = (m) => {
+        if (!m) return;
+        if (typeof m === 'number') {
+          valueLow = m;
+          valueAvg = m;
+          valueHigh = m;
+        } else if (typeof m === 'object') {
+          valueLow = m.valueLow ?? m.minPrice ?? m.price ?? null;
+          valueAvg = m.valueAvg ?? m.price ?? null;
+          valueHigh = m.valueHigh ?? m.maxPrice ?? m.price ?? null;
+        }
+      };
+
       if (gradedAgency && gradedCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       } else if (!valueAvg || options.refreshPrices) {
         const marketData = await fetchVideoMarketValue(name);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       }
     } else if ((itemType === 'game' || options.forceTier === 'game') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Video Game. Extracting grading and market value for: ${name}`);
       
+      const applyMarketPrices = (m) => {
+        if (!m) return;
+        if (typeof m === 'number') {
+          valueLow = m;
+          valueAvg = m;
+          valueHigh = m;
+        } else if (typeof m === 'object') {
+          valueLow = m.valueLow ?? m.minPrice ?? m.price ?? null;
+          valueAvg = m.valueAvg ?? m.price ?? null;
+          valueHigh = m.valueHigh ?? m.maxPrice ?? m.price ?? null;
+        }
+      };
+
       // Check if it's graded
       if (!options.refreshPrices) {
         // Reset so Refetch doesn't carry over old values
@@ -2130,22 +2148,27 @@ export async function fetchItemDetails(item, db, options = {}) {
       // Get Market Value
       if (gradedAgency && gradedCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       } else if (!valueAvg || options.refreshPrices) {
         const marketData = await fetchVideoGameMarketValue(name, gameSystem);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       }
     } else if ((itemType === 'toy' || options.forceTier === 'toy') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Toy. Extracting details and calculating Market Value for: ${name}`);
       
+      const applyMarketPrices = (m) => {
+        if (!m) return;
+        if (typeof m === 'number') {
+          valueLow = m;
+          valueAvg = m;
+          valueHigh = m;
+        } else if (typeof m === 'object') {
+          valueLow = m.valueLow ?? m.minPrice ?? m.price ?? null;
+          valueAvg = m.valueAvg ?? m.price ?? null;
+          valueHigh = m.valueHigh ?? m.maxPrice ?? m.price ?? null;
+        }
+      };
+
       // 1. Extract Year and Brand
       if (!options.refreshPrices && !toyYear) {
         const yearMatch = name.match(/(19[7-9]\d|20[0-2]\d)/);
@@ -2170,15 +2193,24 @@ export async function fetchItemDetails(item, db, options = {}) {
       // 3. Fetch Market Value
       if (toyCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchToyMarketValue(name, toyCondition);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       }
     } else if ((itemType === 'coin' || options.forceTier === 'coin') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Coin. Extracting details and calculating Market Value for: ${name}`);
       
+      const applyMarketPrices = (m) => {
+        if (!m) return;
+        if (typeof m === 'number') {
+          valueLow = m;
+          valueAvg = m;
+          valueHigh = m;
+        } else if (typeof m === 'object') {
+          valueLow = m.valueLow ?? m.minPrice ?? m.price ?? null;
+          valueAvg = m.valueAvg ?? m.price ?? null;
+          valueHigh = m.valueHigh ?? m.maxPrice ?? m.price ?? null;
+        }
+      };
+
       if (!options.refreshPrices && details && details.coinGradingAgency) {
         coinGradingAgency = details.coinGradingAgency;
         coinCertNumber = details.coinCertNumber;
@@ -2197,15 +2229,24 @@ export async function fetchItemDetails(item, db, options = {}) {
       
       if (coinCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchCoinMarketValue(name, coinCondition);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       }
     } else if ((itemType === 'card' || options.forceTier === 'card') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Card. Extracting details and calculating Market Value for: ${name}`);
       
+      const applyMarketPrices = (m) => {
+        if (!m) return;
+        if (typeof m === 'number') {
+          valueLow = m;
+          valueAvg = m;
+          valueHigh = m;
+        } else if (typeof m === 'object') {
+          valueLow = m.valueLow ?? m.minPrice ?? m.price ?? null;
+          valueAvg = m.valueAvg ?? m.price ?? null;
+          valueHigh = m.valueHigh ?? m.maxPrice ?? m.price ?? null;
+        }
+      };
+
       if (!options.refreshPrices && details && details.cardGradingAgency) {
         cardGradingAgency = details.cardGradingAgency;
         cardCertNumber = details.cardCertNumber;
@@ -2224,15 +2265,24 @@ export async function fetchItemDetails(item, db, options = {}) {
       
       if (cardCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchCardMarketValue(name, cardCondition);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       }
     } else if ((itemType === 'graded' || options.forceTier === 'graded') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Graded Asset. Extracting details and calculating Market Value for: ${name}`);
       
+      const applyMarketPrices = (m) => {
+        if (!m) return;
+        if (typeof m === 'number') {
+          valueLow = m;
+          valueAvg = m;
+          valueHigh = m;
+        } else if (typeof m === 'object') {
+          valueLow = m.valueLow ?? m.minPrice ?? m.price ?? null;
+          valueAvg = m.valueAvg ?? m.price ?? null;
+          valueHigh = m.valueHigh ?? m.maxPrice ?? m.price ?? null;
+        }
+      };
+
       if (!options.refreshPrices && details && details.gradedAgency) {
         gradedAgency = details.gradedAgency;
         gradedCertNumber = details.gradedCertNumber;
@@ -2243,15 +2293,24 @@ export async function fetchItemDetails(item, db, options = {}) {
       
       if (gradedCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchGradedMarketValue(name, gradedAgency, gradedCondition);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       }
     } else if ((itemType === 'comic' || options.forceTier === 'comic') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is a Comic. Extracting details and calculating Market Value for: ${name}`);
       
+      const applyMarketPrices = (m) => {
+        if (!m) return;
+        if (typeof m === 'number') {
+          valueLow = m;
+          valueAvg = m;
+          valueHigh = m;
+        } else if (typeof m === 'object') {
+          valueLow = m.valueLow ?? m.minPrice ?? m.price ?? null;
+          valueAvg = m.valueAvg ?? m.price ?? null;
+          valueHigh = m.valueHigh ?? m.maxPrice ?? m.price ?? null;
+        }
+      };
+
       if (!options.refreshPrices && details) {
         if (details.comicGradingAgency) comicGradingAgency = details.comicGradingAgency;
         if (details.comicCertNumber) comicCertNumber = details.comicCertNumber;
@@ -2266,11 +2325,7 @@ export async function fetchItemDetails(item, db, options = {}) {
       
       if (comicCondition && (!valueAvg || options.refreshPrices)) {
         const marketData = await fetchComicMarketValue(name, comicCondition);
-        if (marketData) {
-          valueLow = marketData.valueLow;
-          valueAvg = marketData.valueAvg;
-          valueHigh = marketData.valueHigh;
-        }
+        applyMarketPrices(marketData);
       }
     } else if ((itemType === 'music' || options.forceTier === 'music') && name && name !== 'Unknown Item') {
       console.log(`[Worker] Item is Music. Extracting details and calculating Market Value for: ${name}`);
@@ -2321,9 +2376,15 @@ export async function fetchItemDetails(item, db, options = {}) {
       console.log(`[Worker] Item is Bottle / Can / Glassware. Extracting details & market value for: ${name}`);
       const marketData = await fetchBottleMarketValue(name);
       if (marketData) {
-        valueLow = marketData.valueLow;
-        valueAvg = marketData.valueAvg;
-        valueHigh = marketData.valueHigh;
+        if (typeof marketData === 'number') {
+          valueLow = marketData;
+          valueAvg = marketData;
+          valueHigh = marketData;
+        } else if (typeof marketData === 'object') {
+          valueLow = marketData.valueLow ?? marketData.minPrice ?? marketData.price ?? null;
+          valueAvg = marketData.valueAvg ?? marketData.price ?? null;
+          valueHigh = marketData.valueHigh ?? marketData.maxPrice ?? marketData.price ?? null;
+        }
       }
     }
 
@@ -2332,9 +2393,15 @@ export async function fetchItemDetails(item, db, options = {}) {
       console.log(`[Worker] Falling back to generic market value search for: ${name}`);
       const marketData = await fetchGenericMarketValue(name);
       if (marketData) {
-        valueLow = marketData.valueLow;
-        valueAvg = marketData.valueAvg;
-        valueHigh = marketData.valueHigh;
+        if (typeof marketData === 'number') {
+          valueLow = marketData;
+          valueAvg = marketData;
+          valueHigh = marketData;
+        } else if (typeof marketData === 'object') {
+          valueLow = marketData.valueLow ?? marketData.minPrice ?? marketData.price ?? null;
+          valueAvg = marketData.valueAvg ?? marketData.price ?? null;
+          valueHigh = marketData.valueHigh ?? marketData.maxPrice ?? marketData.price ?? null;
+        }
       }
     }
 
