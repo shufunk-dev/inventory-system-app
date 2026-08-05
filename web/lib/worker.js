@@ -629,27 +629,34 @@ async function fetchSearchEnginePrice(name, extraKeywords = '', barcode = null) 
   const ebayClientSecret = process.env.EBAY_CLIENT_SECRET;
 
   if (provider === 'ebay' && ebayClientId && ebayClientSecret) {
-    const cleanKw = extraKeywords ? extraKeywords.replace(/\b(ebay|bottle ebay|toy ebay|movie ebay|coin ebay|comic ebay|card ebay)\b/gi, '').trim() : '';
-    const fullQuery = `${name} ${cleanKw}`.trim();
-    
-    console.log(`[Worker] Executing eBay API market lookup for "${fullQuery}"...`);
-    const ebayResult = await fetchEbayMarketPrice(fullQuery, {
-      barcode,
-      ebayClientId,
-      ebayClientSecret,
-      marketplaceId: process.env.EBAY_MARKETPLACE_ID || 'EBAY_US'
-    });
+    // Strip web-search engine modifier keywords (e.g. 'ebay', 'price', 'movie ebay') that break native eBay API title searches
+    const ebayQuery = `${name} ${extraKeywords || ''}`
+      .replace(/\b(ebay|price|bottle ebay|toy ebay|movie ebay|coin ebay|comic ebay|card ebay|video game ebay)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    if (ebayResult && ebayResult.price) {
-      console.log(`[Worker] eBay API market price found: $${ebayResult.price} (from ${ebayResult.count} listings)`);
-      return ebayResult.price;
+    if (ebayQuery) {
+      console.log(`[Worker] Executing eBay API market lookup for "${ebayQuery}"...`);
+      const ebayResult = await fetchEbayMarketPrice(ebayQuery, {
+        barcode,
+        ebayClientId,
+        ebayClientSecret,
+        marketplaceId: process.env.EBAY_MARKETPLACE_ID || 'EBAY_US'
+      });
+
+      if (ebayResult && ebayResult.price) {
+        console.log(`[Worker] eBay API market price found: $${ebayResult.price} (from ${ebayResult.count} listings)`);
+        return ebayResult.price;
+      }
     }
-    console.log(`[Worker] eBay API returned no result. Falling back to SearXNG...`);
   }
 
-  console.log(`[Worker Debug] fetchSearchEnginePrice using SearXNG. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
-  if (process.env.SEARXNG_URL) {
-    return await fetchSearxngPrice(name, extraKeywords);
+  // Fallback to SearXNG only if configured or if provider is set to searxng
+  if (provider === 'searxng' || (!ebayClientId && process.env.SEARXNG_URL)) {
+    console.log(`[Worker Debug] fetchSearchEnginePrice using SearXNG. SEARXNG_URL is: "${process.env.SEARXNG_URL}"`);
+    if (process.env.SEARXNG_URL) {
+      return await fetchSearxngPrice(name, extraKeywords);
+    }
   }
   return null;
 }
@@ -658,14 +665,21 @@ async function fetchToyMarketValue(name, condition) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
   const cleanCond = (condition && condition !== 'Unknown Condition') ? (condition === 'Loose' ? 'loose' : 'new in box') : '';
-  return await fetchSearchEnginePrice(cleanName, `${cleanCond} toy ebay`.trim());
+  return await fetchSearchEnginePrice(cleanName, `${cleanCond}`.trim());
 }
 
 async function fetchGenericMarketValue(name) {
   const cleanName = sanitizeTitleForSearch(name);
   if (!cleanName) return null;
 
-  // Optimized query sequence: start with clean title + ebay, then clean title + price, then bare clean title
+  const provider = process.env.MARKET_VALUATION_PROVIDER || 'searxng';
+
+  // For native eBay API, query directly with the clean title (without appending search-engine keywords like 'ebay' or 'price')
+  if (provider === 'ebay') {
+    return await fetchSearchEnginePrice(cleanName);
+  }
+
+  // Optimized query sequence for generic search engines (SearXNG/Google):
   const queries = [
     `${cleanName} ebay`,
     `${cleanName} price`,
