@@ -141,6 +141,7 @@ export async function GET() {
       ebayClientId: '',
       ebayClientSecret: '',
       ebayMarketplaceId: 'EBAY_US',
+      ebayVerificationToken: '',
       marketValuationProvider: 'searxng'
     },
     activeTier: 'basic',

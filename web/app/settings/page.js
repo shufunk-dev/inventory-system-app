@@ -31,6 +31,7 @@ export default function SettingsPage() {
     ebayClientId: '',
     ebayClientSecret: '',
     ebayMarketplaceId: 'EBAY_US',
+    ebayVerificationToken: '',
     marketValuationProvider: 'searxng'
   });
   const [paymentConfig, setPaymentConfig] = useState({
@@ -1023,6 +1024,70 @@ export default function SettingsPage() {
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="EBAY_US (Default), EBAY_GB, EBAY_CA, etc."
             />
+          </div>
+
+          <div className="border-t border-gray-800 pt-4 mt-4 space-y-4">
+            <h4 className="text-sm font-semibold text-white flex items-center justify-between">
+              <span>eBay Marketplace Account Deletion Setup</span>
+              <span className="text-[10px] bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded-full font-mono">GDPR / eBay Compliance</span>
+            </h4>
+            <p className="text-xs text-gray-400">
+              eBay requires a secret <strong>Verification Token</strong> and an HTTPS <strong>Notification Endpoint URL</strong> registered in your eBay Developer account (under <em>App Account → Marketplace Account Deletion Notifications</em>).
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Marketplace Account Deletion Endpoint URL</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text"
+                  readOnly
+                  value={typeof window !== 'undefined' ? `${window.location.origin}/api/ebay/deletion-notification` : '/api/ebay/deletion-notification'}
+                  className="w-full bg-gray-900 border border-gray-800 text-gray-300 rounded-xl px-4 py-2.5 font-mono text-xs focus:outline-none select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      navigator.clipboard.writeText(`${window.location.origin}/api/ebay/deletion-notification`);
+                      setMessage('Endpoint URL copied to clipboard!');
+                      setTimeout(() => setMessage(''), 3000);
+                    }
+                  }}
+                  className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs font-semibold px-3 py-2.5 rounded-xl text-white whitespace-nowrap transition-colors cursor-pointer"
+                >
+                  Copy URL
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1">Paste this exact URL into the eBay Developer Portal endpoint field.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Verification Token (32-80 characters)</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text"
+                  value={apiKeys.ebayVerificationToken || ''}
+                  onChange={(e) => setApiKeys({...apiKeys, ebayVerificationToken: e.target.value})}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 font-mono text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="e.g. ebay_secret_token_1234567890_abcdef"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const array = new Uint8Array(24);
+                    window.crypto.getRandomValues(array);
+                    const randomToken = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+                    setApiKeys({...apiKeys, ebayVerificationToken: randomToken});
+                  }}
+                  className="bg-blue-600 hover:bg-blue-500 text-xs font-semibold px-4 py-3 rounded-xl text-white whitespace-nowrap transition-colors cursor-pointer"
+                >
+                  Generate Token
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Paste this token into the eBay Developer Portal Verification Token field before saving/testing in eBay.
+              </p>
+            </div>
           </div>
 
           <div className="border-t border-gray-800 pt-4 mt-4">
