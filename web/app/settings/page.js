@@ -1058,7 +1058,14 @@ export default function SettingsPage() {
                   Copy URL
                 </button>
               </div>
-              <p className="text-[11px] text-gray-500 mt-1">Paste this exact URL into the eBay Developer Portal endpoint field.</p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Paste this exact URL into the eBay Developer Portal endpoint field.
+              </p>
+              {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                <div className="mt-2 text-[11px] bg-amber-950/40 border border-amber-800/50 text-amber-300 rounded-lg p-2.5">
+                  <strong>Localhost Notice:</strong> eBay's servers cannot reach <code>localhost</code> directly. Use an HTTPS tunneling tool like <code>ngrok</code> (e.g. <code>npx ngrok http 3000</code>) and paste your ngrok URL into eBay: <code>https://&lt;subdomain&gt;.ngrok-free.app/api/ebay/deletion-notification</code>.
+                </div>
+              )}
             </div>
 
             <div>

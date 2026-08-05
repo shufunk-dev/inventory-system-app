@@ -57,7 +57,11 @@ export async function GET(request) {
     }
 
     // Determine configured endpoint URL (strip search params)
-    const endpointUrl = `${url.origin}${url.pathname}`;
+    // Account for reverse proxies / tunnels (e.g. ngrok, Vercel, Cloudflare)
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || url.host;
+    let proto = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+    if (proto.endsWith(':')) proto = proto.slice(0, -1);
+    const endpointUrl = `${proto}://${host}${url.pathname}`;
 
     // Compute SHA-256 hash according to eBay specification:
     // SHA256( challenge_code + verification_token + endpoint_url )
