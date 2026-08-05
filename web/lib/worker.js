@@ -646,7 +646,11 @@ async function fetchSearchEnginePrice(name, extraKeywords = '', barcode = null) 
 
       if (ebayResult && ebayResult.price) {
         console.log(`[Worker] eBay API market price found: $${ebayResult.price} (from ${ebayResult.count} listings)`);
-        return ebayResult.price;
+        return {
+          valueLow: ebayResult.minPrice ?? ebayResult.price,
+          valueAvg: ebayResult.price,
+          valueHigh: ebayResult.maxPrice ?? ebayResult.price
+        };
       }
     }
   }
