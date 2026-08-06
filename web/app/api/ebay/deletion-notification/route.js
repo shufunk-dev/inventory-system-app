@@ -85,7 +85,6 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    console.log('[eBay Deletion Notification Received]', JSON.stringify(body, null, 2));
 
     // Acknowledge receipt of deletion notification with HTTP 200 OK
     return NextResponse.json(
