@@ -32,8 +32,10 @@ export default function SettingsPage() {
     ebayClientSecret: '',
     ebayMarketplaceId: 'EBAY_US',
     ebayVerificationToken: '',
+    discordWebhookUrl: '',
     marketValuationProvider: 'searxng'
   });
+  const [testingDiscord, setTestingDiscord] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState({
     provider: 'none',
     stripeApiKey: '',
@@ -1093,6 +1095,53 @@ export default function SettingsPage() {
               </div>
               <p className="text-[11px] text-gray-500 mt-1">
                 Paste this token into the eBay Developer Portal Verification Token field before saving/testing in eBay.
+              </p>
+            </div>
+
+            <div className="border-t border-gray-800/80 pt-4 mt-2">
+              <label className="block text-sm font-medium text-gray-300 mb-1">Discord Webhook Relay URL (Optional)</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text"
+                  value={apiKeys.discordWebhookUrl || ''}
+                  onChange={(e) => setApiKeys({...apiKeys, discordWebhookUrl: e.target.value})}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 font-mono text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="https://discord.com/api/webhooks/123456789/abc123xyz..."
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!apiKeys.discordWebhookUrl) {
+                      alert('Please enter a Discord Webhook URL first.');
+                      return;
+                    }
+                    setTestingDiscord(true);
+                    try {
+                      const res = await fetch('/api/settings/discord/test', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ discordWebhookUrl: apiKeys.discordWebhookUrl })
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.success) {
+                        alert('✅ Test Discord notification sent successfully! Check your Discord channel.');
+                      } else {
+                        alert(`❌ Discord Webhook Error: ${data.error || 'Failed to send test message'}`);
+                      }
+                    } catch (e) {
+                      alert(`❌ Error testing Discord webhook: ${e.message}`);
+                    } finally {
+                      setTestingDiscord(false);
+                    }
+                  }}
+                  disabled={testingDiscord}
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold px-4 py-3 rounded-xl text-white whitespace-nowrap transition-colors cursor-pointer"
+                >
+                  {testingDiscord ? 'Testing...' : 'Test Webhook'}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Optional. Relays incoming eBay Account Deletion Notifications directly to your Discord channel as formatted alert embeds.
               </p>
             </div>
           </div>

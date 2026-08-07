@@ -142,6 +142,7 @@ export async function GET() {
       ebayClientSecret: '',
       ebayMarketplaceId: 'EBAY_US',
       ebayVerificationToken: '',
+      discordWebhookUrl: '',
       marketValuationProvider: 'searxng'
     },
     activeTier: 'basic',
