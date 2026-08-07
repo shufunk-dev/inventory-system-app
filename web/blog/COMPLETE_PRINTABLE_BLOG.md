@@ -1049,5 +1049,9 @@ We are excited to announce **Release v1.9.9** of the Inventory System App! This 
 4. **Inline Category Creation**
    - Quick `+ New Category` inline form on the Intake page lets users create and auto-select destination categories without leaving the upload screen.
 
-5. **Version 1.9.9 Ecosystem Alignment**
+5. **Discord Webhook Relayer for eBay Compliance**
+   - Added an optional Discord Webhook URL configuration in Settings.
+   - Automatically formats and relays incoming eBay Account Deletion / Closure Notifications directly to a designated Discord channel as rich alert embeds for real-time compliance monitoring.
+
+6. **Version 1.9.9 Ecosystem Alignment**
    - System version bumped to **Beta 1.9.9** across the Web Navbar, POS Receipt headers, Mobile Scanner Expo config, and Desktop Electron build manifests.
