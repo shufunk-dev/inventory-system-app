@@ -105,10 +105,29 @@ async function relayToDiscord(payload, webhookUrl) {
 
   try {
     const metadata = payload?.metadata || {};
-    const notificationId = metadata.notificationId || payload?.notificationId || 'N/A';
-    const eventType = metadata.topic || payload?.eventType || 'ACCOUNT_DELETION_NOTIFICATION';
-    const userId = payload?.data?.userId || payload?.data?.username || payload?.userId || 'N/A';
-    const timestamp = payload?.eventDate || new Date().toISOString();
+    const notification = payload?.notification || payload?.Notification || {};
+    const data = notification?.data || notification?.Data || payload?.data || {};
+
+    const notificationId = notification?.notificationId || notification?.id || metadata?.notificationId || payload?.notificationId || 'N/A';
+    const eventType = metadata?.topic || payload?.eventType || payload?.topic || 'MARKETPLACE_ACCOUNT_DELETION';
+
+    const username = data?.username || payload?.username || '';
+    const userId = data?.userId || payload?.userId || '';
+    const eiasToken = data?.eiasToken || payload?.eiasToken || '';
+
+    const userDisplay = [username, userId ? `(ID: ${userId})` : ''].filter(Boolean).join(' ') || userId || username || eiasToken || 'N/A';
+    const timestamp = notification?.eventDate || notification?.publishDate || payload?.eventDate || new Date().toISOString();
+
+    const fields = [
+      { name: "Event Type", value: `\`${eventType}\``, inline: true },
+      { name: "User / Account", value: `\`${userDisplay}\``, inline: true },
+      { name: "Notification ID", value: `\`${notificationId}\``, inline: false },
+      { name: "Received Timestamp", value: timestamp, inline: true }
+    ];
+
+    if (eiasToken) {
+      fields.push({ name: "EIAS Token", value: `\`${eiasToken}\``, inline: false });
+    }
 
     const embedPayload = {
       username: "Inventory System - eBay Relay",
@@ -118,12 +137,7 @@ async function relayToDiscord(payload, webhookUrl) {
           title: "⚠️ eBay Account Deletion Notification Received",
           description: "An official eBay Account Deletion / Closure Notification was received by your application webhook.",
           color: 0xef4444, // Red alert
-          fields: [
-            { name: "Event Type", value: `\`${eventType}\``, inline: true },
-            { name: "User / Account ID", value: `\`${userId}\``, inline: true },
-            { name: "Notification ID", value: `\`${notificationId}\``, inline: false },
-            { name: "Received Timestamp", value: timestamp, inline: true }
-          ],
+          fields: fields,
           footer: { text: "Inventory System App • eBay Compliance Relay" },
           timestamp: new Date().toISOString()
         }
