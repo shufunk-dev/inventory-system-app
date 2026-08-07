@@ -364,6 +364,16 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 1.9.9', date: 'August 7, 2026', title: 'Duplex & Single-Sided Scan Intake, Intelligent Sorting & Inline Category Creator',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented Duplex & Single-Sided Scan / Photo Intake supporting multi-file drag-and-drop and ZIP archives with automatic front/back pairing.' },
+      { type: 'web', text: 'Added duplex-aware natural sorting, side suffix cleaning (_a, _front, -1), and automatic front/back orientation swap protection.' },
+      { type: 'web', text: 'Added intelligent sports position and card term protection preventing terms like "Running Back", "Cornerback", and "Throwback" from being truncated.' },
+      { type: 'web', text: 'Implemented inline "+ New Category" creator on the Bulk Intake page for instant creation and auto-assignment of destination categories.' },
+      { type: 'web', text: 'Bumped system version to Beta 1.9.9 across Web navbar, POS receipts, Mobile app, and Electron configurations.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.8', date: 'August 5, 2026', title: 'Direct eBay REST API Integration & Universal Category Valuation Engine',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented direct eBay REST API integration for high-precision live active listing market pricing.' },

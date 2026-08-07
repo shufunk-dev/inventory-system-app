@@ -9,8 +9,46 @@ import { getUser } from '@/lib/auth';
 
 export const maxDuration = 300;
 
-function naturalSort(a, b) {
-  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+const positionBackRegex = /(running|full|half|corner|line|defensive|tail|wing|quarter|safety|nickel|diamond|throw|flash|come|give|draw|set|play|back\s*to|back\s*2)\s+back$/i;
+
+function parseDuplexFilename(filename) {
+  if (!filename) return { stem: '', side: 0, raw: '' };
+  const name = path.parse(filename).name;
+
+  // Protect sports positions & card terms ending in "Back" (e.g. Running Back, Cornerback, Throwback)
+  if (positionBackRegex.test(name)) {
+    return { stem: name, side: 0, raw: name };
+  }
+
+  const match = name.match(/[\s\-_]+(front|back|f|b|a|side\s*1|side\s*2|1|2)$/i);
+  if (match) {
+    const marker = match[1].toLowerCase();
+    const stem = name.substring(0, match.index).trim();
+    let side = 0;
+    if (['front', 'f', 'a', '1', 'side1', 'side 1'].includes(marker)) {
+      side = 1; // Front side
+    } else if (['back', 'b', '2', 'side2', 'side 2'].includes(marker)) {
+      side = 2; // Back side
+    }
+    return { stem: stem || name, side, raw: name };
+  }
+  return { stem: name, side: 0, raw: name };
+}
+
+function duplexSort(a, b) {
+  const nameA = typeof a === 'string' ? path.basename(a) : (a ? a.name || '' : '');
+  const nameB = typeof b === 'string' ? path.basename(b) : (b ? b.name || '' : '');
+
+  const parsedA = parseDuplexFilename(nameA);
+  const parsedB = parseDuplexFilename(nameB);
+
+  if (parsedA.stem && parsedB.stem && parsedA.stem.toLowerCase() === parsedB.stem.toLowerCase()) {
+    if (parsedA.side !== 0 && parsedB.side !== 0 && parsedA.side !== parsedB.side) {
+      return parsedA.side - parsedB.side;
+    }
+  }
+
+  return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
 }
 
 export async function POST(request) {
@@ -50,7 +88,7 @@ export async function POST(request) {
 
       const fileEntries = Object.keys(loadedZip.files)
         .filter(filename => !loadedZip.files[filename].dir && validImageExts.test(filename))
-        .sort(naturalSort);
+        .sort(duplexSort);
 
       if (fileEntries.length === 0) {
         return NextResponse.json({ error: 'No valid image files found in ZIP archive' }, { status: 400 });
@@ -58,14 +96,22 @@ export async function POST(request) {
 
       if (mode === 'duplex') {
         for (let i = 0; i < fileEntries.length; i += 2) {
-          const frontEntry = fileEntries[i];
-          const backEntry = fileEntries[i + 1] || null;
+          let frontEntry = fileEntries[i];
+          let backEntry = fileEntries[i + 1] || null;
 
-          const frontBuffer = await loadedZip.file(frontEntry).async('nodebuffer');
-          const backBuffer = backEntry ? await loadedZip.file(backEntry).async('nodebuffer') : null;
+          let frontBuffer = await loadedZip.file(frontEntry).async('nodebuffer');
+          let backBuffer = backEntry ? await loadedZip.file(backEntry).async('nodebuffer') : null;
 
-          const frontName = path.basename(frontEntry);
-          const backName = backEntry ? path.basename(backEntry) : null;
+          let frontName = path.basename(frontEntry);
+          let backName = backEntry ? path.basename(backEntry) : null;
+
+          // Orientation Swap Check
+          const pFront = parseDuplexFilename(frontName);
+          const pBack = backName ? parseDuplexFilename(backName) : null;
+          if (pBack && pFront.side === 2 && pBack.side === 1) {
+            [frontBuffer, backBuffer] = [backBuffer, frontBuffer];
+            [frontName, backName] = [backName, frontName];
+          }
 
           imagePairs.push({ frontBuffer, frontName, backBuffer, backName });
         }
@@ -81,7 +127,7 @@ export async function POST(request) {
       // Branch B: Multi-File / Folder Drag & Drop
       const validFiles = uploadedFiles
         .filter(f => f && f.name && validImageExts.test(f.name))
-        .sort((a, b) => naturalSort(a.name, b.name));
+        .sort(duplexSort);
 
       if (validFiles.length === 0) {
         return NextResponse.json({ error: 'No valid image files submitted' }, { status: 400 });
@@ -89,17 +135,27 @@ export async function POST(request) {
 
       if (mode === 'duplex') {
         for (let i = 0; i < validFiles.length; i += 2) {
-          const frontFile = validFiles[i];
-          const backFile = validFiles[i + 1] || null;
+          let frontFile = validFiles[i];
+          let backFile = validFiles[i + 1] || null;
 
-          const frontBuffer = Buffer.from(await frontFile.arrayBuffer());
-          const backBuffer = backFile ? Buffer.from(await backFile.arrayBuffer()) : null;
+          let frontBuffer = Buffer.from(await frontFile.arrayBuffer());
+          let backBuffer = backFile ? Buffer.from(await backFile.arrayBuffer()) : null;
+          let frontName = frontFile.name;
+          let backName = backFile ? backFile.name : null;
+
+          // Orientation Swap Check
+          const pFront = parseDuplexFilename(frontName);
+          const pBack = backName ? parseDuplexFilename(backName) : null;
+          if (pBack && pFront.side === 2 && pBack.side === 1) {
+            [frontBuffer, backBuffer] = [backBuffer, frontBuffer];
+            [frontName, backName] = [backName, frontName];
+          }
 
           imagePairs.push({
             frontBuffer,
-            frontName: frontFile.name,
+            frontName,
             backBuffer,
-            backName: backFile ? backFile.name : null
+            backName
           });
         }
       } else {
@@ -136,7 +192,8 @@ export async function POST(request) {
         imagePathBack = `/api/file/${backFilename}`;
       }
 
-      const cleanTitle = path.parse(pair.frontName).name.replace(/[-_]/g, ' ');
+      const rawTitle = parseDuplexFilename(pair.frontName).stem;
+      const cleanTitle = rawTitle.replace(/[-_]/g, ' ').trim();
       const name = `Card (${cleanTitle})`;
 
       insertItem.run({

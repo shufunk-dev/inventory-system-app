@@ -14,17 +14,61 @@ import {
   Sparkles, 
   ArrowRight,
   FolderOpen,
+  Plus,
+  X,
   Settings2
 } from 'lucide-react';
 
-function naturalSort(a, b) {
-  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+const positionBackRegex = /(running|full|half|corner|line|defensive|tail|wing|quarter|safety|nickel|diamond|throw|flash|come|give|draw|set|play|back\s*to|back\s*2)\s+back$/i;
+
+function parseDuplexFilename(filename) {
+  if (!filename) return { stem: '', side: 0, raw: '' };
+  // Remove extension if present
+  const name = filename.replace(/\.[^/.]+$/, '');
+
+  // Protect sports positions & card terms ending in "Back" (e.g. Running Back, Cornerback, Throwback)
+  if (positionBackRegex.test(name)) {
+    return { stem: name, side: 0, raw: name };
+  }
+
+  const match = name.match(/[\s\-_]+(front|back|f|b|a|side\s*1|side\s*2|1|2)$/i);
+  if (match) {
+    const marker = match[1].toLowerCase();
+    const stem = name.substring(0, match.index).trim();
+    let side = 0;
+    if (['front', 'f', 'a', '1', 'side1', 'side 1'].includes(marker)) {
+      side = 1; // Front side
+    } else if (['back', 'b', '2', 'side2', 'side 2'].includes(marker)) {
+      side = 2; // Back side
+    }
+    return { stem: stem || name, side, raw: name };
+  }
+  return { stem: name, side: 0, raw: name };
+}
+
+function duplexSort(a, b) {
+  const nameA = typeof a === 'string' ? a : (a ? a.name || '' : '');
+  const nameB = typeof b === 'string' ? b : (b ? b.name || '' : '');
+
+  const parsedA = parseDuplexFilename(nameA);
+  const parsedB = parseDuplexFilename(nameB);
+
+  if (parsedA.stem && parsedB.stem && parsedA.stem.toLowerCase() === parsedB.stem.toLowerCase()) {
+    if (parsedA.side !== 0 && parsedB.side !== 0 && parsedA.side !== parsedB.side) {
+      return parsedA.side - parsedB.side;
+    }
+  }
+
+  return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
 }
 
 export default function BulkIntakePage() {
   const [mode, setMode] = useState('duplex'); // 'duplex' | 'single'
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [creatingCat, setCreatingCat] = useState(false);
   
   const [dragActive, setDragActive] = useState(false);
   const [zipFile, setZipFile] = useState(null);
@@ -50,6 +94,35 @@ export default function BulkIntakePage() {
       .catch(err => console.error('Failed to fetch categories:', err));
   }, []);
 
+  const handleCreateCategory = async (e) => {
+    e?.preventDefault();
+    if (!newCatName.trim()) return;
+    setCreatingCat(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCatName.trim() })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create category');
+      }
+      const cat = await res.json();
+      setCategories(prev => {
+        if (prev.some(c => c.id === cat.id)) return prev;
+        return [...prev, cat].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setSelectedCategory(cat.id);
+      setNewCatName('');
+      setShowNewCatInput(false);
+    } catch (err) {
+      alert(err.message || 'Failed to create category');
+    } finally {
+      setCreatingCat(false);
+    }
+  };
+
   // Update pair previews when raw files or mode change
   useEffect(() => {
     if (zipFile) {
@@ -65,13 +138,20 @@ export default function BulkIntakePage() {
     const validExts = /\.(jpg|jpeg|png|webp|gif|bmp|heic)$/i;
     const sorted = [...rawFiles]
       .filter(f => validExts.test(f.name))
-      .sort((a, b) => naturalSort(a.name, b.name));
+      .sort(duplexSort);
 
     const pairs = [];
     if (mode === 'duplex') {
       for (let i = 0; i < sorted.length; i += 2) {
-        const front = sorted[i];
-        const back = sorted[i + 1] || null;
+        let front = sorted[i];
+        let back = sorted[i + 1] || null;
+
+        const pFront = parseDuplexFilename(front ? front.name : '');
+        const pBack = back ? parseDuplexFilename(back.name) : null;
+        if (pBack && pFront.side === 2 && pBack.side === 1) {
+          [front, back] = [back, front];
+        }
+
         pairs.push({
           id: `pair_${i}`,
           frontFile: front,
@@ -299,20 +379,63 @@ export default function BulkIntakePage() {
 
         {/* Category Target */}
         <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 space-y-3">
-          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-indigo-400" />
-            Destination Category (Optional)
-          </label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-4 py-3 text-sm text-gray-200 focus:outline-none focus:border-blue-500 transition-colors"
-          >
-            <option value="">Uncategorized / Default</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-indigo-400" />
+              Destination Category (Optional)
+            </label>
+            {!showNewCatInput && (
+              <button
+                type="button"
+                onClick={() => setShowNewCatInput(true)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium hover:underline transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New Category
+              </button>
+            )}
+          </div>
+
+          {showNewCatInput ? (
+            <form onSubmit={handleCreateCategory} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="Category name (e.g. Trading Cards)"
+                autoFocus
+                className="flex-1 bg-gray-950/80 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={creatingCat || !newCatName.trim()}
+                className="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-1 shadow-sm"
+              >
+                {creatingCat ? 'Saving...' : 'Create'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewCatInput(false);
+                  setNewCatName('');
+                }}
+                className="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-200 rounded-xl text-xs transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </form>
+          ) : (
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-gray-950/80 border border-gray-800 rounded-xl px-4 py-3 text-sm text-gray-200 focus:outline-none focus:border-blue-500 transition-colors"
+            >
+              <option value="">Uncategorized / Default</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          )}
           <p className="text-xs text-gray-500">
             Assigned category for newly created draft card records.
           </p>
