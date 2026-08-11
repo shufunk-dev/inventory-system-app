@@ -91,10 +91,6 @@ inventory-system-app/
 │   ├── setup-appliance.sh      # Raspberry Pi OS Appliance Provisioning Script
 │   └── build-windows.bat       # Windows Electron .exe Packaging Script
 ├── mobile/                     # React Native Expo Mobile Handheld Scanner App
-├── license-server/             # Standalone Express.js License Management Server
-├── purchase-landing-page/      # Public Product Landing & Checkout Page
-├── start_dev_servers.bat       # Windows Launcher for Web + Mobile Dev Servers
-├── start_license_manager.bat   # Windows Launcher for License Server
 └── README.md                   # Project Overview & Documentation
 ```
 
