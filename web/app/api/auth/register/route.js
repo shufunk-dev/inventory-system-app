@@ -142,7 +142,7 @@ export async function GET() {
     const setupNeeded = adminCount === 0 && process.env.SAAS_MODE !== 'true';
     
     if (process.env.DEMO_MODE === 'true') {
-      return NextResponse.json({ enabled: true, setupNeeded });
+      return NextResponse.json({ enabled: true, setupNeeded: false, isDemoMode: true });
     }
 
     if (process.env.SAAS_MODE === 'true') {

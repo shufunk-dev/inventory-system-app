@@ -15,6 +15,7 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [registrationEnabled, setRegistrationEnabled] = useState(false);
   const [temp2faToken, setTemp2faToken] = useState('');
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,6 +41,9 @@ function LoginContent() {
     fetch('/api/auth/register')
       .then(res => res.json())
       .then(data => {
+        if (data.isDemoMode) {
+          setIsDemoMode(true);
+        }
         if (data.setupNeeded) {
           router.push('/setup');
         } else {
@@ -213,6 +217,30 @@ function LoginContent() {
           )}
 
           {/* LOGIN & REGISTER FORMS */}
+          {isDemoMode && view === 'login' && (
+            <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-blue-950/60 via-purple-950/60 to-emerald-950/40 border border-blue-500/30 text-left">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
+                  SiteGround Live Demo
+                </span>
+                <span className="text-[11px] text-gray-400">Nightly Refresh</span>
+              </div>
+              <p className="text-xs text-gray-300 mb-3">
+                Explore the multi-booth catalog, POS register, and sales reports pre-seeded with sample data.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('demo@shufunk.net');
+                  setPassword('demo123');
+                }}
+                className="w-full bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 hover:text-white text-xs font-semibold py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                ✨ Fill Demo Credentials (demo@shufunk.net)
+              </button>
+            </div>
+          )}
+
           {(view === 'login' || view === 'register') && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

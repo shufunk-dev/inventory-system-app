@@ -65,6 +65,7 @@ project_summary.pdf
 # Web Development and Testing Suites
 web/tests/
 web/scripts/
+!web/scripts/seed-demo.js
 web/scratch/
 web/database.sqlite
 

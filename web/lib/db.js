@@ -5,6 +5,7 @@ import fs from 'fs';
 import { createRequire } from 'module';
 import { decryptSync } from './jwt.js';
 import { getTenantDb, tenantStorage, getRegistryDb, closeAllConnections, syncChangelogs } from './dbManager.js';
+import { seedDemoData } from './seedDemoData.js';
 
 const require = createRequire(import.meta.url);
 
@@ -362,6 +363,10 @@ export function getMasterDb() {
       // Ignored
     }
 
+    if (process.env.DEMO_MODE === 'true') {
+      isExpired = false;
+    }
+
     if (isExpired) {
       resetToFactorySettings(masterDb);
       masterDb = null;
@@ -380,6 +385,17 @@ export function getMasterDb() {
       } catch (e) {
         console.error('[demo] Throttled reset check failed:', e);
       }
+    }
+
+    // Auto-seed demo data if DEMO_MODE is active and database is unseeded
+    try {
+      const boothCount = masterDb.prepare("SELECT count(*) as count FROM store_profiles").get()?.count || 0;
+      if (boothCount === 0) {
+        console.log('[demo] Empty demo database detected. Auto-seeding initial booths and sample data...');
+        seedDemoData();
+      }
+    } catch (e) {
+      // Schema may be initializing
     }
   }
 
@@ -490,40 +506,14 @@ export function performMidnightReset() {
   const dataPath = process.env.USER_DATA_PATH || process.cwd();
   
   if (process.env.SAAS_MODE !== 'true') {
-    // Local-first mode demo reset: wipes tables but keeps the very first user intact
+    // Non-SaaS demo reset: cleanly refresh demo dataset with the 3 booths and inventory
     try {
-      const db = getMasterDb();
-      const firstUser = db.prepare('SELECT id FROM users ORDER BY createdAt ASC LIMIT 1').get();
-      if (firstUser) {
-        db.prepare('DELETE FROM users WHERE id != ?').run(firstUser.id);
-        db.prepare('DELETE FROM sessions').run();
-        db.prepare('DELETE FROM items').run();
-        db.prepare('DELETE FROM categories').run();
-        db.prepare('DELETE FROM pos_items').run();
-        db.prepare('DELETE FROM recipes').run();
-        db.prepare('DELETE FROM recipe_ingredients').run();
-        db.prepare('DELETE FROM physical_counts').run();
-        db.prepare('DELETE FROM physical_count_items').run();
-        db.prepare('DELETE FROM store_profiles').run();
-        
-        // Also wipe all uploaded items files
-        const uploadsDir = path.resolve(dataPath, 'uploads');
-        if (fs.existsSync(uploadsDir)) {
-          const files = fs.readdirSync(uploadsDir);
-          for (const file of files) {
-            if (file === 'debug_latest.zip') continue;
-            const filePath = path.resolve(uploadsDir, file);
-            try {
-              if (fs.statSync(filePath).isFile()) {
-                fs.unlinkSync(filePath);
-              }
-            } catch (e) {}
-          }
-        }
-        console.log('[demo] Local mode demo data wiped successfully, keeping first user.');
-      }
+      console.log('[demo] Refreshing demo seed data...');
+      closeAllConnections();
+      seedDemoData();
+      console.log('[demo] Demo data refreshed successfully.');
     } catch (e) {
-      console.error('[demo] Failed to reset local database:', e);
+      console.error('[demo] Failed to reset demo database:', e);
     }
     return;
   }

@@ -1,0 +1,12 @@
+{
+  "name": "inventory-system-app-root",
+  "version": "1.9.9",
+  "private": true,
+  "description": "Root build and startup wrapper for SiteGround Node.js deployment",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "start": "npm --prefix web start",
+    "seed:demo": "npm --prefix web run seed:demo"
+  }
+}

@@ -136,9 +136,16 @@ export default async function RootLayout({ children }) {
                     <span className="hidden sm:inline">Changelog</span>
                   </Link>
 
-                  <div className="text-sm font-medium text-gray-500 bg-gray-900 px-3 py-1 rounded-full border border-gray-800 hidden md:block">
-                    Beta 1.9.9
-                  </div>
+                  {process.env.DEMO_MODE === 'true' ? (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Demo Mode</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm font-medium text-gray-500 bg-gray-900 px-3 py-1 rounded-full border border-gray-800 hidden md:block">
+                      Beta 1.9.9
+                    </div>
+                  )}
 
                   {user && (() => {
                     const getRoleColor = (u) => {
