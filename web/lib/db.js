@@ -631,7 +631,10 @@ export function performMidnightReset() {
 // Verification checks and logic to reset daily testing database contexts
 export function checkAndResetIfNeeded() {
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`; // YYYY-MM-DD local time
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
   
   let lastResetDate = null;
   if (process.env.SAAS_MODE === 'true') {
