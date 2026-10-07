@@ -397,12 +397,12 @@ export function seedDemoData(customDataPath = null) {
 
   const insertMasterItem = masterDb.prepare(`
     INSERT INTO items (
-      id, userId, categoryId, name, description, barcode, itemType, retailPrice, purchasePrice, valueAvg,
+      id, userId, categoryId, name, description, barcode, itemType, imagePath, retailPrice, purchasePrice, valueAvg,
       gameSystem, hardwareBrand, hardwareModel, hardwareType,
       toyBrand, toyYear, toyCondition, cardCondition, cardCertNumber, cardGradingAgency,
       comicCondition, comicCertNumber, comicGradingAgency, comicPublisher, comicIssue, createdAt
     ) VALUES (
-      ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?, ?,
+      ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?
@@ -505,12 +505,12 @@ export function seedDemoData(customDataPath = null) {
 
     const insertStoreItem = storeDb.prepare(`
       INSERT INTO items (
-        id, userId, categoryId, name, description, barcode, itemType, retailPrice, purchasePrice, valueAvg,
+        id, userId, categoryId, name, description, barcode, itemType, imagePath, retailPrice, purchasePrice, valueAvg,
         gameSystem, hardwareBrand, hardwareModel, hardwareType,
         toyBrand, toyYear, toyCondition, cardCondition, cardCertNumber, cardGradingAgency,
         comicCondition, comicCertNumber, comicGradingAgency, comicPublisher, comicIssue, createdAt
       ) VALUES (
-        ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?, ?,
+        ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?
@@ -518,8 +518,10 @@ export function seedDemoData(customDataPath = null) {
     `);
 
     for (const item of storeInfo.items) {
+      const imgPath = `/demo/items/${item.id}.jpg`;
+
       insertStoreItem.run(
-        item.id, item.categoryId, item.name, item.description, item.barcode, item.retailPrice, item.purchasePrice, item.retailPrice,
+        item.id, item.categoryId, item.name, item.description, item.barcode, imgPath, item.retailPrice, item.purchasePrice, item.retailPrice,
         item.gameSystem || null, item.hardwareBrand || null, item.hardwareModel || null, item.hardwareType || null,
         item.toyBrand || null, item.toyYear || null, item.toyCondition || null,
         item.cardCondition || null, item.cardCertNumber || null, item.cardGradingAgency || null,
@@ -529,7 +531,7 @@ export function seedDemoData(customDataPath = null) {
 
       // Duplicate into master catalog
       insertMasterItem.run(
-        item.id, item.categoryId, item.name, item.description, item.barcode, item.retailPrice, item.purchasePrice, item.retailPrice,
+        item.id, item.categoryId, item.name, item.description, item.barcode, imgPath, item.retailPrice, item.purchasePrice, item.retailPrice,
         item.gameSystem || null, item.hardwareBrand || null, item.hardwareModel || null, item.hardwareType || null,
         item.toyBrand || null, item.toyYear || null, item.toyCondition || null,
         item.cardCondition || null, item.cardCertNumber || null, item.cardGradingAgency || null,
