@@ -4,7 +4,8 @@ A modern, local-first, multi-platform inventory management and Point-of-Sale (PO
 
 Built with **Next.js 16**, **React 19**, **Electron**, and **React Native (Expo)**, the application is modular, offline-first, and highly configurable via licensing keys to fit different business types and hobbyist needs.
 
-For detailed manuals, live roadmaps, and sprint logs, visit the official documentation page at **[its.shufunk.net](https://its.shufunk.net/)**.
+For detailed manuals, live roadmaps, and sprint logs, visit the official documentation page at **[its.shufunk.net](https://its.shufunk.net/)**.  
+To explore the live multi-booth demo environment without installing, visit **[itsdemo.shufeltdesigns.com](https://itsdemo.shufeltdesigns.com/)**.
 
 ---
 
