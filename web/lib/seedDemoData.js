@@ -365,12 +365,12 @@ export function seedDemoData(customDataPath = null) {
 
   const insertMasterItem = masterDb.prepare(`
     INSERT INTO items (
-      id, userId, categoryId, name, description, barcode, itemType, retailPrice, purchasePrice,
+      id, userId, categoryId, name, description, barcode, itemType, retailPrice, purchasePrice, valueAvg,
       gameSystem, hardwareBrand, hardwareModel, hardwareType,
       toyBrand, toyYear, toyCondition, cardCondition, cardCertNumber, cardGradingAgency,
       comicCondition, comicCertNumber, comicGradingAgency, comicPublisher, comicIssue, createdAt
     ) VALUES (
-      ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?,
+      ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?
@@ -458,18 +458,20 @@ export function seedDemoData(customDataPath = null) {
     `);
 
     const insertStoreCat = storeDb.prepare("INSERT INTO categories (id, name, userId, createdAt) VALUES (?, ?, 'user-demo-admin', ?)");
+    const insertMasterCat = masterDb.prepare("INSERT OR IGNORE INTO categories (id, name, userId, createdAt) VALUES (?, ?, 'user-demo-admin', ?)");
     for (const cat of storeInfo.categories) {
       insertStoreCat.run(cat.id, cat.name, now);
+      insertMasterCat.run(cat.id, cat.name, now);
     }
 
     const insertStoreItem = storeDb.prepare(`
       INSERT INTO items (
-        id, userId, categoryId, name, description, barcode, itemType, retailPrice, purchasePrice,
+        id, userId, categoryId, name, description, barcode, itemType, retailPrice, purchasePrice, valueAvg,
         gameSystem, hardwareBrand, hardwareModel, hardwareType,
         toyBrand, toyYear, toyCondition, cardCondition, cardCertNumber, cardGradingAgency,
         comicCondition, comicCertNumber, comicGradingAgency, comicPublisher, comicIssue, createdAt
       ) VALUES (
-        ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?,
+        ?, 'user-demo-admin', ?, ?, ?, ?, 'standard', ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?
@@ -478,7 +480,7 @@ export function seedDemoData(customDataPath = null) {
 
     for (const item of storeInfo.items) {
       insertStoreItem.run(
-        item.id, item.categoryId, item.name, item.description, item.barcode, item.retailPrice, item.purchasePrice,
+        item.id, item.categoryId, item.name, item.description, item.barcode, item.retailPrice, item.purchasePrice, item.retailPrice,
         item.gameSystem || null, item.hardwareBrand || null, item.hardwareModel || null, item.hardwareType || null,
         item.toyBrand || null, item.toyYear || null, item.toyCondition || null,
         item.cardCondition || null, item.cardCertNumber || null, item.cardGradingAgency || null,
@@ -488,7 +490,7 @@ export function seedDemoData(customDataPath = null) {
 
       // Duplicate into master catalog
       insertMasterItem.run(
-        item.id, item.categoryId, item.name, item.description, item.barcode, item.retailPrice, item.purchasePrice,
+        item.id, item.categoryId, item.name, item.description, item.barcode, item.retailPrice, item.purchasePrice, item.retailPrice,
         item.gameSystem || null, item.hardwareBrand || null, item.hardwareModel || null, item.hardwareType || null,
         item.toyBrand || null, item.toyYear || null, item.toyCondition || null,
         item.cardCondition || null, item.cardCertNumber || null, item.cardGradingAgency || null,

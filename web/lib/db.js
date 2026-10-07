@@ -390,8 +390,9 @@ export function getMasterDb() {
     // Auto-seed demo data if DEMO_MODE is active and database is unseeded
     try {
       const boothCount = masterDb.prepare("SELECT count(*) as count FROM store_profiles").get()?.count || 0;
-      if (boothCount === 0) {
-        console.log('[demo] Empty demo database detected. Auto-seeding initial booths and sample data...');
+      const itemsCount = masterDb.prepare("SELECT count(*) as count FROM items").get()?.count || 0;
+      if (boothCount === 0 || itemsCount === 0) {
+        console.log('[demo] Unseeded demo database detected. Auto-seeding initial booths and sample data...');
         seedDemoData();
       }
     } catch (e) {
