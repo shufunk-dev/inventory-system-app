@@ -82,6 +82,9 @@ export function seedDemoData(customDataPath = null) {
       createdAt INTEGER,
       retailPrice REAL,
       purchasePrice REAL,
+      valueAvg REAL,
+      valueLow REAL,
+      valueHigh REAL,
       gameSystem TEXT,
       movieFormat TEXT,
       hardwareBrand TEXT,
@@ -122,6 +125,35 @@ export function seedDemoData(customDataPath = null) {
       createdAt INTEGER
     );
   `);
+
+  const itemCols = [
+    'valueAvg REAL',
+    'valueLow REAL',
+    'valueHigh REAL',
+    'retailPrice REAL',
+    'purchasePrice REAL',
+    'gameSystem TEXT',
+    'movieFormat TEXT',
+    'hardwareBrand TEXT',
+    'hardwareModel TEXT',
+    'hardwareType TEXT',
+    'toolBrand TEXT',
+    'toolModel TEXT',
+    'toyBrand TEXT',
+    'toyYear TEXT',
+    'toyCondition TEXT',
+    'cardCondition TEXT',
+    'cardCertNumber TEXT',
+    'cardGradingAgency TEXT',
+    'comicCondition TEXT',
+    'comicCertNumber TEXT',
+    'comicGradingAgency TEXT',
+    'comicPublisher TEXT',
+    'comicIssue TEXT'
+  ];
+  for (const col of itemCols) {
+    try { masterDb.exec(`ALTER TABLE items ADD COLUMN ${col}`); } catch (e) {}
+  }
 
   // Clear existing records to ensure idempotent fresh seed
   masterDb.exec(`
@@ -421,6 +453,9 @@ export function seedDemoData(customDataPath = null) {
         createdAt INTEGER,
         retailPrice REAL,
         purchasePrice REAL,
+        valueAvg REAL,
+        valueLow REAL,
+        valueHigh REAL,
         gameSystem TEXT,
         hardwareBrand TEXT,
         hardwareModel TEXT,
@@ -456,6 +491,10 @@ export function seedDemoData(customDataPath = null) {
         createdAt INTEGER
       );
     `);
+
+    for (const col of itemCols) {
+      try { storeDb.exec(`ALTER TABLE items ADD COLUMN ${col}`); } catch (e) {}
+    }
 
     const insertStoreCat = storeDb.prepare("INSERT INTO categories (id, name, userId, createdAt) VALUES (?, ?, 'user-demo-admin', ?)");
     const insertMasterCat = masterDb.prepare("INSERT OR IGNORE INTO categories (id, name, userId, createdAt) VALUES (?, ?, 'user-demo-admin', ?)");
