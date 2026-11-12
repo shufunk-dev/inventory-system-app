@@ -124,6 +124,23 @@ export function seedDemoData(customDataPath = null) {
       isTraining INTEGER DEFAULT 0,
       createdAt INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS promotions (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      storeId TEXT,
+      discountType TEXT NOT NULL DEFAULT 'percentage',
+      discountValue REAL NOT NULL,
+      targetType TEXT NOT NULL DEFAULT 'booth',
+      targetIds TEXT,
+      startDate TEXT NOT NULL,
+      endDate TEXT NOT NULL,
+      isRecurring INTEGER DEFAULT 0,
+      recurringDays TEXT,
+      gracePeriodMinutes INTEGER DEFAULT 0,
+      isActive INTEGER DEFAULT 1,
+      createdAt INTEGER
+    );
   `);
 
   const itemCols = [
@@ -490,6 +507,23 @@ export function seedDemoData(customDataPath = null) {
         isTraining INTEGER DEFAULT 0,
         createdAt INTEGER
       );
+
+      CREATE TABLE IF NOT EXISTS promotions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        storeId TEXT,
+        discountType TEXT NOT NULL DEFAULT 'percentage',
+        discountValue REAL NOT NULL,
+        targetType TEXT NOT NULL DEFAULT 'booth',
+        targetIds TEXT,
+        startDate TEXT NOT NULL,
+        endDate TEXT NOT NULL,
+        isRecurring INTEGER DEFAULT 0,
+        recurringDays TEXT,
+        gracePeriodMinutes INTEGER DEFAULT 0,
+        isActive INTEGER DEFAULT 1,
+        createdAt INTEGER
+      );
     `);
 
     for (const col of itemCols) {
@@ -549,6 +583,54 @@ export function seedDemoData(customDataPath = null) {
           booth: storeInfo.name
         });
       }
+    }
+
+    if (storeId === 'booth-101-pixel-cartridge') {
+      const startIso = new Date(now - 2 * 24 * 3600 * 1000).toISOString().slice(0, 16);
+      const endIso = new Date(now + 12 * 24 * 3600 * 1000).toISOString().slice(0, 16);
+      const insertPromo = storeDb.prepare(`
+        INSERT OR REPLACE INTO promotions (
+          id, name, storeId, discountType, discountValue, targetType, targetIds,
+          startDate, endDate, isRecurring, recurringDays, gracePeriodMinutes, isActive, createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+      `);
+      insertPromo.run(
+        'promo-demo-101',
+        'Holiday Vintage Gaming Blowout (40% OFF)',
+        'booth-101-pixel-cartridge',
+        'percentage',
+        40.0,
+        'category',
+        JSON.stringify(['cat-snes', 'cat-n64']),
+        startIso,
+        endIso,
+        0,
+        JSON.stringify([0, 6]),
+        15,
+        now
+      );
+
+      const insertMasterPromo = masterDb.prepare(`
+        INSERT OR REPLACE INTO promotions (
+          id, name, storeId, discountType, discountValue, targetType, targetIds,
+          startDate, endDate, isRecurring, recurringDays, gracePeriodMinutes, isActive, createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+      `);
+      insertMasterPromo.run(
+        'promo-demo-101',
+        'Holiday Vintage Gaming Blowout (40% OFF)',
+        'booth-101-pixel-cartridge',
+        'percentage',
+        40.0,
+        'category',
+        JSON.stringify(['cat-snes', 'cat-n64']),
+        startIso,
+        endIso,
+        0,
+        JSON.stringify([0, 6]),
+        15,
+        now
+      );
     }
 
     storeDb.close();
