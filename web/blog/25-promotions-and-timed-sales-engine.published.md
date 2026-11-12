@@ -38,3 +38,4 @@ We are thrilled to announce **Release v2.0.0** of the Inventory System & POS! Ta
 
 7. **Version 2.0.0 Alignment**
    - System version updated to **Beta 2.0.0** across the Web Navbar, POS Receipts, and system manifests.
+
