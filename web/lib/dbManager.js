@@ -364,6 +364,19 @@ export function closeAllConnections() {
 // Master seed data for changelogs (unified layout)
 const seedData = [
   {
+    version: 'Beta 2.0.0', date: 'November 12, 2026', title: 'Timed Sales Engine, Scheduled Promotions, Live Kiosks & Physical Booth Signage Generator',
+    changes: JSON.stringify([
+      { type: 'web', text: 'Implemented Promotions & Timed Sales Engine supporting percentage or dollar discounts across entire booths, categories, tags, or individual items.' },
+      { type: 'web', text: 'Added flexible start/end datetime scheduling, recurring day-of-week sales (e.g. weekends only), and configurable grace period buffers (5-30m) to protect customers in line.' },
+      { type: 'web', text: 'Integrated dynamic POS checkout discount detection with line-item manual overrides for damaged or as-is negotiated items.' },
+      { type: 'web', text: 'Upgraded 80mm thermal and standard letter receipts to display item-by-item discount breakdowns and a grand total customer savings banner.' },
+      { type: 'web', text: 'Created full-screen Digital Signage Kiosk (/promotions/display) with live second-by-second countdown timer and rotating featured product showcase.' },
+      { type: 'web', text: 'Added Physical Sign Maker generating print-ready 8.5" x 11" booth posters and 4-per-page fold-over shelf-talker cards.' },
+      { type: 'web', text: 'Enhanced Home Catalog cards with vibrant sale badges, strike-through original prices, and emerald discounted pricing.' },
+      { type: 'web', text: 'Bumped system version to Beta 2.0.0 across Web navbar, POS receipts, and package manifests.' }
+    ])
+  },
+  {
     version: 'Beta 1.9.9', date: 'August 7, 2026', title: 'Duplex & Single-Sided Scan Intake, Intelligent Sorting & Inline Category Creator',
     changes: JSON.stringify([
       { type: 'web', text: 'Implemented Duplex & Single-Sided Scan / Photo Intake supporting multi-file drag-and-drop and ZIP archives with automatic front/back pairing.' },

@@ -1464,7 +1464,7 @@ export default function ReceiptPage() {
                         <p>ALL SALES FINAL ON ANTIQUES</p>
                       </>
                     )}
-                    <p className="text-[9px] mt-2">SYS v1.9.9</p>
+                    <p className="text-[9px] mt-2">SYS v2.0.0</p>
                   </div>
 
                 </div>

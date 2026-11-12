@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import bcrypt from 'bcryptjs';
+import { syncChangelogs } from './dbManager.js';
 
 export function seedDemoData(customDataPath = null) {
   const dataPath = customDataPath || process.env.USER_DATA_PATH || process.cwd();
@@ -652,6 +653,9 @@ export function seedDemoData(customDataPath = null) {
     );
     txIndex++;
   }
+
+  // Synchronize master changelogs
+  syncChangelogs(masterDb);
 
   masterDb.close();
   console.log('[Seed] Demo data seeding completed successfully!');
