@@ -8,9 +8,6 @@ const nextConfig = {
     proxyClientMaxBodySize: '1000mb',
   },
   serverExternalPackages: ['tesseract.js', 'pdf-parse', '@napi-rs/canvas', 'better-sqlite3'],
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
