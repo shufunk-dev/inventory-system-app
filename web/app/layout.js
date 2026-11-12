@@ -20,7 +20,7 @@ export const metadata = {
 };
 
 import Link from 'next/link';
-import { Home, Settings, LogOut, ShieldAlert, BookOpen, Wine, ClipboardList, Printer, TrendingUp, Layers } from 'lucide-react';
+import { Home, Settings, LogOut, ShieldAlert, BookOpen, Wine, ClipboardList, Printer, TrendingUp, Layers, Percent } from 'lucide-react';
 import { getUser } from '@/lib/auth';
 import { getGlobalDb } from '@/lib/db';
 import StoreSelector from '@/components/StoreSelector';
@@ -129,6 +129,11 @@ export default async function RootLayout({ children }) {
                   <Link href="/receipt" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">
                     <Printer className="w-4 h-4 text-sky-400" />
                     <span className="hidden sm:inline">Receipts</span>
+                  </Link>
+
+                  <Link href="/promotions" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-amber-400 transition-colors">
+                    <Percent className="w-4 h-4 text-amber-400" />
+                    <span className="hidden sm:inline">Sales</span>
                   </Link>
 
                   <Link href="/changelog" className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-blue-400 transition-colors">

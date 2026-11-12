@@ -126,10 +126,32 @@ function initializeStoreSchema(dbConn) {
       isTraining INTEGER DEFAULT 0,
       createdAt INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS promotions (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      storeId TEXT,
+      discountType TEXT NOT NULL DEFAULT 'percentage',
+      discountValue REAL NOT NULL,
+      targetType TEXT NOT NULL DEFAULT 'booth',
+      targetIds TEXT,
+      startDate TEXT NOT NULL,
+      endDate TEXT NOT NULL,
+      isRecurring INTEGER DEFAULT 0,
+      recurringDays TEXT,
+      gracePeriodMinutes INTEGER DEFAULT 0,
+      isActive INTEGER DEFAULT 1,
+      createdAt INTEGER
+    );
   `);
 
   // Run alterations safely for store database
   try { dbConn.exec("ALTER TABLE payment_transactions ADD COLUMN isTraining INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN tag TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE items ADD COLUMN colorTag TEXT"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE promotions ADD COLUMN gracePeriodMinutes INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE promotions ADD COLUMN isRecurring INTEGER DEFAULT 0"); } catch(e) {}
+  try { dbConn.exec("ALTER TABLE promotions ADD COLUMN recurringDays TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN userId TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE categories ADD COLUMN userId TEXT"); } catch(e) {}
   try { dbConn.exec("ALTER TABLE items ADD COLUMN moviePlot TEXT"); } catch(e) {}

@@ -66,6 +66,7 @@ project_summary.pdf
 web/tests/
 web/scripts/
 !web/scripts/seed-demo.js
+!web/scripts/clean-cache.js
 web/scratch/
 web/database.sqlite
 
@@ -74,4 +75,8 @@ license-server/
 
 # Standalone Purchase Website (Git Ignored)
 purchase-landing-page/
+
+# Archives & Builds
+*.zip
+
 

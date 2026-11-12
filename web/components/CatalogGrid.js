@@ -892,6 +892,13 @@ export default function CatalogGrid({ items }) {
                   )}
                 </button>
 
+                {/* Sale Badge Overlay */}
+                {item.hasSale && (
+                  <div className="absolute top-4 left-4 z-10 bg-amber-500 text-gray-950 font-black text-[10px] px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tight flex items-center gap-1">
+                    <span>{item.savingsPercent ? `${item.savingsPercent}% OFF` : 'SALE'}</span>
+                  </div>
+                )}
+
                 <div className="aspect-square rounded-xl overflow-hidden bg-gray-800 mb-3 relative">
                   {item.imagePath ? (
                     <img 
@@ -909,9 +916,29 @@ export default function CatalogGrid({ items }) {
                 </div>
                 
                 <div className="px-1 pb-1">
-                  <h3 className="text-sm md:text-base font-bold text-gray-100 mb-1 truncate">
-                    {item.name || 'Unnamed Item'}
-                  </h3>
+                  <div className="flex justify-between items-baseline gap-1">
+                    <h3 className="text-sm md:text-base font-bold text-gray-100 mb-1 truncate flex-1">
+                      {item.name || 'Unnamed Item'}
+                    </h3>
+                    {item.retailPrice !== null && item.retailPrice !== undefined && item.retailPrice !== '' && (
+                      <div className="text-right shrink-0">
+                        {item.hasSale ? (
+                          <div>
+                            <span className="line-through text-gray-500 text-[10px] block font-mono leading-none">
+                              ${parseFloat(item.retailPrice).toFixed(2)}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-emerald-400">
+                              ${parseFloat(item.salePrice).toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-mono font-bold text-gray-300">
+                            ${parseFloat(item.retailPrice).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs font-mono text-blue-400 truncate">
                     {item.barcode || 'Manual'}
                   </p>

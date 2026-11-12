@@ -5,7 +5,7 @@
   "author": "Shufelt Designs llc",
   "scripts": {
     "dev": "next dev",
-    "build": "tailwindcss -i ./app/tailwind.css -o ./app/globals.css && next build",
+    "build": "tailwindcss -i ./app/tailwind.css -o ./app/globals.css && next build && node scripts/clean-cache.js",
     "start": "next start",
     "lint": "eslint",
     "seed:demo": "node scripts/seed-demo.js"

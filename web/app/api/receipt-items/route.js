@@ -1,5 +1,6 @@
 import { getMasterDb, getStoreDb } from '../../../lib/db.js';
 import { getUser } from '../../../lib/auth.js';
+import { evaluateItemPromotion } from '../../../lib/promotions.js';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
@@ -15,34 +16,86 @@ export async function GET() {
     const masterDb = getMasterDb();
     const posItems = masterDb.prepare('SELECT * FROM pos_items').all();
     const stores = masterDb.prepare('SELECT id, name FROM store_profiles').all();
+    const now = new Date();
 
-    // Map: barcode/id -> { storeId, storeName, catalogName, retailPrice }
+    // Load master promotions
+    let masterPromotions = [];
+    try {
+      masterPromotions = masterDb.prepare('SELECT * FROM promotions WHERE isActive = 1').all();
+    } catch (e) {
+      masterPromotions = [];
+    }
+
+    // Map: barcode/id -> { storeId, storeName, catalogName, retailPrice, originalPrice, discountAmount, salePrice, promotionName, hasSale }
     const barcodeMap = new Map();
 
+    // Helper to extract item columns safely
+    const fetchCatalogItems = (db) => {
+      try {
+        return db.prepare("SELECT id, name, barcode, retailPrice, categoryId, tag, colorTag FROM items WHERE retailPrice IS NOT NULL AND retailPrice != ''").all();
+      } catch (err) {
+        try {
+          return db.prepare("SELECT id, name, barcode, retailPrice, categoryId FROM items WHERE retailPrice IS NOT NULL AND retailPrice != ''").all();
+        } catch (e) {
+          return db.prepare("SELECT id, name, barcode, retailPrice FROM items WHERE retailPrice IS NOT NULL AND retailPrice != ''").all();
+        }
+      }
+    };
+
     // Load default catalog items
-    const defaultItems = masterDb.prepare("SELECT id, name, barcode, retailPrice FROM items WHERE retailPrice IS NOT NULL AND retailPrice != ''").all();
+    const defaultItems = fetchCatalogItems(masterDb);
     for (const item of defaultItems) {
       const key = (item.barcode && item.barcode.trim()) || item.id;
+      const evaluation = evaluateItemPromotion({
+        ...item,
+        storeId: 'default'
+      }, masterPromotions, now);
+
       barcodeMap.set(key, {
         storeId: 'default',
         storeName: 'Default Catalog',
         catalogName: item.name,
-        retailPrice: item.retailPrice
+        retailPrice: evaluation.hasSale ? evaluation.salePrice : parseFloat(item.retailPrice),
+        originalPrice: parseFloat(item.retailPrice),
+        discountAmount: evaluation.hasSale ? evaluation.discountAmount : 0,
+        savingsPercent: evaluation.hasSale ? evaluation.savingsPercent : 0,
+        promotionName: evaluation.hasSale ? evaluation.promotionName : null,
+        hasSale: evaluation.hasSale,
+        inGracePeriod: evaluation.inGracePeriod
       });
     }
 
-    // Load custom stores catalog items
+    // Load custom stores catalog items & their promotions
     for (const store of stores) {
       try {
         const storeDb = getStoreDb(store.id);
-        const storeItems = storeDb.prepare("SELECT id, name, barcode, retailPrice FROM items WHERE retailPrice IS NOT NULL AND retailPrice != ''").all();
+        
+        let storePromotions = [];
+        try {
+          storePromotions = storeDb.prepare('SELECT * FROM promotions WHERE isActive = 1').all();
+        } catch (e) {
+          storePromotions = [];
+        }
+
+        const storeItems = fetchCatalogItems(storeDb);
         for (const item of storeItems) {
           const key = (item.barcode && item.barcode.trim()) || item.id;
+          const evaluation = evaluateItemPromotion({
+            ...item,
+            storeId: store.id
+          }, storePromotions, now);
+
           barcodeMap.set(key, {
             storeId: store.id,
             storeName: store.name,
             catalogName: item.name,
-            retailPrice: item.retailPrice
+            retailPrice: evaluation.hasSale ? evaluation.salePrice : parseFloat(item.retailPrice),
+            originalPrice: parseFloat(item.retailPrice),
+            discountAmount: evaluation.hasSale ? evaluation.discountAmount : 0,
+            savingsPercent: evaluation.hasSale ? evaluation.savingsPercent : 0,
+            promotionName: evaluation.hasSale ? evaluation.promotionName : null,
+            hasSale: evaluation.hasSale,
+            inGracePeriod: evaluation.inGracePeriod
           });
         }
       } catch (e) {
@@ -60,7 +113,13 @@ export async function GET() {
       posItemsMap.set(barcodeStr, {
         itemNum: pos.itemNum,
         name: pos.name,
-        price: pos.price,
+        price: match ? match.retailPrice : pos.price,
+        originalPrice: match ? match.originalPrice : pos.price,
+        discountAmount: match ? match.discountAmount : 0,
+        savingsPercent: match ? match.savingsPercent : 0,
+        promotionName: match ? match.promotionName : null,
+        hasSale: match ? match.hasSale : false,
+        inGracePeriod: match ? match.inGracePeriod : false,
         storeId: match ? match.storeId : 'unattributed',
         storeName: match ? match.storeName : 'Direct Mall Sale',
         catalogName: match ? match.catalogName : pos.name
@@ -76,6 +135,12 @@ export async function GET() {
             itemNum: keyStr,
             name: info.catalogName,
             price: parseFloat(info.retailPrice),
+            originalPrice: parseFloat(info.originalPrice),
+            discountAmount: parseFloat(info.discountAmount) || 0,
+            savingsPercent: parseInt(info.savingsPercent, 10) || 0,
+            promotionName: info.promotionName,
+            hasSale: !!info.hasSale,
+            inGracePeriod: !!info.inGracePeriod,
             storeId: info.storeId,
             storeName: info.storeName,
             catalogName: info.catalogName

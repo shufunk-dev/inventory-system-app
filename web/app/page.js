@@ -7,6 +7,7 @@ import CatalogFilters from '@/components/CatalogFilters';
 import { Package, Download } from 'lucide-react';
 
 import { buildCategoryTree, getCategoryAndChildrenIds } from '@/lib/categories';
+import { evaluateItemPromotion } from '@/lib/promotions';
 import { getUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
@@ -115,6 +116,24 @@ export default async function Home({ searchParams }) {
   // Fetch paginated items
   const items = db.prepare(`SELECT * FROM items ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`).all(...sqlParams, limit, offset);
 
+  // Fetch active promotions
+  let activePromotions = [];
+  try {
+    activePromotions = db.prepare('SELECT * FROM promotions WHERE isActive = 1').all();
+  } catch (e) {}
+
+  const now = new Date();
+  const enrichedItems = items.map(item => {
+    const promo = evaluateItemPromotion(item, activePromotions, now);
+    return {
+      ...item,
+      hasSale: promo.hasSale,
+      salePrice: promo.salePrice,
+      savingsPercent: promo.savingsPercent,
+      promotionName: promo.promotionName
+    };
+  });
+
   // Preserve search params for pagination links
   const urlParams = new URLSearchParams();
   if (query) urlParams.set('q', query);
@@ -165,7 +184,7 @@ export default async function Home({ searchParams }) {
             </p>
           </div>
         ) : (
-          <CatalogGrid items={items} />
+          <CatalogGrid items={enrichedItems} />
         )}
 
         {totalPages > 1 && (

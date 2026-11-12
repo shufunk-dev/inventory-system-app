@@ -1,12 +1,38 @@
 {
-  "name": "inventory-system-app-root",
+  "name": "web",
   "version": "1.9.9",
   "private": true,
-  "description": "Root build and startup wrapper for SiteGround Node.js deployment",
+  "author": "Shufelt Designs llc",
   "scripts": {
-    "dev": "npm --prefix web run dev",
-    "build": "npm --prefix web run build",
-    "start": "npm --prefix web start",
-    "seed:demo": "npm --prefix web run seed:demo"
+    "dev": "next dev",
+    "build": "tailwindcss -i ./app/tailwind.css -o ./app/globals.css && next build && node scripts/clean-cache.js",
+    "start": "next start",
+    "lint": "eslint",
+    "seed:demo": "node scripts/seed-demo.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.19",
+    "axios": "^1.16.1",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.10.0",
+    "dotenv": "^17.4.2",
+    "form-data": "^4.0.5",
+    "jose": "^6.2.3",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.16.0",
+    "marked": "^18.0.4",
+    "multiparty": "^4.3.0",
+    "next": "16.2.6",
+    "nodemailer": "^8.0.10",
+    "pdf-parse": "^2.4.5",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.4",
+    "react-barcode": "^1.6.1",
+    "react-dom": "19.2.4",
+    "sqlite3": "^6.0.1",
+    "tailwindcss": "^4",
+    "tesseract.js": "^7.0.0"
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Printer, ArrowLeft, Search, Plus, Minus, Trash2, FileText, Check, ShoppingCart, Info, CreditCard, Loader2, QrCode, Settings, Banknote } from 'lucide-react';
+import { Printer, ArrowLeft, Search, Plus, Minus, Trash2, FileText, Check, ShoppingCart, Info, CreditCard, Loader2, QrCode, Settings, Banknote, Percent, Tag, Sparkles } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 
@@ -59,6 +59,13 @@ export default function ReceiptPage() {
   const [isPrintingDirect, setIsPrintingDirect] = useState(false);
   const [printError, setPrintError] = useState('');
   const [printSuccess, setPrintSuccess] = useState('');
+
+  // Manual line-item discount modal states
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [selectedCartItem, setSelectedCartItem] = useState(null);
+  const [manualDiscountType, setManualDiscountType] = useState('percentage'); // 'percentage' | 'fixed_amount'
+  const [manualDiscountValue, setManualDiscountValue] = useState('');
+  const [manualDiscountReason, setManualDiscountReason] = useState('As-Is / Damaged');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -200,6 +207,62 @@ export default function ReceiptPage() {
     setCustomPrice('');
   };
 
+  const applyManualDiscount = (e) => {
+    e.preventDefault();
+    if (!selectedCartItem) return;
+    const val = parseFloat(manualDiscountValue);
+    if (isNaN(val) || val <= 0) return;
+
+    const basePrice = selectedCartItem.originalPrice || selectedCartItem.price;
+    let discountAmt = 0;
+    if (manualDiscountType === 'percentage') {
+      discountAmt = Math.round((basePrice * (val / 100)) * 100) / 100;
+    } else {
+      discountAmt = Math.min(basePrice, Math.round(val * 100) / 100);
+    }
+
+    const newPrice = Math.max(0, Math.round((basePrice - discountAmt) * 100) / 100);
+
+    setReceiptItems(receiptItems.map(r => {
+      if (r.itemNum === selectedCartItem.itemNum) {
+        return {
+          ...r,
+          originalPrice: basePrice,
+          price: newPrice,
+          discountAmount: discountAmt,
+          hasSale: true,
+          discountReason: manualDiscountReason || 'Manual Discount',
+          promotionName: manualDiscountReason || 'Manual Discount'
+        };
+      }
+      return r;
+    }));
+
+    setDiscountModalOpen(false);
+    setSelectedCartItem(null);
+    setManualDiscountValue('');
+  };
+
+  const clearItemDiscount = (itemNum) => {
+    setReceiptItems(receiptItems.map(r => {
+      if (r.itemNum === itemNum) {
+        const orig = r.originalPrice || r.price;
+        return {
+          ...r,
+          price: orig,
+          originalPrice: orig,
+          discountAmount: 0,
+          hasSale: false,
+          discountReason: null,
+          promotionName: null
+        };
+      }
+      return r;
+    }));
+    setDiscountModalOpen(false);
+    setSelectedCartItem(null);
+  };
+
   const filteredItems = catalogItems.filter(item => {
     if (selectedBoothFilter !== 'all' && item.storeId !== selectedBoothFilter) {
       return false;
@@ -243,6 +306,10 @@ export default function ReceiptPage() {
   const displaySubtotal = activeReceiptData.subtotal !== undefined ? activeReceiptData.subtotal : subtotal;
   const displayTaxAmount = activeReceiptData.taxAmount !== undefined ? activeReceiptData.taxAmount : taxAmount;
   const displayTotal = activeReceiptData.total !== undefined ? activeReceiptData.total : total;
+  const displaySavings = displayItems.reduce((acc, item) => {
+    const orig = item.originalPrice && item.originalPrice > item.price ? item.originalPrice : item.price;
+    return acc + ((orig - item.price) * item.qty);
+  }, 0);
   const displayReceiptNo = activeReceiptData.receiptNo || `R${registerId}-${receiptNo.replace(/^R-/, '')}`;
   const displayPaymentMethod = activeReceiptData.paymentMethod || lastPaymentMethod;
   const displayCardDetails = activeReceiptData.cardDetails || lastCardDetails || activeCardDetails;
@@ -894,42 +961,81 @@ export default function ReceiptPage() {
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
-                  {receiptItems.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-gray-950/50 border border-gray-800 px-4 py-3 rounded-xl">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{item.name}</p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                          <span className="w-1.5 h-1.5 bg-blue-500/80 rounded-full"></span>
-                          {item.storeName}
-                        </p>
-                      </div>
+                  {receiptItems.map((item, idx) => {
+                    const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+                    return (
+                      <div key={idx} className="flex justify-between items-center bg-gray-950/50 border border-gray-800 px-4 py-3 rounded-xl">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{item.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 bg-blue-500/80 rounded-full"></span>
+                              {item.storeName}
+                            </p>
+                            {hasDiscount && (
+                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                {item.discountReason || item.promotionName || 'Sale'} (-${(item.originalPrice - item.price).toFixed(2)})
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-mono text-gray-400">${item.price.toFixed(2)}</span>
-                        <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg p-1">
-                          <button 
-                            onClick={() => handleRemoveItem(item.itemNum)}
-                            className="p-1 hover:bg-gray-700 rounded-md text-gray-400 hover:text-white"
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            {hasDiscount && (
+                              <span className="text-[10px] text-gray-500 line-through block font-mono">
+                                ${(item.originalPrice * item.qty).toFixed(2)}
+                              </span>
+                            )}
+                            <span className="text-sm font-mono text-emerald-400 font-bold">
+                              ${(item.price * item.qty).toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg p-1">
+                            <button 
+                              onClick={() => handleRemoveItem(item.itemNum)}
+                              className="p-1 hover:bg-gray-700 rounded-md text-gray-400 hover:text-white"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-xs font-mono font-bold w-6 text-center">{item.qty}</span>
+                            <button 
+                              onClick={() => handleAddItem(item)}
+                              className="p-1 hover:bg-gray-700 rounded-md text-gray-400 hover:text-white"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCartItem(item);
+                              setManualDiscountValue(item.discountAmount ? String(item.discountAmount) : '');
+                              setManualDiscountReason(item.discountReason || 'As-Is / Damaged');
+                              setDiscountModalOpen(true);
+                            }}
+                            title="Add / Adjust Line-Item Discount"
+                            className={`p-1.5 rounded-lg border text-xs transition-all cursor-pointer ${
+                              hasDiscount 
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                                : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border-gray-700'
+                            }`}
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Percent className="w-3.5 h-3.5" />
                           </button>
-                          <span className="text-xs font-mono font-bold w-6 text-center">{item.qty}</span>
-                          <button 
-                            onClick={() => handleAddItem(item)}
-                            className="p-1 hover:bg-gray-700 rounded-md text-gray-400 hover:text-white"
+
+                          <button
+                            onClick={() => setReceiptItems(receiptItems.filter(r => r.itemNum !== item.itemNum))}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1.5 rounded-lg transition-all"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                        <button
-                          onClick={() => setReceiptItems(receiptItems.filter(r => r.itemNum !== item.itemNum))}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1.5 rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1033,11 +1139,25 @@ export default function ReceiptPage() {
                     <div>
                       <p className={`font-semibold text-white group-hover:text-blue-400 transition-colors ${isTabletMode ? 'text-sm' : 'text-xs'}`}>{item.name}</p>
                       <p className="text-[10px] text-gray-500 font-mono mt-0.5">{item.itemNum}</p>
-                      <p className="text-[10px] text-blue-400/80 font-bold mt-0.5">{item.storeName}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-[10px] text-blue-400/80 font-bold">{item.storeName}</p>
+                        {item.hasSale && (
+                          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold px-1 rounded">
+                            {item.savingsPercent ? `${item.savingsPercent}% OFF` : 'SALE'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className={`font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md ${isTabletMode ? 'text-sm' : 'text-xs'}`}>
-                      ${item.price.toFixed(2)}
-                    </span>
+                    <div className="text-right">
+                      {item.hasSale && item.originalPrice > item.price && (
+                        <span className="text-[10px] text-gray-500 line-through block font-mono">
+                          ${item.originalPrice.toFixed(2)}
+                        </span>
+                      )}
+                      <span className={`font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md ${isTabletMode ? 'text-sm' : 'text-xs'}`}>
+                        ${item.price.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1075,36 +1195,71 @@ export default function ReceiptPage() {
                     <p className="text-xs text-gray-600 mt-1">Tap items on the left to add them</p>
                   </div>
                 ) : (
-                  receiptItems.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-gray-950/40 border border-gray-850 px-4 py-3 rounded-2xl">
-                      <div>
-                        <p className="text-sm font-bold text-white leading-tight">{item.name}</p>
-                        <p className="text-[10px] text-gray-500 font-mono mt-0.5">{item.itemNum}</p>
-                        <p className="text-[10px] text-blue-400 font-semibold mt-0.5">{item.storeName}</p>
-                      </div>
+                  receiptItems.map((item, idx) => {
+                    const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+                    return (
+                      <div key={idx} className="flex justify-between items-center bg-gray-950/40 border border-gray-850 px-4 py-3 rounded-2xl">
+                        <div>
+                          <p className="text-sm font-bold text-white leading-tight">{item.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] text-blue-400 font-semibold">{item.storeName}</p>
+                            {hasDiscount && (
+                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold px-1.5 py-0.2 rounded">
+                                {item.discountReason || item.promotionName || 'Sale'} (-${(item.originalPrice - item.price).toFixed(2)})
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono font-extrabold text-white">${(item.price * item.qty).toFixed(2)}</span>
-                        <div className="flex items-center gap-1.5 bg-gray-850 border border-gray-800 rounded-xl p-1">
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            {hasDiscount && (
+                              <span className="text-[10px] text-gray-500 line-through block font-mono">
+                                ${(item.originalPrice * item.qty).toFixed(2)}
+                              </span>
+                            )}
+                            <span className="text-sm font-mono font-extrabold text-emerald-400">${(item.price * item.qty).toFixed(2)}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 bg-gray-850 border border-gray-800 rounded-xl p-1">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.itemNum)}
+                              className="p-1.5 hover:bg-gray-700 active:bg-gray-600 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="text-sm font-mono font-bold w-6 text-center text-white">{item.qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddItem(item)}
+                              className="p-1.5 hover:bg-gray-700 active:bg-gray-600 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+
                           <button
                             type="button"
-                            onClick={() => handleRemoveItem(item.itemNum)}
-                            className="p-1.5 hover:bg-gray-700 active:bg-gray-600 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer"
+                            onClick={() => {
+                              setSelectedCartItem(item);
+                              setManualDiscountValue(item.discountAmount ? String(item.discountAmount) : '');
+                              setManualDiscountReason(item.discountReason || 'As-Is / Damaged');
+                              setDiscountModalOpen(true);
+                            }}
+                            title="Add / Adjust Line-Item Discount"
+                            className={`p-1.5 rounded-lg border text-xs transition-all cursor-pointer ${
+                              hasDiscount 
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                                : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border-gray-700'
+                            }`}
                           >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <span className="text-sm font-mono font-bold w-6 text-center text-white">{item.qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleAddItem(item)}
-                            className="p-1.5 hover:bg-gray-700 active:bg-gray-600 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-4 h-4" />
+                            <Percent className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
@@ -1224,19 +1379,29 @@ export default function ReceiptPage() {
 
                   {/* Line Items */}
                   <div className="font-mono text-xs space-y-3">
-                    {displayItems.map((item, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between font-bold">
-                          <span>{item.qty}x {item.name.slice(0, 18)}</span>
-                          <span>${(item.price * item.qty).toFixed(2)}</span>
+                    {displayItems.map((item, idx) => {
+                      const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+                      return (
+                        <div key={idx} className="space-y-0.5">
+                          <div className="flex justify-between font-bold">
+                            <span>{item.qty}x {item.name.slice(0, 18)}</span>
+                            <span>${(item.price * item.qty).toFixed(2)}</span>
+                          </div>
+                          {/* Discount Breakdown */}
+                          {hasDiscount && (
+                            <div className="flex justify-between text-[10px] text-green-700 font-semibold pl-3">
+                              <span>&gt; {item.discountReason || item.promotionName || 'SALE'}</span>
+                              <span>(Reg: ${item.originalPrice.toFixed(2)} - Save ${((item.originalPrice - item.price) * item.qty).toFixed(2)})</span>
+                            </div>
+                          )}
+                          {/* Booth attribution */}
+                          <div className="flex justify-between text-[10px] text-gray-600 italic pl-3">
+                            <span>&gt; BOOTH: {item.storeName}</span>
+                            <span>(${item.price.toFixed(2)} ea)</span>
+                          </div>
                         </div>
-                        {/* Booth attribution */}
-                        <div className="flex justify-between text-[10px] text-gray-600 italic pl-3">
-                          <span>&gt; BOOTH: {item.storeName}</span>
-                          <span>(${item.price.toFixed(2)} ea)</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <p className="font-mono text-center my-3 text-gray-600">--------------------------------</p>
@@ -1255,6 +1420,12 @@ export default function ReceiptPage() {
                       <span>TOTAL:</span>
                       <span>${displayTotal.toFixed(2)}</span>
                     </div>
+                    {displaySavings > 0 && (
+                      <div className="flex justify-between font-extrabold text-xs text-green-800 bg-green-100 p-1 rounded border border-green-300 mt-1.5">
+                        <span>*** YOU SAVED:</span>
+                        <span>-${displaySavings.toFixed(2)} ***</span>
+                      </div>
+                    )}
                     {displayPaymentMethod && (
                       <div className="pt-2 border-t border-dashed border-gray-600 space-y-1 text-right mt-2">
                         <div className="flex justify-between font-bold">
@@ -1341,17 +1512,30 @@ export default function ReceiptPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-gray-700">
-                      {displayItems.map((item, idx) => (
-                        <tr key={idx}>
-                          <td className="py-3 px-3">
-                            <p className="font-semibold text-gray-900">{item.name}</p>
-                          </td>
-                          <td className="py-3 px-3 text-blue-600 font-medium">{item.storeName}</td>
-                          <td className="py-3 px-3 text-right font-mono">${item.price.toFixed(2)}</td>
-                          <td className="py-3 px-3 text-right font-mono">{item.qty}</td>
-                          <td className="py-3 px-3 text-right font-mono font-bold text-gray-900">${(item.price * item.qty).toFixed(2)}</td>
-                        </tr>
-                      ))}
+                      {displayItems.map((item, idx) => {
+                        const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+                        return (
+                          <tr key={idx}>
+                            <td className="py-3 px-3">
+                              <p className="font-semibold text-gray-900">{item.name}</p>
+                              {hasDiscount && (
+                                <p className="text-[10px] text-green-700 font-semibold mt-0.5">
+                                  {item.discountReason || item.promotionName || 'Sale'}: Reg ${item.originalPrice.toFixed(2)} - Save ${((item.originalPrice - item.price) * item.qty).toFixed(2)}
+                                </p>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-blue-600 font-medium">{item.storeName}</td>
+                            <td className="py-3 px-3 text-right font-mono">
+                              {hasDiscount && (
+                                <span className="line-through text-gray-400 text-[10px] block">${item.originalPrice.toFixed(2)}</span>
+                              )}
+                              ${item.price.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono">{item.qty}</td>
+                            <td className="py-3 px-3 text-right font-mono font-bold text-gray-900">${(item.price * item.qty).toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
 
@@ -1370,6 +1554,12 @@ export default function ReceiptPage() {
                         <span>Total Amount Paid:</span>
                         <span className="font-mono">${displayTotal.toFixed(2)}</span>
                       </div>
+                      {displaySavings > 0 && (
+                        <div className="flex justify-between font-bold text-xs text-green-700 bg-green-50 p-1.5 rounded border border-green-200">
+                          <span>Total Savings Today:</span>
+                          <span className="font-mono">-${displaySavings.toFixed(2)}</span>
+                        </div>
+                      )}
                       {displayPaymentMethod && (
                         <div className="pt-2 border-t border-gray-200 space-y-1 text-xs text-right mt-2 text-gray-700">
                           <div className="flex justify-between font-bold">
@@ -1692,6 +1882,126 @@ export default function ReceiptPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Line-Item Manual Discount Modal (As-Is / Damaged / Negotiation) */}
+      {discountModalOpen && selectedCartItem && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in no-print p-4">
+          <div className="bg-gray-950 border border-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden text-left">
+            
+            <div className="flex items-center justify-between pb-4 border-b border-gray-850">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
+                  <Percent className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Line-Item Discount</h3>
+                  <p className="text-xs text-gray-400 truncate max-w-[240px]">{selectedCartItem.name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setDiscountModalOpen(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg text-lg leading-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={applyManualDiscount} className="space-y-4 pt-4 text-xs">
+              <div className="bg-gray-900 border border-gray-850 rounded-2xl p-3 flex justify-between items-center">
+                <span className="text-gray-400">Regular Retail Price:</span>
+                <span className="text-white font-mono font-bold text-sm">
+                  ${(selectedCartItem.originalPrice || selectedCartItem.price).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Discount Reason Presets */}
+              <div className="space-y-1.5">
+                <label className="font-bold uppercase tracking-wider text-gray-400 text-[10px]">Discount Reason</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    'As-Is / Damaged',
+                    'Negotiated Deal',
+                    'Clearance Markdown',
+                    'Manager Special'
+                  ].map(reason => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => setManualDiscountReason(reason)}
+                      className={`py-2 px-2.5 rounded-xl border text-[11px] font-semibold text-left transition-all cursor-pointer ${
+                        manualDiscountReason === reason 
+                          ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' 
+                          : 'bg-gray-900 border-gray-800 text-gray-400 hover:bg-gray-850'
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Discount Type and Value */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold uppercase tracking-wider text-gray-400 text-[10px]">Type</label>
+                  <select
+                    value={manualDiscountType}
+                    onChange={(e) => setManualDiscountType(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none"
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed_amount">Dollar Off ($)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold uppercase tracking-wider text-gray-400 text-[10px]">
+                    Value {manualDiscountType === 'percentage' ? '(%)' : '($)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    min="1"
+                    placeholder={manualDiscountType === 'percentage' ? 'e.g. 20' : 'e.g. 5.00'}
+                    value={manualDiscountValue}
+                    onChange={(e) => setManualDiscountValue(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2">
+                {selectedCartItem.hasSale && (
+                  <button
+                    type="button"
+                    onClick={() => clearItemDiscount(selectedCartItem.itemNum)}
+                    className="text-red-400 hover:text-red-300 font-bold px-3 py-2 rounded-xl border border-red-500/30 hover:bg-red-500/10 transition-all text-xs cursor-pointer"
+                  >
+                    Remove Discount
+                  </button>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountModalOpen(false)}
+                    className="text-gray-400 hover:text-white px-3 py-2 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-amber-500 hover:bg-amber-400 text-gray-950 font-black px-4 py-2 rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                  >
+                    Apply Discount
+                  </button>
+                </div>
+              </div>
+
+            </form>
+
           </div>
         </div>
       )}
