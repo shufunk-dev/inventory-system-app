@@ -340,6 +340,52 @@ function initializeMasterSchema(dbConn) {
   } catch (e) {
     console.error('Error running booth number migration:', e);
   }
+
+  // Auto-discover and re-link any orphaned store_*.sqlite databases on disk
+  try {
+    const dataPath = process.env.USER_DATA_PATH || process.cwd();
+    const existingProfiles = new Set(
+      dbConn.prepare("SELECT id FROM store_profiles").all().map(r => r.id)
+    );
+    const files = fs.readdirSync(dataPath);
+    for (const file of files) {
+      if (file.startsWith('store_') && file.endsWith('.sqlite')) {
+        const storeId = file.slice('store_'.length, -'.sqlite'.length);
+        if (!existingProfiles.has(storeId)) {
+          const storeDbPath = path.resolve(dataPath, file);
+          try {
+            const tempDb = new Database(storeDbPath);
+            let storeName = null;
+            try {
+              storeName = tempDb.prepare("SELECT value FROM system_settings WHERE key = 'store_name'").get()?.value;
+            } catch (e) {}
+            
+            const maxRow = dbConn.prepare("SELECT MAX(CAST(boothNumber AS INTEGER)) as maxNum FROM store_profiles WHERE boothNumber IS NOT NULL").get();
+            const nextNum = ((maxRow && maxRow.maxNum) ? maxRow.maxNum : 0) + 1;
+            const formattedNum = String(nextNum).padStart(3, '0');
+
+            if (!storeName) {
+              storeName = `Store ${formattedNum}`;
+            }
+
+            const nameExists = dbConn.prepare("SELECT id FROM store_profiles WHERE name = ?").get(storeName);
+            if (nameExists) {
+              storeName = `${storeName} (${storeId.substring(0, 8)})`;
+            }
+
+            dbConn.prepare("INSERT INTO store_profiles (id, name, boothNumber, createdAt) VALUES (?, ?, ?, ?)")
+              .run(storeId, storeName, formattedNum, Date.now());
+            console.log(`[db] Auto-recovered orphaned store database: ${file} as "${storeName}" (Booth ${formattedNum})`);
+            tempDb.close();
+          } catch (err) {
+            console.error(`[db] Failed to inspect store database ${file}:`, err);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[db] Orphaned store auto-recovery check failed:', e);
+  }
 }
 
 // Master DB (contains users, sessions, settings, store_profiles)
