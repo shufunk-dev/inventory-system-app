@@ -59,9 +59,9 @@ def create_demo_zip():
             print("Added scripts/clean-cache.js")
 
         # 3. Add .env file configured for DEMO_MODE=true for the cloud demo
-        env_content = "DEMO_MODE=true\nSAAS_MODE=false\nSECURE_COOKIES=false\n"
+        env_content = "DEMO_MODE=true\nENABLE_SCHEDULED_RESET=true\nSAAS_MODE=false\nSECURE_COOKIES=false\n"
         z.writestr('.env', env_content)
-        print("Added .env (DEMO_MODE=true)")
+        print("Added .env (DEMO_MODE=true, ENABLE_SCHEDULED_RESET=true)")
 
         # 4. Add pre-seeded SQLite databases
         db_files = [

@@ -445,7 +445,8 @@ export function getMasterDb() {
   }
 
   // 2. Throttled Demo Mode Reset Check - Runs once every minute (or always in tests)
-  if (process.env.DEMO_MODE === 'true') {
+  // Double-lock: requires both DEMO_MODE=true AND ENABLE_SCHEDULED_RESET=true to prevent accidental resets
+  if (process.env.DEMO_MODE === 'true' && process.env.ENABLE_SCHEDULED_RESET === 'true') {
     if (process.env.NODE_ENV === 'test' || now - lastDemoCheck > 60 * 1000) {
       lastDemoCheck = now;
       try {
@@ -571,8 +572,8 @@ export function resetToFactorySettings(activeMasterDb = null) {
 
 // Resets cloud demo databases and files, keeping only the initial root admin account/tenant intact
 export function performMidnightReset() {
-  if (process.env.DEMO_MODE !== 'true') {
-    console.warn('[demo] performMidnightReset called but DEMO_MODE is not true. Aborting reset.');
+  if (process.env.DEMO_MODE !== 'true' || process.env.ENABLE_SCHEDULED_RESET !== 'true') {
+    console.warn('[demo] performMidnightReset called but DEMO_MODE or ENABLE_SCHEDULED_RESET is not true. Aborting reset.');
     return;
   }
   console.log('[demo] Performing scheduled daily midnight reset...');
@@ -755,7 +756,7 @@ export function checkAndResetIfNeeded() {
 
 // Scheduled check interval initialization
 export function scheduleMidnightReset() {
-  if (process.env.DEMO_MODE !== 'true') return;
+  if (process.env.DEMO_MODE !== 'true' || process.env.ENABLE_SCHEDULED_RESET !== 'true') return;
   if (isResetScheduled) return;
   isResetScheduled = true;
   console.log('[demo] Daily midnight reset scheduler initialized.');
