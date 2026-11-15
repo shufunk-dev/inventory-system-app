@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getDb, getGlobalDb } from '@/lib/db';
 import UploadForm from '@/components/UploadForm';
 import SingleUploadForm from '@/components/SingleUploadForm';
+import QuickAddItemsModal from '@/components/QuickAddItemsModal';
 import CatalogGrid from '@/components/CatalogGrid';
 import CatalogFilters from '@/components/CatalogFilters';
 import { Package, Download } from 'lucide-react';
@@ -160,7 +161,8 @@ export default async function Home({ searchParams }) {
               </Link>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <QuickAddItemsModal />
             <a 
               href="/api/export/csv" 
               className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white shadow-lg transition-all bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:-translate-y-0.5"

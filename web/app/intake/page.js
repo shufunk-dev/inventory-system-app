@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import QuickAddItemsModal from '@/components/QuickAddItemsModal';
 import { 
   Upload, 
   Layers, 
@@ -330,6 +331,7 @@ export default function BulkIntakePage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <QuickAddItemsModal />
             <Link 
               href="/"
               className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-300 bg-gray-900/80 hover:bg-gray-800 border border-gray-700 transition-all"
