@@ -525,6 +525,10 @@ export function resetToFactorySettings(activeMasterDb = null) {
 
 // Resets cloud demo databases and files, keeping only the initial root admin account/tenant intact
 export function performMidnightReset() {
+  if (process.env.DEMO_MODE !== 'true') {
+    console.warn('[demo] performMidnightReset called but DEMO_MODE is not true. Aborting reset.');
+    return;
+  }
   console.log('[demo] Performing scheduled daily midnight reset...');
   const dataPath = process.env.USER_DATA_PATH || process.cwd();
   

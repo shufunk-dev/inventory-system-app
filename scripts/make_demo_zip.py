@@ -58,11 +58,10 @@ def create_demo_zip():
             z.write(clean_cache_path, 'scripts/clean-cache.js')
             print("Added scripts/clean-cache.js")
 
-        # 3. Add .env file if present
-        env_path = os.path.join(web_dir, '.env')
-        if os.path.isfile(env_path) and '.env' not in [os.path.basename(f) for f in tracked_files]:
-            z.write(env_path, '.env')
-            print("Added .env (DEMO_MODE=true)")
+        # 3. Add .env file configured for DEMO_MODE=true for the cloud demo
+        env_content = "DEMO_MODE=true\nSAAS_MODE=false\nSECURE_COOKIES=false\n"
+        z.writestr('.env', env_content)
+        print("Added .env (DEMO_MODE=true)")
 
         # 4. Add pre-seeded SQLite databases
         db_files = [
